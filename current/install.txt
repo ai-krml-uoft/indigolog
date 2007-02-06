@@ -1,0 +1,43 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%  FILE      	: install.txt
+%  DATE	     	: January 2007%
+%  AUTHOR 	: Sebastian Sardina 
+%  EMAIL  	: ssardina@cs.toronto.edu
+%  WWW    	: www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
+%  DESCRIPTION	: top-level install.txt file
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+To run the IndiGolog architecture in any domain, you need to do the following:
+
+1. Install (free) SWI Prolog from http://www.swi-prolog.org/ to your system.
+   Make sure that you install a version that is compiled with TCP/IP support
+   (this means the library CLIB should be also installed).
+   Make sure that 'pl' invokes the Prolog interpreter.
+
+2. Extract indigolog-linux-0.5a.tar.gr to some path <mypath>.
+       cd <mypath>
+       tar -xzf indigolog-linux-0.5a.tar.gz
+
+3. Set the environment variable PATH_INDIGOLOG to <mypath>/indigolog-linux-0.5a/.
+   For example, if <mypath> is /home/ssardina/code/ then in bash you do this:
+       export PATH_INDIGOLOG=/home/ssardina/code/indigolog-linux-0.5a
+
+
+
+For some particular domains (e.g., Wumpus world) you also will need:
+
+1. Install a Java Runtime Environment (JRE) to your system.
+   Make sure that 'java' invokes the Java application launcher.
+   Also, note that JRE1.5 from SUN is tested to work, while the GNU Java 
+   Compiler (GJC) is reported to fail when executing the script at step 5.
+   (this is used in the Wumpus example)
+
+2. TCL/TK installed and executable 'wish' in the path.
+  (this is used by the simulator environment to enter exog. actions)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF: install.txt
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
