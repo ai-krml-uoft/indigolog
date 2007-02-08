@@ -1,42 +1,42 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  FILE      	: install.txt
-%  DATE	     	: January 2007%
-%  AUTHOR 	: Sebastian Sardina 
-%  EMAIL  	: ssardina@cs.toronto.edu
+%  DATE	     	: January 2007
+%  AUTHOR 	: Sebastian Sardina & Stavros Vassos 
+%  EMAIL        : {ssardina,stavros}@cs.toronto.edu
 %  WWW    	: www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
 %  DESCRIPTION	: top-level install.txt file
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+To run the IndiGolog architecture, you need to do the following:
 
-To run the IndiGolog architecture in any domain, you need to do the following:
+1. Make sure that either SWI Prolog or ECLIPSE Prolog is installed.  SWI
+   Prolog should run with the 'pl' executable and ECLIPSE Prolog should run
+   with the 'eclipse' executable. If your Prolog interpreters have other
+   executables, please create symbolic links called 'pl' or 'eclipse'.
 
-1. Install (free) SWI Prolog from http://www.swi-prolog.org/ to your system.
-   Make sure that you install a version that is compiled with TCP/IP support
-   (this means the library CLIB should be also installed).
-   Make sure that 'pl' invokes the Prolog interpreter.
+2. TCP/IP is used for most applications (though not the Elevator-Vanilla).
+   For SWI Prolog, make sure it is compiled with TCP/IP support. (This means
+   that the library CLIB must be installed).
 
-2. Extract indigolog-linux-0.5a.tar.gr to some path <mypath>.
+3. Extract indigolog-linux-vvv.tar.gz to some path <mypath> 
        cd <mypath>
-       tar -xzf indigolog-linux-0.5a.tar.gz
+       tar -xzf indigolog-linux-vvv.tar.gz
+   where vvv is the version of Indigolog being installed. 
 
-3. Set the environment variable PATH_INDIGOLOG to <mypath>/indigolog-linux-0.5a/.
+4. Set an environment variable PATH_INDIGOLOG to <mypath>/indigolog-linux-vvv
    For example, if <mypath> is /home/ssardina/code/ then in bash you do this:
-       export PATH_INDIGOLOG=/home/ssardina/code/indigolog-linux-0.5a
+       export PATH_INDIGOLOG=/home/ssardina/code/indigolog-linux-vvv
 
+For some applications, you will also need to do the following:
 
+1. Install Tcl/Tk and the 'wish' executable.  (This is used by the simulator
+   environment to enter exogenous actions.)
 
-For some particular domains (e.g., Wumpus world) you also will need:
-
-1. Install a Java Runtime Environment (JRE) to your system.
-   Make sure that 'java' invokes the Java application launcher.
-   Also, note that JRE1.5 from SUN is tested to work, while the GNU Java 
-   Compiler (GJC) is reported to fail when executing the script at step 5.
-   (this is used in the Wumpus example)
-
-2. TCL/TK installed and executable 'wish' in the path.
-  (this is used by the simulator environment to enter exog. actions)
-
+2. Install a Java Runtime Environment (JRE) on your system.  Make sure that
+   'java' invokes the Java application launcher.  Also, note that JRE1.5 from
+   SUN is known to work, while the GNU Java Compiler (GJC) is reported to fail
+   when executing the script at step 5.  (This is used in the Wumpus example.)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: install.txt
