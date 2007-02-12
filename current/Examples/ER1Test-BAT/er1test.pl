@@ -256,6 +256,11 @@ proc(getNumber(L,U,N),
 %  Main Routine
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% THIS IS THE MAIN PROCEDURE FOR INDIGOLOG
+proc(main,  mainControl(N)) :- controller(N), !.
+proc(main,  mainControl(3)). % default one
+
+
 % Robot travels a square of 2 meters
 proc(mainControl(0), 
      [talk('ER1 square controller initiated!'),

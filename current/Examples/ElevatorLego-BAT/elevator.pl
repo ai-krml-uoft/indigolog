@@ -282,6 +282,13 @@ reset(Location, Direction, M) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Main Routine
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% THIS IS THE MAIN PROCEDURE FOR INDIGOLOG
+proc(main,  mainControl(N)) :- controller(N), !.
+proc(main,  mainControl(1)). % default one
+
+
+
 % Elevator with alarm
 proc(mainControl(0), [prioritized_interrupts(
         [interrupt(alarm, ring),

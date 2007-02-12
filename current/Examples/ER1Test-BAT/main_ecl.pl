@@ -64,10 +64,8 @@
 %
 % Moreover, the following is provided:
 %
-% -- main: Collects all the procedures named 'mainControl(N)' where
-%          N is the number representing the N-th controller.
-%          The user can select which controller to execute and the 
-%          IndiGolog executor will be run on such controller
+% -- main: Collects all the procedures named 'mainControl(id)' 
+%	   and asks the user which one to run. Uses controller/1
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -77,6 +75,7 @@
 %  These may be options to improve performance and variables/constants used
 %  around the whole arquitecture
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+:- dynamic controller/1.	% Stores the user decision on the controller to run
 :- set_flag(debug_compile, off).   
 :- set_flag(variable_names, off).  % To speed up execution
 
@@ -150,16 +149,19 @@ translateExogAction(CodeAction, Action) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MAIN PREDICATE - evaluate this to run demo
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% main: Gets IndiGolog to evaluate main control procedure
-main:- bagof(X,Y^proc(mainControl(X),Y),L),
-    (L=[NoContr] -> 
-         indigolog(mainControl(NoContr)) 
-    ;
-         write('Available Controllers: '), write(L), nl,
-         write('Which controller do you want to execute? '), 
-         read(NoContr), 
-         indigolog(mainControl(NoContr)) 
-    ).
+
+% main/0: Gets IndiGolog to evaluate a chosen mainControl procedure
+main:- 	retractall(controller(_)),
+	bagof(X,Y^proc(mainControl(X),Y),L),
+    	(L=[NoContr] -> 
+		assert(controller(NoContr))
+    	;
+        	write('Available Controllers: '), write(L), nl,
+         	write('Which controller do you want to execute? '), 
+        	read(NoContr), 
+	 	assert(controller(NoContr))
+    	),
+	indigolog.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
