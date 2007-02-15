@@ -103,13 +103,9 @@
 wait_until_close(5). % how many seconds to wait until closing the device manager
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% AUTOMATIC LOAD OF REQUIRED LIBRARIES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This subsection does the following:
-%  (a) provides main_dir(Path)
-%  (b) loads the neccessary compatibility library: compat_ecl or compat_swi
-%  (c) sets "`" to be the string construct (using set_backquoted_string)
-
+% Tries to close socket X but catches the exception if not possible
+close_socket(X) :-
+	catch(close(X),E,report_message(warning,['Cannot close socket ',X,'--> ',E])).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -180,7 +176,7 @@ halt_device :-
 
 close_all_sockets :-
         retract(listen_to(socket, _, X)),
-	(close(X) -> true ; true), 
+	close_socket(X), 
 	fail.
 close_all_sockets.
 
@@ -234,7 +230,7 @@ handle_stream(env_manager) :-
 	     report_message(system(3), ['About to execute *',(Action,N),'*']), 
              (execute(Action, Type, N, S) -> true ; S=failed),
 %	     change_action_state(Action, N, finalExecution,S,[]),
-             % Report the sensing if it was not `null' (null=not available yet)
+             % Report the sensing if it was not "null" (null=not available yet)
              % If it was null, then the user should make sure that the
              % sensing outcome will be eventually reported to the manager
              (S \=null -> report_sensing(Action, N, S, _) ; true)

@@ -158,11 +158,11 @@ socket(internet, stream, SocketId) :-
 % Associates an address with a given socket stream.
 % OBS: This bind/2 needs to be given an available fix address!
 bind(SocketId, _/Port) :-
-	retract(socket_info(SocketId, S, _, _)), 
-        % (number(Port) -> true ; get_free_port(Port)),  % Not yet done
+	socket_info(SocketId, S, _, _), 	
         tcp_bind(S, Port),
-	%
 	tcp_open_socket(S, R, _),  % No Write Stream here
+	%
+	retract(socket_info(SocketId, S, _, _)), 
 	assert(socket_info(SocketId, S, R, null)).
 
 
@@ -172,30 +172,34 @@ listen(SocketId, N) :-
        socket_info(SocketId, S, _, _),
        tcp_listen(S, N).
 
+
+
 % accept/3: Accepts a connection for a stream socket and creates a new socket
 % which can be used for I/O.
-accept(SocketId, From, NewSock) :-        % Handle the case for sigio(S)
+accept(SocketId, From, NewSock) :-        % Handle the case for NewSock=sigio(_)
         \+ var(NewSock), NewSock = sigio(SocketId2), !,  
         accept(SocketId, From, SocketId2),
-        retract(socket_info(SocketId2, S, R, W)),
+        socket_info(SocketId2, S, R, W),
         register_stream_sigio(R, R2),  % Register SocketId2 for IO signal
+        retract(socket_info(SocketId2, S, R, W)),
         assert(socket_info(SocketId2, S, R2, W)).
 
 
 % Handle the general case when the socket is just new (Read & Write Streams=null)
 accept(SocketId, Host/unknown, NewSocketId2) :-  
-       retract(socket_info(SocketId, S, null, null)), !,
+       socket_info(SocketId, S, null, null), !,
        (atom(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
        %
        tcp_open_socket(S, R, _),  
+       retract(socket_info(SocketId, S, null, null)), 
        assert(socket_info(SocketId, S, R, null)),
        %
        tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
        (atom(NewSocketId2) -> 
 	       true
-       ;                              % Write socket has no alias
-	       S2 =.. [_, NewSocketId2]  % because S2= 'socket'(NewSocketId2)
+       ;                              	% Write socket has no alias
+	       S2 =.. [_, NewSocketId2] % because S2= 'socket'(NewSocketId2)
        ),  
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
 
@@ -208,6 +212,10 @@ accept(SocketId, Host/unknown, NewSocketId2) :-
        tcp_open_socket(S2, ReadS, WriteS),
        (atom(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
+
+
+
+
 
 
 % Connects a socket with the given address.
@@ -233,7 +241,7 @@ get_socket_stream(SocketId, write, Stream) :-
 
 % get_real_streams(StreamList, Type, StreamList2)
 %     StreamList2 is StreamList with all Socket streams replaced
-%     correspondingly by their stream's Type (works in 2-ways)
+%     correspondingly by their streams Type (works in 2-ways)
 get_real_streams([], _, []).
 get_real_streams([S|StreamList], Type, [RS|RealStreamList]) :-
         get_socket_stream(S, Type, RS), !,  % S is a socket!
@@ -256,7 +264,7 @@ eclipse_write(S, T) :-
 eclipse_close(S) :-
         is_socket(S) -> close_socket(S) ; close(S).
 close_socket(SocketId) :-
-        retract(socket_info(SocketId, S, R, W)),
+        retractall(socket_info(SocketId, S, R, W)),
  %       unregister_stream_sigio(R, R2),  % UnRegister SocketId2 for IO signal
         (R == null -> true ; close(R)),
         (W == null -> true ; close(W)),
@@ -554,7 +562,7 @@ replace_element_list([E|R],CE1,CE2,[E|RR]):-
 % without waiting for the child to terminate.
 %
 % By specifying the Streams argument it is possible to connect to the
-% process' standard streams. The form of
+% process standard streams. The form of
 % Streams is [Stdin, Stdout, Stderr]. Stderr is ignored in the current
 % implementation. 
 % If some of these streams are specified and
@@ -581,7 +589,7 @@ replace_element_list([E|R],CE1,CE2,[E|RR]):-
 %        A child process Command is forked in a new process group, its 
 %        standard streams are connected to Streams and its process ID is Pid.
 %     (NOTE: currently, equivalent to exec/3)
-%  
+%
 %
 % -- system(+ShellCommand)
 % -- sh(+ShellCommand)

@@ -273,7 +273,7 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 % -- proc_kill(+Pid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Process Pid exists if it's listed by <ps -f pid>
+% Process Pid exists if its listed by <ps -f pid>
 proc_exists(Pid):- 
         concat_atom(['ps -f ',Pid], Command),
         call_to_exec(unix, Command, Command2), % Select right command for exec
@@ -284,7 +284,7 @@ proc_exists(Pid):-
         ;
              close(streamout),fail).
 
-% Process Pid is finished if it's listed with status Z with <ps -f pid>
+% Process Pid is finished if its listed with status Z with <ps -f pid>
 % (SWI does not provide that)
 proc_term(Pid):- 
         concat_atom(['ps -f ',Pid], Command),
@@ -298,7 +298,7 @@ proc_term(Pid):-
         ;
              close(streamout), fail).
 
-% Kill process PID by sending signal 9 (MOST PROLOG'S PROVIDE THIS)
+% Kill process PID by sending signal 9 (MOST PROLOGS PROVIDE THIS)
 %proc_kill(Pid):- 
 %        concat_atom(['kill -9 ',Pid], Com),
 %        system(Com).

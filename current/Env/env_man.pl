@@ -51,8 +51,8 @@
 %
 % The following system independent predicates are provided:
 %
-% -- initialize_EnvManager
-% -- finalize_EnvManager
+% -- initializeEM
+% -- finalizeEM
 % -- execute_action(A, H, T, S) : execute action A of type T at history H
 %                                 and resturn sensing outcome S
 % -- exog_occurs(LA)		: return a list LA of exog. actions that
@@ -133,11 +133,16 @@ type_manager(thread). % Default execution for the env. manager
 % INITIALIZATION AND FINALIZATION PART
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 % A - Initialize environment manager
 initializeEM :- 
-          report_message(system(2), '(EM) 1 - Resetting the number of actions...'),
+          report_message(system(2), '(EM) 1 - Performing DB initializations...'),
 	retractall(counter_actions(_)),
 	assert(counter_actions(0)),
+        retractall(env_data(_, _, _)),
+	retractall(executing_action(_,_,_)),
+	retractall(got_sensing(_,_)),
+	retractall(got_exogenous(_)),
           report_message(system(1), '(EM) 2 - Openinig server-input socket...'),
         socket(internet, stream, em_socket), % signal when data comes
 		% Build the Address where the manager will be listeling
@@ -189,8 +194,7 @@ finalizeEM :-
 
 finalizeEM :-
 	report_message(system(2),'(EM) 3 - Closing EM server socket...'),
-        catch(close(em_socket),E,report_message(system(2),E)),	% Disconnect server socket
-        fail.       
+        close_socket(em_socket). % Disconnect EM server socket fail.
 finalizeEM :-
         counter_actions(N),
         report_message(system(1),
@@ -291,7 +295,11 @@ em_one_cycle(HowMuchToWait) :-
 get_events_form_env([], []).
 get_events_form_env([Env|LEnv], TotalListEvents) :-
         env_data(Env, _, SocketEnv),
-        receive_list_data_socket(SocketEnv, LEventsEnv),
+        catch(receive_list_data_socket(SocketEnv, LEventsEnv),E,
+		(report_message(error,['Could not read anything from environment ',
+			Env,'===> ',E]),
+		 LEventsEnv=[])
+	),
         get_events_form_env(LEnv, RestEvents),
         append(LEventsEnv, RestEvents, TotalListEvents).
 
@@ -405,6 +413,8 @@ start_env([Env|LEnv], Address) :-
         assert(env_data(Env, Pid, Env)),
         start_env(LEnv, Address).
 
+
+
 % Tell each device to terminate
 close_dev([]).
 close_dev([Env|LEnv]) :-
@@ -420,7 +430,14 @@ delete_dev(Env) :-
 	(ground(S) -> true ; S=free),
        	report_message(system(3),['(EM) Environment *',Env,'* deleted!',
        				  ' - Waiting result: ',(Pid, S)]),
-        catch(close(SocketEnv),E,report_message(system(2),E)).	% Disconnect server socket
+        close_socket(SocketEnv).	% Disconnect server socket
+
+
+
+% Tries to close socket X but catches the exception if not possible
+close_socket(X) :-
+	catch(close(X),E,report_message(warning,['Cannot close socket ',X,'--> ',E])).
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -468,9 +485,6 @@ map_execution(Action, _, _) :-
         report_message(warning, ['(EM) Action *', Action, 
 	                      '* cannot be mapped to any device for execution!']),
 	fail.
-
-
-
 
 % Exogenous actions are handled async., so there is no need to handle
 % sync. exogenous actions. It is always empty.

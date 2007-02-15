@@ -192,7 +192,7 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CLIMA GAME SIMULATOR DEVICE: to communicate with the game simulator
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(clima06, swi, Command, [Host, Port]):- 
+device_manager(clima07, swi, Command, [Host, Port]):- 
         main_dir(Dir),
         clima_location(IPCLIMA, PORTCLIMA),
         clima_agentID(TAgentName, TAgentPass),
@@ -206,8 +206,9 @@ device_manager(clima06, swi, Command, [Host, Port]):-
                      ' agentLogin=', AgentName, ' agentPass=', AgentPass], Command).
 
 % This is the address of the CLIMA server
-% clima_location('tea.dyndns.org', 12300).
-% clima_agentID(china3, 3).
+% (this would be defined in the main_xxx.pl application file)
+%clima_location('localhost', 12300).
+%clima_agentID(china1, 1).
 
 
 
