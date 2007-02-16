@@ -98,7 +98,7 @@ init_eclipse_lib :-
 
 % NOTE: Library streampool is required to help providing support for 
 % sigio(stream) capabilities in exec/3 and accept/3 predicates.
-:- use_module(streampool).
+:- use_module(library(streampool)).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

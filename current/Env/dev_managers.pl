@@ -212,6 +212,30 @@ device_manager(clima07, swi, Command, [Host, Port]):-
 
 
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% MESSENGER SERVER
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+device_manager(messenger, swi, Command, [Host, Port]):- 
+        main_dir(Dir),
+        mess_location(IPCLIMA, PORTCLIMA),
+        agentID(TAgentName),
+        term_to_atom(TAgentName, AgentName),
+        concat_atom([Dir,'Env/env_clima.pl'], File),
+        concat_atom(['xterm -e ', 
+                     'pl ', ' -t ', ' start', ' -f ', File,
+		     ' host=', Host, ' port=', Port,' debug=3',
+                     ' ipsim=', IPCLIMA, ' portsim=', PORTCLIMA,
+                     ' agentLogin=', AgentName], Command).
+
+% This is the address of the MESSENGER server
+% (this would be defined in the main_xxx.pl application file)
+%mess_location('localhost', 3900).
+%agentID(china1).
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Env/dev_managers.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
