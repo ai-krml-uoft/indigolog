@@ -76,14 +76,26 @@ accept_new_agent(Socket) :-
 
 
 handle_client(In) :-
-	read_term(In, Message, []),  
 	agent(Agent,In,_,_),
+	catch(at_end_of_stream(In),E,
+		(report_message(system(3), 
+			['Cannot check if stream is EOF: ',(Agent,In),'--> ',E]),
+		fail)),
+	report_message(system(1), ['End of file on ',(Agent,In)]),
+	handle_message(In, unregister).
+
+handle_client(In) :-
+	agent(Agent,In,_,_),
+	catch(read_term(In, Message, []),E,
+		report_message(system(3), ['Cannot read from ',(Agent,In),'---> ',E])),
 	report_message(system(3), ['Message from ',(Agent,In),' : ',Message]),
         handle_message(In, Message).
 
 
-
 handle_message(In, unregister) :-
+	unregister_agent(In).
+
+handle_message(In, end_of_file) :-
 	unregister_agent(In).
 
 handle_message(In, register(Agent)) :-
@@ -91,8 +103,6 @@ handle_message(In, register(Agent)) :-
 	assert(agent(Agent,In,Out,PeerIP)),
 	tell(server,Agent,ok),
 	report_message(system(2), ['Agent ',Agent,' registered']).
-
-
 
 handle_message(In, tell(AgentRcv,Message)) :-
 	agent(AgentSrc,In,_,_),
@@ -102,7 +112,7 @@ handle_message(In, tell(AgentRcv,Message)) :-
 handle_message(In, broadcast(Message)) :-
 	agent(AgentSrc,In,_,_),
 	AgentSrc\=noname,
-	findall(AgentRcv,agent(AgentRcv,_,_,_),AgentRcv\=AgentSrc, LAgents),
+	findall(AgentRcv, (agent(AgentRcv,_,_,_),AgentRcv\=AgentSrc), LAgents),
 	tell_all(AgentSrc,LAgents,Message).
 
 handle_message(In,_) :-
@@ -112,7 +122,7 @@ handle_message(In,_) :-
 
 handle_message(In,Mess) :- 
 	write('******* Message cannot be handled: '), 
-	write(In), write('-'), writeln(Mess).
+	write(In), write('-'), writeln(Mess), nl.
 
 
 
@@ -144,6 +154,9 @@ tell_all(AgentSrc,[AgentRcv|LAgents],Message) :-
 close_socket(X) :-
 	catch(close(X),E,report_message(warning,['Cannot close socket ',X,'--> ',E])).
 
+
+
+:- server(5000).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF:  Env/mess_server.pl

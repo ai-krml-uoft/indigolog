@@ -162,7 +162,7 @@ poss(unmark, true).
 prim_action(tell(_Agent,_Message)).
 poss(tell(_,_), true).
 prim_action(broadcast(_Message)).
-poss(brodcast(_), true).
+poss(broadcast(_), true).
 
 
 /* Exogenous Actions Available */
@@ -181,18 +181,28 @@ exog_action(told(_,_)).
 % For compatibility with the form of BAT 
 causes_val(A, F, V, C) :- causes(A, F, V, C).
 
-% 
-fun_fluent(actionRequested).
-causes(requestAction(_, _), actionRequested, true, true).
-causes(A, actionRequested, false, 
+
+rel_fluent(actionRequested).
+causes_true(requestAction(_, _), actionRequested, true).
+causes_false(A, actionRequested, 
 	neg(member(A,[requestAction(_, _),tell(_,_),broadcast(_),told(_,_)]))).
+
+% brodcasted: have we already boradcasted the info that we got from the sensors?
+rel_fluent(broadcasted).
+causes_true(broadcast(_), broadcasted, true).
+causes_false(requestAction(_, _), broadcasted, true).
+
+
+% store the last sensing information obtained from game server
+fun_fluent(lastSensor).
+causes(requestAction(_, Data), lastSensor, Data, true).
 
 % inDungeon: robot is inside the dungeon playing the game!
 rel_fluent(inDungeon).
 causes_true(simStart(_, _), inDungeon, true).
 causes_false(simEnd(_, _), inDungeon, true).
 
-
+% what is the actual grid size for the game
 fun_fluent(gridSizeX).
 causes(simStart(_, Data), gridSizeX, V, member(gsizeX(V), Data)).
 fun_fluent(gridSizeY).
@@ -201,6 +211,7 @@ fun_fluent(gridSize).
 causes(simStart(_, Data), gridSize, (X,Y), 
 				and(member(gsizeY(Y), Data), member(gsizeX(X),Data)) ).
 
+% where is the location of the depot
 fun_fluent(depotX).
 causes(simStart(_, Data), depotX, V, member(depotX(V), Data)).
 fun_fluent(depotY).
@@ -210,7 +221,7 @@ causes(simStart(_, Data), locDepot, loc(X,Y),
 				and(member(depotY(Y), Data), member(depotX(X),Data))).
 
 
-% locRobot(me)(A): current location of agent A
+% locRobot(A): current location of agent A
 fun_fluent(locRobot(A)) :- agent(A).
 causes(up, 	locRobot(me), Y, up(locRobot(me),Y)).
 causes(down, 	locRobot(me), Y, down(locRobot(me),Y)).
@@ -351,6 +362,15 @@ sense_friend(Data, Loc, V) :-
 
 
 
+
+
+
+
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  4 - INITIAL STATE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -363,14 +383,41 @@ initially(gridSizeY, 99).
 initially(gridSize, (99,99)).
 
 	% Locations	
-initially(isPit(R), possibly)		:- location(R).
+initially(isPit(R), possibly)	:- location(R).
 initially(isGold(R), possibly) 	:- location(R).
 initially(visited(R), false):- location(R).
 
 	% Others
 initially(tries,1).
+initially(brodcasted,false).
+initially(actionRequested,false).
 
 	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  5 - MAIN ROUTINE CONTROLLERS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -388,6 +435,7 @@ setupSimulation(X,Y) :-
 
 % Controller for the CLIMA agent:
 %	1. Wait until a new action is requested from the game server
+%	2. If not brodcasted yet, broadcast last sensing information received
 %	2. If we have gold, then go to depot and drop gold
 %	3. If there is gold in the current location, pick it up
 %	4. If there is gold directly around us (e,w,n,s), move there right away
@@ -398,6 +446,7 @@ setupSimulation(X,Y) :-
 proc(mainControl(1),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), wait),
+	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
 	  interrupt(hasGold=true, 
 			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
           interrupt(isGold(locRobot(me))=true, pick),

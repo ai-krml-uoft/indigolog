@@ -413,10 +413,12 @@ report_message(program, T)    :- !,
         write('  ***** PROGRAM:: '),  writeln(T).
 
 report_message(action, T)    :- !,
+	nl,
         write('>>>>>>>>>>>> ACTION EVENT:: '),  writeln(T).
 
 report_message(sensing, T)    :- !,
-        write('--------------> SENSING EVENT:: '),  writeln(T).
+        nl,
+	write('--------------> SENSING EVENT:: '),  writeln(T).
 
 report_message(exogaction, T) :- !,
 	nl,

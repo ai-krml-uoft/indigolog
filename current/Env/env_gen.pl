@@ -155,7 +155,7 @@ start :-
 
 start :-  
 	report_message(error, 'For some reason the environment has stopped'),
-	halt_device.
+	break_device.
 
 % Run when the environment is closed. 
 % It should close all sockets, streams, pipes opened
@@ -172,6 +172,11 @@ halt_device :-
 	wait_until_close(Seconds),
 	sleep(Seconds),		% Hold for 10 seconds and then close
 	halt.
+
+% halt device after waiting for some seconds (so that one can read debug info)
+break_device :-
+        report_message(system(1), 'Device manager breaking..'),
+	break.
 
 
 close_all_sockets :-

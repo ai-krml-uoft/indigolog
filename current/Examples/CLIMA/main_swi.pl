@@ -157,13 +157,15 @@ translateExogAction(CodeAction, Action) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % main/2: Initiate a CLIMA agent with AgentID and PassID
-main:- main(china1,1).
+main1:- main(china1,1).
+main2:- main(china2,2).
+main3:- main(china3,3).
+main4:- main(china4,4).
 
 main(AgentId, PassID) :-
 	retractall(clima_agentID(_,_)),
 	assert(clima_agentID(AgentId, PassID)),
 	indigolog.	
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

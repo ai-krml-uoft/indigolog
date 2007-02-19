@@ -119,9 +119,9 @@ finalizeInterfaces(_) :-
 % printKbInstructions: Print instructions on how to enter keyboard input
 printKbInstructions :-
     writeln('*********************************************************'), 
-    writeln('* NOTE: This is the CLIMA SIMULATOR device manager'), 
+    writeln('* NOTE: This is the MESSENGER device manager'), 
     writeln('*   This window will show the communication'), 
-    writeln('*   with the GAME SIMULATOR'), 
+    writeln('*   with the MESSENGER server'), 
     writeln('*********************************************************'),
     nl.
 
@@ -155,8 +155,8 @@ disconnectFromMessServer :-
 
 % Handle data comming from the MESSENGER server
 handle_stream(comm_mess) :- 
-	get_socket_stream(comm_mess, read, Read), !,
-	at_end_of_stream(Read), 
+	get_socket_stream(comm_mess, read, Read), 
+	at_end_of_stream(Read), !,
 	disconnectFromMessServer.
 
 handle_stream(comm_mess) :- 
@@ -189,7 +189,7 @@ mess_connect(Host, Port, ConnID) :-
 	catch(socket(internet, stream, ConnID), E, 
 		(report_message(error, ['Cannot create socket : ',E]),fail) ), 
 	catch(connect(ConnID, Host/Port), E, 
-		(report_message(error, ['Cannot connect to game server: ',E]),fail) ).
+		(report_message(error, ['Cannot connect to MESSENGER server: ',E]),fail) ).
 
 
 mess_disconnect :- 
@@ -198,15 +198,16 @@ mess_disconnect :-
 
 % Agent registration
 mess_authenticate(AgentUser, Result) :-
-	mess_send(register(AgentUser)),	!,
+	mess_send(register(AgentUser)).
+,	!,
 	(select([comm_mess], 5, [comm_mess]) ->
 		mess_receive(Result)
 	;	
 		Result=timeout
 	).
 
-
 mess_send(Mess) :-
+	report_message(system(5),['About to send to MESSENGER server: ',Mess]),
 	get_socket_stream(comm_mess, write, Stream),
         write_term(Stream, Mess, [quoted(true)]),
         write(Stream, '.'),
@@ -214,8 +215,10 @@ mess_send(Mess) :-
         flush(Stream).
 
 mess_receive(Mess) :-
+	report_message(system(5),['About to receive data from MESSENGER: ']),
 	get_socket_stream(comm_mess, read, Stream),
-        read_term(Stream, Mess, []).
+        read_term(Stream, Mess, []),
+	report_message(system(5),['Received from MESSENGER: ', Mess]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
