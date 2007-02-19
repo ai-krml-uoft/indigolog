@@ -143,6 +143,7 @@ initializeEM :-
 	retractall(executing_action(_,_,_)),
 	retractall(got_sensing(_,_)),
 	retractall(got_exogenous(_)),
+	(type_manager(Type), finish_env_cycle(Type) ->  true ; true),
           report_message(system(1), '(EM) 2 - Openinig server-input socket...'),
         socket(internet, stream, em_socket), % signal when data comes
 		% Build the Address where the manager will be listeling
@@ -241,7 +242,8 @@ finish_env_cycle(thread) :-
 		% The thread has already finished (because all devices were closed)
 		true
 	), 
-	thread_join(em_thread,_),
+	catch(thread_join(em_thread,_),E,
+		report_message(warning,['Cannot join EM thread: ',E])),
 	report_message(system(3),'(EM) Environment cycle (thread) finished').  
 
 % B.2. SIGNAL IMPLEMENTATION (interrputs with ECLIPSE)

@@ -218,16 +218,16 @@ device_manager(clima07, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MESSENGER SERVER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(messenger, swi, Command, [Host, Port]):- 
+device_manager(messenger, swi, Command, [HostEM, PortEM]):- 
         main_dir(Dir),
-        mess_location(IPCLIMA, PORTCLIMA),
+        mess_location(IPMESS, PORTMESS),
         agentID(TAgentName),
         term_to_atom(TAgentName, AgentName),
-        concat_atom([Dir,'Env/env_clima.pl'], File),
+        concat_atom([Dir,'Env/env_mess.pl'], File),
         concat_atom(['xterm -e ', 
                      'pl ', ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=3',
-                     ' ipsim=', IPCLIMA, ' portsim=', PORTCLIMA,
+		     ' host=', HostEM, ' port=', PortEM,' debug=3',
+                     ' ipmess=', IPMESS, ' portmess=', PORTMESS,
                      ' agentLogin=', AgentName], Command).
 
 % This is the address of the MESSENGER server
