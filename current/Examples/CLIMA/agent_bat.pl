@@ -182,20 +182,9 @@ exog_action(told(_,_)).
 causes_val(A, F, V, C) :- causes(A, F, V, C).
 
 
-rel_fluent(actionRequested).
-causes_true(requestAction(_, _), actionRequested, true).
-causes_false(A, actionRequested, 
-	neg(member(A,[requestAction(_, _),tell(_,_),broadcast(_),told(_,_)]))).
-
-% brodcasted: have we already boradcasted the info that we got from the sensors?
-rel_fluent(broadcasted).
-causes_true(broadcast(_), broadcasted, true).
-causes_false(requestAction(_, _), broadcasted, true).
-
-
-% store the last sensing information obtained from game server
-fun_fluent(lastSensor).
-causes(requestAction(_, Data), lastSensor, Data, true).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FLUENTS USED TO MODEL THE WORLD STATE
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % inDungeon: robot is inside the dungeon playing the game!
 rel_fluent(inDungeon).
@@ -230,6 +219,10 @@ causes(right, 	locRobot(me), Y, right(locRobot(me),Y)).
 causes(requestAction(_, Data), locRobot(me), L,  sense_location(Data, L)).
 causes(told(A, Data), locRobot(A), L,  sense_location(Data, L)).
 
+% locRobotBefore: previous position of robot me before moving
+fun_fluent(locRobotBefore).
+causes(A, locRobotBefore, locRobot(me), member(A,[up,down,right,left])).
+
 
 % isGold(L): whether there is gold at location L
 fun_fluent(isGold(L)):- location(L).
@@ -253,6 +246,58 @@ causes(requestAction(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
 causes(told(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
 causes(simStart(_, _), isPit(L), possibly, location(L)).
 
+
+% A is an action that the agent can do in the CLIMA world
+clima_action(A) :- member(A,[up,down,left,right,pick,drop]).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% FLUENTS USED TO MODEL BEHAVIOR
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% actionRequested: an action has been requested from game server and it is pending
+rel_fluent(actionRequested).
+causes_true(requestAction(_, _), actionRequested, true).
+causes_false(A, actionRequested, clima_action(A)).
+
+% brodcasted: have we already boradcasted the info that we got from the sensors?
+rel_fluent(broadcasted).
+causes_true(broadcast(_), broadcasted, true).
+causes_false(requestAction(_, _), broadcasted, true).
+
+
+% lastSensor: store the last sensing information obtained from game server
+fun_fluent(lastSensor).
+causes(requestAction(_, Data), lastSensor, Data, true).
+
+
+% lastAction: store the last executed action
+fun_fluent(lastAction).
+causes(Action, lastAction, Action, clima_action(Action)).
+
+
+% actionRequested: an action has been requested from game server and it is pending
+fun_fluent(lastActionFailed).
+def_fluent(lastActionFailed, unknown, neg(actionRequested)).
+def_fluent(lastActionFailed, V, 
+	and(actionRequested,
+	and(member(lastAction,[up,down,right,left]),
+	or(and(locRobot(me)=locRobotBefore, V=true),
+	   and(neg(locRobot(me)=locRobotBefore), V=false))))).
+def_fluent(lastActionFailed, V, 
+	and(actionRequested,
+	and(lastAction=pick,
+	or(and(isGold(locRobot(me), V=true),
+	   and(neg(isGold(locRobot(me))), V=false)))))).
+def_fluent(lastActionFailed, V, 
+	and(actionRequested,
+	and(lastAction=drop,
+	or(and(neg(isGold(locRobot(me)), V=true),
+	   and(isGold(locRobot(me)), V=false)))))).
+
+
+
+
 % visited(L): location L is visited already
 fun_fluent(visited(L)) :- location(L).
 causes(requestAction(_, Data), visited(L), true, sense_location(Data, L)).
@@ -272,6 +317,7 @@ causes(simStart(_,_), noVisited(L), 0, location(L)).
 fun_fluent(tries).
 causes(reset, tries, V, V is tries+1).
 
+% No sensing actions in the domain. all sensing is done via exog actions
 senses(_, _) :- fail.
 senses(_, _, _, _, _) :- fail.
 
@@ -464,6 +510,33 @@ proc(mainControl(1),
          ])  % END OF INTERRUPTS
 ).
 
+
+proc(mainControl(2),
+   prioritized_interrupts(
+         [interrupt(neg(actionRequested), wait),
+	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
+	  interrupt(hasGold=true,
+			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
+	  interrupt(isGold(locRobot(me))=true, pick),
+	  interrupt([(dir,direction), loc], 
+			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
+	  interrupt([(dir,[ne,nw,se,sw]), loc], 
+			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
+			search(star([pi((a,[up,down,left,right]),a), 
+					?(locRobot(me)=loc)], 6)) ),
+	  interrupt([(dir,direction),loc], 
+			and(apply(dir, [locRobot(me), loc]), 
+			and(isPit(loc)=false, neg(visited(loc)))), dir),
+	  interrupt(true, [say('Random movement.....'), randomMove]),
+	  interrupt(true, [say('Cannot do anything, thus we skip...'), skip])
+         ])  % END OF INTERRUPTS
+).
+
+
+
+
+
+
 % Say Text. For now it just prints the text in the console...
 proc(say(Text),
 	?(writeln(Text))
@@ -473,6 +546,8 @@ proc(say(Text),
 proc(randomMove,
 	search([rpi((a,[up,down,left,right]),a), ?(isPit(locRobot(me))=false)])
 ).
+
+
 
 
 

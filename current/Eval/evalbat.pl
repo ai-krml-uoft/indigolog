@@ -388,6 +388,7 @@ sets_val(e(F,V),F,V,_)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by 
 sets_val(e(A,V),F,V,_)	:- senses(A,F).	% Action A sets F directly
 sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H). % A sets F indirectly
 sets_val(A,F,V,H)	:- causes_val(A,F,V,P), holds(P,H).   % Non-sensing reasoning
+sets_val(A,F,V,H)	:- def_fluent(F,V,P), holds(P,[A|H]).  % A definition fluent
 
 % So far, one forgets the value of F when it is sensed (may be improved)
 forget(Act, _, F) :- forget(Act, F).
