@@ -107,6 +107,7 @@ device_manager(internet, swi, Command, [Host, Port]):-
         concat_atom(['xterm -e ', 
                      'pl ', ' -t ', ' start', ' -f ', File,
 		     ' host=', Host, ' port=', Port,' debug=1'], Command).
+
 		     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -192,18 +193,27 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CLIMA GAME SIMULATOR DEVICE: to communicate with the game simulator
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(clima07, swi, Command, [Host, Port]):- 
+device_manager(clima07(LOptions), swi, Command, [Host, Port]):- 
         main_dir(Dir),
         clima_location(IPCLIMA, PORTCLIMA),
         clima_agentID(TAgentName, TAgentPass),
         term_to_atom(TAgentName, AgentName),
         term_to_atom(TAgentPass, AgentPass),
         concat_atom([Dir,'Env/env_clima.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'pl ', ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=3',
+	(member(quiet, LOptions) -> 
+			Xterm='',		% Will run in quietly
+			Silent=' 1>/dev/null 2>/dev/null' 
+	; 
+			Xterm='xterm -e',	% We want an xterm to show results
+			Silent=''
+	),
+	(member(debug(Debug), LOptions) -> true ; Debug=3),
+        concat_atom([Xterm, 
+                     ' pl ', ' -t ', ' start', ' -f ', File,
+		     ' host=', Host, ' port=', Port,' debug=', Debug,
                      ' ipsim=', IPCLIMA, ' portsim=', PORTCLIMA,
-                     ' agentLogin=', AgentName, ' agentPass=', AgentPass], Command).
+                     ' agentLogin=', AgentName, ' agentPass=', AgentPass,
+			Silent], Command).
 
 % This is the address of the CLIMA server
 % (this would be defined in the main_xxx.pl application file)
@@ -218,17 +228,30 @@ device_manager(clima07, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MESSENGER SERVER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(messenger, swi, Command, [HostEM, PortEM]):- 
+device_manager(messenger(LOptions), swi, Command, [HostEM, PortEM]):- 
         main_dir(Dir),
         mess_location(IPMESS, PORTMESS),
         agentID(TAgentName),
         term_to_atom(TAgentName, AgentName),
         concat_atom([Dir,'Env/env_mess.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'pl ', ' -t ', ' start', ' -f ', File,
-		     ' host=', HostEM, ' port=', PortEM,' debug=3',
+	(member(quiet, LOptions) -> 
+			Xterm='',		% Will run in quietly
+			Silent=' 1>/dev/null 2>/dev/null' 
+	; 
+			Xterm='xterm -e',	% We want an xterm to show results
+			Silent=''
+	),
+	(member(debug(Debug), LOptions) -> true ; Debug=3),
+        concat_atom([Xterm, 
+                     ' pl ', ' -t ', ' start', ' -f ', File,
+		     ' host=', HostEM, ' port=', PortEM,' debug=', Debug,
                      ' ipmess=', IPMESS, ' portmess=', PORTMESS,
-                     ' agentLogin=', AgentName], Command).
+                     ' agentLogin=', AgentName,
+		     Silent], Command).
+
+
+
+
 
 % This is the address of the MESSENGER server
 % (this would be defined in the main_xxx.pl application file)

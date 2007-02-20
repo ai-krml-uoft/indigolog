@@ -155,7 +155,7 @@ start :-
 
 start :-  
 	report_message(error, 'For some reason the environment has stopped'),
-	break_device.
+	halt_device.
 
 % Run when the environment is closed. 
 % It should close all sockets, streams, pipes opened

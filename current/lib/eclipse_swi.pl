@@ -188,7 +188,7 @@ accept(SocketId, From, NewSock) :-        % Handle the case for NewSock=sigio(_)
 % Handle the general case when the socket is just new (Read & Write Streams=null)
 accept(SocketId, Host/unknown, NewSocketId2) :-  
        socket_info(SocketId, S, null, null), !,
-       (atom(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
+       (ground(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
        %
        tcp_open_socket(S, R, _),  
        retract(socket_info(SocketId, S, null, null)), 
@@ -196,7 +196,7 @@ accept(SocketId, Host/unknown, NewSocketId2) :-
        %
        tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (atom(NewSocketId2) -> 
+       (ground(NewSocketId2) -> 
 	       true
        ;                              	% Write socket has no alias
 	       S2 =.. [_, NewSocketId2] % because S2= 'socket'(NewSocketId2)
@@ -210,7 +210,7 @@ accept(SocketId, Host/unknown, NewSocketId2) :-
        %
        tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (atom(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
+       (ground(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
 
 

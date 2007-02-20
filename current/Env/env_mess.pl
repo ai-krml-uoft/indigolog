@@ -151,6 +151,8 @@ disconnectFromMessServer :-
 %
 % HERE YOU SHOULD WRITE HOW TO HANDLE DATA COMMING FROM EACH OF THE
 % INTERFACES/CHANNELS USED
+%
+% OBS: handle_stream/1 must always end up succeeding!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Handle data comming from the MESSENGER server

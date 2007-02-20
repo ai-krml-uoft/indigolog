@@ -4,8 +4,8 @@
 %
 %       BAT axiomatization of the CLIMA Agent 
 %
-%  AUTHOR : Stavros Vassos & Sebastian Sardina (2005)
-%  email  : {ssardina,stavros}@cs.toronto.edu
+%  AUTHOR : Sebastian Sardina (2007)
+%  email  : ssardina@cs.toronto.edu
 %  WWW    : www.cs.toronto.edu/cogrobo
 %  TYPE   : system independent code
 %  TESTED : SWI Prolog 5.0.10 http://www.swi-prolog.org
@@ -449,14 +449,14 @@ proc(mainControl(1),
 	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
 	  interrupt(hasGold=true, 
 			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
-          interrupt(isGold(locRobot(me))=true, pick),
-          interrupt([(dir,direction), loc], 
+	  interrupt(isGold(locRobot(me))=true, pick),
+	  interrupt([(dir,direction), loc], 
           		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
-          interrupt([(dir,[ne,nw,se,sw]), loc], 
+	  interrupt([(dir,[ne,nw,se,sw]), loc], 
           		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
           		search(star([pi((a,[up,down,left,right]),a), 
 					?(locRobot(me)=loc)], 6)) ),
-          interrupt([(dir,direction),loc], 
+	  interrupt([(dir,direction),loc], 
           		and(apply(dir, [locRobot(me), loc]), 
           		and(isPit(loc)=false, neg(visited(loc)))), dir),
 	  interrupt(true, [say('Random movement.....'), randomMove]),

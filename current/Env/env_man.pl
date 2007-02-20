@@ -161,7 +161,13 @@ initializeEM :-
 	),
         length(LEnv, LengthLEnv),
         listen(em_socket, LengthLEnv),
-        start_env(LEnv, Address), !, % That is it!
+        (start_env(LEnv, Address) ->
+		true
+	;
+		report_message(error,'(EM) Cannot start all environment managers'),
+		finalizeEM,	
+		fail
+	), !, % That is it, ready to start the main cycle!
           report_message(system(2),'(EM) 4 - Start EM cycle...'),
         type_manager(Type),
 	start_env_cycle(Type).   % Start the env. manager main cycle
@@ -173,9 +179,10 @@ initializeEM :-
 %	3 - Close EM server socket em_socket
 %	4 - Report the number of actions that were executed
 finalizeEM :- 
+	break,
         report_message(system(2),'(EM) 1 - Closing all device managers...'),
         setof(Dev, X^Y^env_data(Dev, X, Y), LDev), % Get all current open devices
-	close_dev(LDev),	% Close all the devices found
+	close_dev(LDev),		% Close all the devices found
 	sleep(3),			% Wait to give time to devices to finish cleanly
 	fail.	  
 finalizeEM :-
@@ -402,12 +409,15 @@ handle_event(Data):-                         % The event is completely unknown
 %  env_data/3 stores the Pid and Address of each device started
 start_env([], _).
 start_env([Env|LEnv], Address) :-
+        report_message(system(4), ['(EM) Will start environment ', Env]),
         Address = Host/Port,
-        load_device(Env, Command, [Host,Port]),   
+        load_device(Env, Command, [Host,Port]), 
+        report_message(system(4), 
+	['(EM) About to start environment ', Env, ' with the following command: ', Command]),
         call_to_exec(unix, Command, Command2), % Select right command for exec
         exec_group(Command2, [], Pid),
-	(type_manager(thread) ->
-		accept(em_socket, From, Env)  % No signal with threads
+	(type_manager(thread) ->	% Wait TCP connection from device manager
+		accept(em_socket, From, Env) 	 
 	;
 		accept(em_socket, From, sigio(Env))
 	),
@@ -420,6 +430,7 @@ start_env([Env|LEnv], Address) :-
 % Tell each device to terminate
 close_dev([]).
 close_dev([Env|LEnv]) :-
+        report_message(system(4), ['(EM) Will close environment ', Env]),
         send_data_socket(Env, [terminate]), % Tell device to terminate
         % (delete_dev(Env) -> true ; true),   % not needed, will be deleted automatically
         close_dev(LEnv).

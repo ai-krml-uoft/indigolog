@@ -120,7 +120,7 @@ printKbInstructions :-
     writeln('*********************************************************'), 
     writeln('* NOTE: This is the CLIMA SIMULATOR device manager'), 
     writeln('*   This window will show the communication'), 
-    writeln('*   with the GAME SIMULATOR'), 
+    writeln('*   with the CLIMA GAME SIMULATOR'), 
     writeln('*********************************************************'),
     nl.
 
@@ -150,6 +150,8 @@ disconnectFromGameSimulator :-
 %
 % HERE YOU SHOULD WRITE HOW TO HANDLE DATA COMMING FROM EACH OF THE
 % INTERFACES/CHANNELS USED
+%
+% OBS: handle_stream/1 must always end up succeeding!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic actionStatus/3. % Used to record each action request from the simulator
 

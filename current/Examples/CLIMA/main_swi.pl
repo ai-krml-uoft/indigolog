@@ -124,7 +124,7 @@ server_port(_).
 % Define what environment managers the application will use
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(clima07, swi),(messenger, swi)]),
+        member((Env,Type), [(clima07([]), swi),(messenger([quiet]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -172,7 +172,7 @@ main(AgentId, PassID) :-
 % PREDICATES WITH SYSTEM DEPENDENT CODE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- set_option(debug_level,0).
+:- set_option(debug_level,5).
 :- set_option(wait_step,0).
 :- set_option(debug_level,warn_off).
 
