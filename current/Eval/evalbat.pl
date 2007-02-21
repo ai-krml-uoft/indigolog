@@ -149,6 +149,12 @@
 %                initially(painted(3), true).
 %                initially(color(3), blue).
 %
+% -- def_fluent(fluent,value,cond)
+%          when cond holds in the current situation, fluent takes value 
+%
+%            e.g., def_fluent(isHot, true, temp>=30).
+%                  def_fluent(isHot, false, temp<30).
+%
 % -- causes_val(action,fluent,value,cond)
 %          when cond holds, doing act causes functional fluent to have value
 %
@@ -221,6 +227,7 @@
 % Predicates that they have definitions here but they can defined elsewhere
 :- multifile(prim_action/1).
 :- multifile(causes_val/4).
+%:- multifile(def_fluent/3).
 %:- multifile(causes_true/3).
 %:- multifile(causes_false/3).
 %:- multifile(exog_action/1).
@@ -431,31 +438,70 @@ roll_db(H1,H2) :-
 	preserve(H3),
 	update_cache(H3).	    % Update the cache wrt the preserved history H3
 
-	/* split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N. */
-split(0,H,[],H).
-split(N,[A|H],[A|H1],H2) :- N > 0, N1 is N-1, split(N1,H,H1,H2).
+roll_db_safe(H1,H2) :- 
+	roll_parameters(_,_,N), 	
+	split(N,H1,_,H3), 
+	preserve_safe(H3,H33),
+	split(_,H1,H2,H33).
 
-% preserve(H) : rolls forward the initial database from [] to H
+% split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N.
+% H1 will be the new history that remains, with length N
+% H2 is the remaining past history that ought to be dropped from H
+split(0,H,[],H).
+split(N,[A|H],[A|H1],H2) :- ground(N), N > 0, N1 is N-1, split(N1,H,H1,H2).
+split(N,H,H1,H2) :- \+ ground(N), append(H1,H2,H), length(H1,N).
+
+
+% preserve(+H) : rolls forward the initial database from [] to H
+%	this preserve/1 cannot be stopped in the middle
 preserve([]).
 preserve([A|H]) :- 
 	preserve(H), 
 	roll_action(A), 
+	move_temp_to_currently,
 	update_cache([A]).
 
-% roll_action(A): roll currently/2 database with respect to action A
+% preserve_safe(+H,-H2) : rolls forward the initial database from [] to H if possible
+%		          or to H2 if an exogenous event happens in the middle
+%	this preserve_safe/2 can be stopped in the middle
+preserve_safe(H,H3) :- reverse(H,H2), preserve_safe2(H2,[],H3).
+preserve_safe2([],H2,H2).
+preserve_safe2([A|H],H2,H3):- 
+	catch(roll_action_safe(A), exog_action, 
+				(retractall(watch_for_exog), Status=aborted) ),
+	(Status==aborted ->
+		retractall(temp(_,_)),	% clean-up whatever it was computed
+		H3 = H2
+	;	
+		move_temp_to_currently,
+		update_cache([A]),
+		preserve_safe2(H,[A|H2],H3)
+	).
+
+
+% roll_action_safe(+A): roll currently/2 database with respect to action A into temp/2
+roll_action_safe(A) :-
+	assert(watch_for_exog),		% Assert flag watch_for_exog
+	(exists_pending_exog_event ->  abort_work_duetoexog ; true),
+	roll_action(A),
+	retractall(watch_for_exog).	% Retract flag watch_for_exog
+
+
+% roll_action(+A): roll currently/2 database with respect to action A into temp/2
 roll_action(A) :-
 	sets_val(A, F, V, []),
 	prim_fluent(F),
 	(\+ temp(F, V) -> assert(temp(F, V)) ; true),
 	fail.
-roll_action(_) :-
+roll_action(_).
+
+% move all temp/2 into currently/2
+move_temp_to_currently :-
 	retract(temp(F,V)),
 	retractall(currently(F,_)),	% There should be just one currently/2 for F!
 	assert(currently(F,V)),
 	fail.
-roll_action(_).
-
-
+move_temp_to_currently.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

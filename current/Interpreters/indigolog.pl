@@ -155,9 +155,9 @@
 :- dynamic sensing/2,   	% There may be no sensing action
 	indi_exog/1,		% Stores exogenous events not managed yet
 	now/1,            	% Used to store the actual history
-	rollednow/1,           	% Part of now/1 that was already rolled fwd
+	rolled_now/1,          	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
-	doing_step/0,     	% A step is being calculated
+	watch_for_exog/0,     	% A step is being calculated
 	pause_step/0.     	% Pause the step being calculated
 	
 % Predicates that they have definitions here but they can defined elsewhere
@@ -241,12 +241,12 @@ fin  :-
 
 % Clean all exogenous actions and set the initial now/1 situation 
 reset_indigolog_dbs :- 
-	retractall(doing_step),
+	retractall(watch_for_exog),
 	retractall(indi_exog(_)), 
-	retractall(rollednow(_)),
+	retractall(rolled_now(_)),
 	retractall(now(_)),
 	update_now([]),
-	assert(rollednow([])),
+	assert(rolled_now([])),
 	assert((indi_exog(_) :- fail)),
 	fail.
 reset_indigolog_dbs.
@@ -275,7 +275,7 @@ indigo(E,H) :-
 	handle_rolling(H,H2), !,		% Must roll forward?
 	handle_exog(H2,H3),   !, 		% Handle pending exog. events
 	prepare_for_step,			% Prepare for step
-	mayEvolve(E,H3,E4,H4,S), !,	% Compute next configuration evolution
+	mayEvolve(E,H3,E4,H4,S), !,		% Compute next configuration evolution
 	wrap_up_step,				% Finish step
 	(S=trans -> indigo2(H3,E4,H4) ;
 	 S=final -> report_message(program,  'Success.') ;
@@ -347,8 +347,8 @@ doWaitForExog(H1,H2):-
 
 % Predicates to prepare everthing for the computation of the next
 % single step. Up to now, we just disable the GC to speed up the execution
-prepare_for_step :- turn_off_gc.              % Before computing a step
-wrap_up_step     :- retractall(doing_step),   % After computing a step
+prepare_for_step :- turn_off_gc.              	% Before computing a step
+wrap_up_step     :- retractall(watch_for_exog), % After computing a step
 		    turn_on_gc, 
 		    garbage_collect.
 
@@ -365,7 +365,7 @@ wrap_up_step     :- retractall(doing_step),   % After computing a step
 %
 % There are two different implementations:
 %
-% * for Prolog's providing event handling (e.g., ECLIPSE, SWI)
+% * for Prologs providing event handling (e.g., ECLIPSE, SWI)
 % * any vanilla Prolog 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -375,8 +375,8 @@ wrap_up_step     :- retractall(doing_step),   % After computing a step
 mayEvolve(E1,H1,E2,H2,S):- 
 	type_prolog(T) -> mayEvolve(E1,H1,E2,H2,S,T) ; 
         		  mayEvolve(E1,H1,E2,H2,S,van).
-abortStep :-  
-	type_prolog(T) -> abortStep(T) ; abortStep(van).
+abort_work_duetoexog :-  
+	type_prolog(T) -> abort_work_duetoexog(T) ; abort_work_duetoexog(van).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -386,25 +386,30 @@ abortStep :-
 % computations and bindings are lost (e.g., the bindings on E1,H1,S,E2,H2)
 %
 mayEvolve(E1,H1,E2,H2,S,T):- (T=ecl ; T=swi),
-	catch(  (assert(doing_step),	% Assert flag doing_step
-                 (exists_pending_exog_event -> abortStep(T) ; true),
+	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
+                 (exists_pending_exog_event -> abort_work_duetoexog(T) ; true),
                  (final(E1,H1,T)       -> S=final ;
                   trans(E1,H1,E2,H2,T) -> S=trans ;
                                           S=failed),
-                 retract(doing_step)	% Retract flag doing_step
-%                 (repeat, \+ pause_step)
-                ), exog_action, (retractall(doing_step), S=exog) ).
+                 retract(watch_for_exog)	% Retract flag watch_for_exog
+                ), exog_action, (retractall(watch_for_exog), S=exog) ).
 
 % Abort mechanism for ECLIPSE: just throw exception
-abortStep(ecl) :- throw(exog_action).  
+abort_work_duetoexog(ecl) :- 
+	report_message(system(4), 'Aborting work due to exogenous action!'),
+	throw(exog_action).  
 
 % Abort mechanism for SWI: throw exception to main thread only
-% 	OBS: abortStep(swi) is running in the env. manager thread
+% 	OBS: abort_work_duetoexog(swi) is running in the env. manager thread
 %		so by the time throw(exog_action) is executed, it could
-%		be the case that thread main already retracted doing_step/0
+%		be the case that thread main already retracted watch_for_exog/0
 %		from the DB and that mayEvolve/6 is already finished. In that
 %		case the event should not be raised
-abortStep(swi) :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
+abort_work_duetoexog(swi) :- 
+	report_message(system(0), 'Aborting work due to exogenous action!'),
+	thread_signal(main, (watch_for_exog -> throw(exog_action) ; true)).
+
+
 
 /* OBS: As it is, it is not working 100% because sometimes the execution
 is aborted and the following message is written:
@@ -412,6 +417,9 @@ is aborted and the following message is written:
 		
 		This happens because the "exog_action" event was rised
 		outside the catch/3 clause!!!
+
+FEB 2007: THIS HAS NOT BEEN THE CASE FOR LONG TIME, MAY BE FIXED ;-)
+
 */
 
 
@@ -422,7 +430,7 @@ mayEvolve(E1,H1,E2,H2,S,van):-
 	final(E1,H1)       -> S=final ;
 	trans(E1,H1,E2,H2) -> S=trans ;  S=failed.
 
-abortStep(van) :- true.  % No way of aborting a step in the vanilla version
+abort_work_duetoexog(van) :- true.  % No way of aborting a step in the vanilla version
 
 
 
@@ -547,11 +555,11 @@ exists_pending_exog_event :- indi_exog(_).
 
 
 % exog_action_occurred(L) : called to report the occurrence of a list L of 
-% 				exogenous actions (called from env. manager)
+% 	                    exogenous actions (called from env. manager)
 % 
 % First we add each exogenous event to the clause indi_exog/1 and
 % in the end, if we are performing an evolution step, we abort the step.
-exog_action_occurred([]) :- doing_step -> abortStep ; true.
+exog_action_occurred([]) :- watch_for_exog -> abort_work_duetoexog ; true.
 exog_action_occurred([ExoAction|LExoAction]) :-
         assert(indi_exog(ExoAction)),   
         report_message(exogaction, ['Exog. Action *',ExoAction,'* occurred']),
@@ -578,13 +586,13 @@ pause_or_roll(H1,H1).
 
 roll(H1, H2) :-
         report_message(system(0),'Rolling down the river.......'), 
-	roll_db(H1, H2), 
+	roll_db_safe(H1, H2), 
         report_message(system(0), 'done progressing the database!'), 
         report_message(system(3), ['New History: ', H2]), 
 	update_now(H2), 			% Update the current history	
-	retract(rollednow(HO)),			% Update the rollednow/1 predicate
-	append(H1,HO,HN),			% rollednow(H): H is the full system history
-	assert(rollednow(HN)),
+	retract(rolled_now(HO)),		% Update the rollednow/1 predicate
+	append(H1,HO,HN),			% rolled_now(H): H is the full system history
+	assert(rolled_now(HN)),
 	save_exog.	% Collect all exogenous actions
 
 	

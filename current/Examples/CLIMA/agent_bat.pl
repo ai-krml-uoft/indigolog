@@ -147,7 +147,7 @@ prim_action(down).
 poss(down, and(locRobot(me)=loc(_,Y),  Y<gridSizeY)).
 
 prim_action(pick).
-poss(pick, and(isGold(locRobot(me))=true, hasGold=false)).
+poss(pick, and(isGold(locRobot(me))=true, noGold < maxNoGold)).
 
 prim_action(drop).
 poss(drop, true).
@@ -235,9 +235,24 @@ causes(told(_, Data), isGold(L), V, sense_gold(Data, L, V)).
 fun_fluent(hasGold).
 causes_val(pick, hasGold, possibly, true).
 causes_val(requestAction(_, Data), hasGold, true,
-			and(hasGold=possibly, sense_gold(Data, locRobot(me), false))). 
+			and(lastAction=pick, sense_gold(Data, locRobot(me), false))). 
 causes_val(drop, hasGold, false, true).
 causes_val(simStart(_,_), hasGold, false, true).
+
+
+% noGold: number of gold pieces we are carrying
+fun_fluent(noGold).
+causes_val(pick, noGold, M2, and(noGold=M1,M2 is M1+1)).
+causes_val(drop, noGold, 0, true).
+causes_val(requestAction(_, Data), noGold, M2,
+		and(lastAction=pick, 
+		and(sense_gold(Data, locRobot(me), true),  % there is still gold here
+		and(noGold=M1,M2 is M1-1)))).
+causes_val(simStart(_,_), noGold, 0, true).
+
+% maxNoGold: a rigid fluent storing how many pieces of gold we can carry
+fun_fluent(maxNoGold).
+def_fluent(maxNoGold, 1, true).
 
 
 % isPit(L): whether there is an object/pit at location L
@@ -287,14 +302,13 @@ def_fluent(lastActionFailed, V,
 def_fluent(lastActionFailed, V, 
 	and(actionRequested,
 	and(lastAction=pick,
-	or(and(isGold(locRobot(me), V=true),
-	   and(neg(isGold(locRobot(me))), V=false)))))).
+		or(and(isGold(locRobot(me)), V=true),
+	   	   and(neg(isGold(locRobot(me))), V=false))))).
 def_fluent(lastActionFailed, V, 
 	and(actionRequested,
 	and(lastAction=drop,
-	or(and(neg(isGold(locRobot(me)), V=true),
-	   and(isGold(locRobot(me)), V=false)))))).
-
+	or(and(and(neg(locRobot(me)=locDepot),neg(isGold(locRobot(me)))), V=true),
+	   and(or(locRobot(me)=locDepot,isGold(locRobot(me))), V=false))))).
 
 
 
@@ -423,6 +437,7 @@ sense_friend(Data, Loc, V) :-
 	% Robot state
 initially(locRobot(me),loc(0,0)).
 initially(hasGold,false).
+initially(noGold,0).
 initially(inDungeon, false).
 initially(gridSizeX, 99).
 initially(gridSizeY, 99).
@@ -491,7 +506,9 @@ setupSimulation(X,Y) :-
 %	8. Otherwise, just do a skip action the turn
 proc(mainControl(1),
    prioritized_interrupts(
-         [interrupt(neg(actionRequested), wait),
+         [interrupt(neg(actionRequested), 
+		[wait, if(lastActionFailed=true,
+				say('last action failed!!!!!!!!!!!!!'),?(true))]),
 	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
 	  interrupt(hasGold=true, 
 			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),

@@ -138,9 +138,9 @@ load_device(Env, Command, Address) :-
 %        how_to_execute(Action, Environment, Code)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-how_to_execute(Action, messenger, Action) :-
+how_to_execute(Action, messenger(_), Action) :-
 	member(Action, [tell(_,_), broadcast(_)]), !.
-how_to_execute(Action, clima07, Action).
+how_to_execute(Action, clima07(_), Action).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -172,7 +172,7 @@ main(AgentId, PassID) :-
 % PREDICATES WITH SYSTEM DEPENDENT CODE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- set_option(debug_level,5).
+:- set_option(debug_level,0).
 :- set_option(wait_step,0).
 :- set_option(debug_level,warn_off).
 

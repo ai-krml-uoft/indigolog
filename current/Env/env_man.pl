@@ -179,7 +179,6 @@ initializeEM :-
 %	3 - Close EM server socket em_socket
 %	4 - Report the number of actions that were executed
 finalizeEM :- 
-	break,
         report_message(system(2),'(EM) 1 - Closing all device managers...'),
         setof(Dev, X^Y^env_data(Dev, X, Y), LDev), % Get all current open devices
 	close_dev(LDev),		% Close all the devices found
