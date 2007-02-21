@@ -424,7 +424,8 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
 
 %roll_parameters(1,1,0).  % Never roll forward
-roll_parameters(20,40,5).
+%roll_parameters(20,40,5). % keep histories of size 20
+roll_parameters(0,0,1).
 
 can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, N>0.
 must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, N>0.
