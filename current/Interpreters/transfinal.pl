@@ -144,8 +144,8 @@ trans(gexec(P,E), H, gexec2(P,E1), H1) :-
         assume(P, true, H, H2),    % Set P to be TRUE
         trans(E, H2, E1, H1).
 
-final(gexec2(P,E), H)                   :- istrue(neg(P),H) ; final(E,H).
-trans(gexec2(P,E), H, gexec2(P,E1), H1) :- istrue(P,H), trans(E,H,E1,H1).
+final(gexec2(P,E), H)                   :- isTrue(neg(P),H) ; final(E,H).
+trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
 % Abort process identified with P by setting P to false in H
 trans(abort(P), H, [], H1) :- assume(P, false, H, H1).
@@ -164,7 +164,7 @@ final(for(_,[],_),_).
 final(for(V,[F|L],P),H):- subv(V,F,P,P1), final(P1,H), final(for(V,L,P),H).
 
 % A test action that leaves a mark in the history
-trans(??(P),H,[],[test(P)|H]):- istrue(P,H). 
+trans(??(P),H,[],[test(P)|H]):- isTrue(P,H). 
 
 % Simulation of exogenous actions E
 trans(sim(E),H,[],[sim(E)|H]):- !, calc_arg(E,E1,H), exog_action(E1).
@@ -252,10 +252,10 @@ final(star(_),_).
 final(star(_,_),_).
 final([E|L],H)       :- final(E,H), final(L,H).
 final(ndet(E1,E2),H) :- final(E1,H) ; final(E2,H).
-final(if(P,E1,E2),H) :- ground(P), (istrue(P,H) -> final(E1,H) ; final(E2,H)).
-final(if(P,E1,_),H)  :- \+ ground(P), istrue(P,H), final(E1,H).
-final(if(P,_,E2),H)  :- \+ ground(P), istrue(neg(P),H), final(E2,H).
-final(while(P,E),H)  :- istrue(neg(P),H) ; final(E,H).
+final(if(P,E1,E2),H) :- ground(P), (isTrue(P,H) -> final(E1,H) ; final(E2,H)).
+final(if(P,E1,_),H)  :- \+ ground(P), isTrue(P,H), final(E1,H).
+final(if(P,_,E2),H)  :- \+ ground(P), isTrue(neg(P),H), final(E2,H).
+final(while(P,E),H)  :- isTrue(neg(P),H) ; final(E,H).
 
 final(pi([],E),H)    :- !, final(E,H).
 final(pi([V|L],E),H) :- !, final(pi(L,pi(V,E)),H).
@@ -272,16 +272,16 @@ final(E,H)           :- proc(E,E2), !, final(E2,H).
 
 trans([E|L],H,E1,H2)      :- \+ L=[], final(E,H), trans(L,H,E1,H2).
 trans([E|L],H,[E1|L],H2)  :- trans(E,H,E1,H2).
-trans(?(P),H,[],H)        :- istrue(P,H).
+trans(?(P),H,[],H)        :- isTrue(P,H).
 trans(ndet(E1,E2),H,E,H1) :- trans(E1,H,E,H1) ; trans(E2,H,E,H1).
 trans(if(P,E1,E2),H,E,H1) :- ground(P), !,
-	(istrue(P,H) -> trans(E1,H,E,H1) ;  trans(E2,H,E,H1)).
+	(isTrue(P,H) -> trans(E1,H,E,H1) ;  trans(E2,H,E,H1)).
 trans(if(P,E1,E2),H,E,H1)  :- !,
-	((istrue(P,H), trans(E1,H,E,H1)) ; (istrue(neg(P),H), trans(E2,H,E,H1))).
+	((isTrue(P,H), trans(E1,H,E,H1)) ; (isTrue(neg(P),H), trans(E2,H,E,H1))).
 trans(star(E,1),H,E1,H1)  :- !, trans(E,H,E1,H1).
 trans(star(E,N),H,[E1,star(E,M)],H1)   :- N>1, trans(E,H,E1,H1), M is N-1.
 trans(star(E),H,[E1,star(E)],H1)       :- trans(E,H,E1,H1).
-trans(while(P,E),H,[E1,while(P,E)],H1) :- istrue(P,H), trans(E,H,E1,H1).
+trans(while(P,E),H,[E1,while(P,E)],H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
 trans(pi([],E),H,E1,H1)    :- !, trans(E,H,E1,H1).
 trans(pi([V|L],E),H,E1,H1) :- !, trans(pi(L,pi(V,E)),H,E1,H1).
@@ -295,18 +295,30 @@ trans(rpi((V,D),E),H,E1,H1):- !, trans(rpi(V,D,E),H,E1,H1).
 trans(rpi(V,D,E),H,E1,H1)  :- rdomain(W,D), subv(V,W,E,E2), trans(E2,H,E1,H1).
 
 
-    /* (D) INDIGOLOG SEARCH CONSTRUCTS                                */
-    /*                                                                */
-    /*  D.1. search(E,M)  : linear search on E, with message M             */
-    /*  D.1. search(E)    : linear search on E		              */
-    /*  D.2. searchc(E,M) : conditional  search on E, with message M       */
-    /*  D.2. searchc(E)   : conditional  search on E		              */
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% (D) INDIGOLOG SEARCH CONSTRUCTS                               
+%%
+%% (D.1) search(E,M)  : linear search on E, with message M
+%% (D.1) search(E)    : linear search on E	
+%% (D.1) searchg(P,E,M) : linear search on E, with message M, replanning condition P
+%% (D.1) search(P,E)    : linear search on E, replanning condition P	
+%% (D.2) searchc(E,M) : conditional  search on E, with message M   
+%% (D.2) searchc(E)   : conditional  search on E
+%% (D.3) achieve(G,Max,IA) : CONDITIONAL PLANNER WSCP (Hector Levesque)
+%% (D.4) fullSearch   : INTERRUPTABLE SEARCH (BETA VERSION)
+%% (D.5) RATIONAL SEARCH (BETA VERSION)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.1) TRADITIONAL SEARCH (From [De Giacomo & Levesque 99])
 %%
 %% Linear plans, ignore sensing
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% search(E): search on E, using caching and replanning only when
+%		situation is not the expected one
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 final(search(E,_),H):- final(search(E),H).
 final(search(E),H)  :- final(E,H).
 
@@ -325,14 +337,27 @@ trans(search(E,M),H,E1,H1):-
 trans(search(E),H,followpath(E1,L),H1) :- 
 %	store_node(search, E, H),  % For debugging
         catch( (trans(E,H,E1,H1), findpath(E1, H1, L)) , search, fail).
+trans(search(E,M),H,E1,H1):- 
+        report_message(program, ['Thinking linear plan on:      ', M]),
+        (trans(search(E),H,E1,H1) ->
+             report_message(program, 'Finished thinking: Plan found!') 
+        ;
+             report_message(program, 'Finished thinking: No plan found!'), 
+             fail
+        ).
 
-% If last actin was commit, then try to find a plan with what remains
+%
+% findpath(E,H,L): find a solution for E at H; 
+%		   L is the list [E1,H1,E2,H2,...,EN,HN] encoding
+%		   each step evolution (Ei,Hi) where final(EN,HN)
+%
+% If last action was commit, then try to find a plan with what remains
 % if no plan is possible then throw exception "search" to abort the
 % whole search
 findpath(E,[commit|H],L)    :- !, (findpath(E,H,L) -> true ; throw(search)).
 findpath(E,H,[E,H])         :- final(E,H).
 findpath(E,H,[E,H|L])       :- 
-%	store_node(search, E, H),  % For debugging
+%	store_node(search, E, H),  % For debugging only
         trans(E,H,E1,H1), 
         findpath(E1,H1,L).
 
@@ -345,11 +370,65 @@ findpath(E,H,[E,H|L])       :-
 %                       (L2=fail -> (!, L=fail) ; L=[E,H|L2]).
 
 
+% followpath(E,L): execute program E wrt expected sequence of
+%		   configurations L=[E,HEx,E1,H1,...]
+%	if the current history does not match the next expected one
+% 	in L (i.e., H\=HEx), then redo the search for E from H
 final(followpath(E,[E,H]),H) :- !.
 final(followpath(E,_),H)     :- final(E,H).  /* off path; check again */
 
 trans(followpath(E,[E,H,E1,H1|L]),H,followpath(E1,[E1,H1|L]),H1) :- !.
 trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% searchg(P,E) : search for E with replanning when P holds only
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+final(searchg(_,E,_),H):- final(search(E),H).
+final(searchg(_,E),H)  :- final(E,H).
+
+trans(searchg(P,E),H,followpathg(P,E1,L),H1) :- 
+        catch( (trans(E,H,E1,H1), findpath(E1,H1,L)), search,fail).
+trans(searchg(P,E,M),H,E1,H1):- 
+        report_message(program, ['Thinking linear plan on:      ', M]),
+        (trans(searchg(P,E),H,E1,H1) ->
+             report_message(program, 'Finished thinking: Plan found!') 
+        ;
+             report_message(program, 'Finished thinking: No plan found!'), 
+             fail
+        ).
+
+% followpath(P,E,L): execute program E wrt expected sequence of
+%		     configurations L=[E,H,E1,H1,...]
+%	if the current history does not match the next expected one
+%	in L and re-planning condition P holds, then redo the search for E at H
+final(followpathg(_,E,[E,H]),H) :- !.
+final(followpathg(P,E,[E,_]),H) :- \+ isTrue(P,H), !. /* _\=H */
+final(followpathg(_,E,_),H) :- final(E,H).  /* off path; check again */
+
+trans(followpathg(P,E,[E,H,E1,H1|L]),H,followpathg(P,E1,[E1,H1|L]),H1) :- !.
+trans(followpathg(P,E,_),H,EN,HN) :- 
+	isTrue(P,H), !,		/* HExp\= H and replanning cond P holds */
+	writeln('we need to replan!'),
+	trans(searchg(P,E),H,EN,HN).
+trans(followpathg(P,E,[E,HExp,E1,H1|L]),H,followpathg(P,E1,[E1,HN|LN]),HN) :- 
+	writeln('NO need to replan!'),
+	append(HNExp,HExp,H),	/* HExp\= H and replanning cond P does not holds */
+	repair_expected([E1,H1|L],HNExp,[E1,HN|LN]).	/* H=HNExp+HExp */
+
+% repair_expected(L,H,LN): L is a list of expected configurations
+%			   LN is the new list of expected configurations
+%			   where H is added at the front of each history in L
+repair_expected([],_,[]).
+repair_expected([E1,H1|L],HNExp,[E1,H11|LN]) :-
+	append(HNExp,H1,H11),
+	repair_expected(L,HNExp,LN).
+	
+
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.2) CONDITIONAL SEARCH: Conditional plans with sensing  
@@ -386,8 +465,8 @@ calcCPP(E,S,[])      :- final(E,S).
 calcCPP([E1|E2],S,C) :- E2\=[], !, calcCPP(E1,S,C1), /* program is a sequence */
                         extendCPP(E2,S,C1,C). 
 
-%calcCPP(branch(P),S,[])            :- istrue(know(P),S), !. /* no branching */
-%calcCPP(branch(P),S,[if(P,[],[])]) :- istrue(kwhether(P),S), !. /* branching */
+%calcCPP(branch(P),S,[])            :- isTrue(know(P),S), !. /* no branching */
+%calcCPP(branch(P),S,[if(P,[],[])]) :- isTrue(kwhether(P),S), !. /* branching */
 calcCPP(branch(P),_,[if(P,[],[])]) :- !. /* branching, do not check */
 
 calcCPP(E,S,C) :- trans(E,S,E1,S1),    /* program is not a sequence */
@@ -613,7 +692,7 @@ evaluate_CPP(CPP, H, SG, LUtilities) :-
 evaluate_trace(_, [], 0) :- !.
 evaluate_trace(H, [[Goal,Value]|RG], Utility) :-
 	evaluate_trace(H,RG,UtilityRG),
-	(istrue(Goal,H) -> 
+	(isTrue(Goal,H) -> 
 		Utility is UtilityRG + Value 
 	; 
 	        Utility is UtilityRG
@@ -624,7 +703,7 @@ evaluate_trace(H, [[Goal,Value]|RG], Utility) :-
 %                         (E is known to be executable at H)
 extract_trace([],_,[]).
 extract_trace([if(P,E1,E2)],H,H2) :-
-	istrue(P=Y,H), !,
+	isTrue(P=Y,H), !,
 	(Y=true -> extract_trace(E1,[A|H], H2) ; extract_trace(E2,[A|H], H2)).
 extract_trace([if(P,E1,_)],H,HR) :-
 	assume(P,true,H,H2),
@@ -696,26 +775,26 @@ trans(E,H,[],[E1|H])    :-
 	calc_arg(E,E1,H),
 	prim_action(E1), 
 	poss(E1,P), 
-	istrue(P,H).
+	isTrue(P,H).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% istrue(P,H) : interface with the projector used. Is P true at H?
+%% isTrue(P,H) : interface with the projector used. Is P true at H?
 %%
 %% Currently hooked to eval/3, which should be provided by the projector
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % SPECIAL PROJECTOR CASES FOR SYSTEM-WIDE FLUENTS
-istrue(interrupts_running,H)      :- !, \+ (H=[stop_interrupts|_]).
-istrue(neg(interrupts_running),H) :- !, \+ istrue(interrupts_running,H).
-%istrue(last(A),S) 	:- !, S=[A|_]. % true if the last executed action was A
-istrue(last(A),S) 	:- !, member(A,S). % true if the A has been executed
-istrue(neg(last(A)),S)	:- !, \+ istrue(last(A),S).
+isTrue(interrupts_running,H)      :- !, \+ (H=[stop_interrupts|_]).
+isTrue(neg(interrupts_running),H) :- !, \+ isTrue(interrupts_running,H).
+%isTrue(last(A),S) 	:- !, S=[A|_]. % true if the last executed action was A
+isTrue(last(A),S) 	:- !, member(A,S). % true if the A has been executed
+isTrue(neg(last(A)),S)	:- !, \+ isTrue(last(A),S).
 
 % GENERAL PROJECTOR
-istrue(C,H):- eval(C,H,true).
+isTrue(C,H):- eval(C,H,true).
 
-%istrue(C,H):- eval(C,H,B),          % Base case, use the temporal projector
+%isTrue(C,H):- eval(C,H,B),          % Base case, use the temporal projector
 %	      (B=true    -> true ;
 %	       B=false   -> fail ; 
 %              B=unknown -> unknown(C,H)).
