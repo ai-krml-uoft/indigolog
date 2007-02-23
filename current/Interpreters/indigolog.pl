@@ -339,6 +339,13 @@ system_action(reset_exec).	% Reset agent execution from scratch
 
 	
 % Wait continously until an exogenous action occurrs
+%doWaitForExog(H1,H2):- 	type_prolog(swi),
+%        report_message(system(2), 'Waiting for exogenous action to happen'), 
+%	thread_get_message(?Term),
+%        handle_exog(H1,H2),
+%        (H2=H1 -> fail ; true).
+
+
 doWaitForExog(H1,H2):- 	
         report_message(system(2), 'Waiting for exogenous action to happen'), 
         repeat, 

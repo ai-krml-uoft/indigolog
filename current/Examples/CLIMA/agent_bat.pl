@@ -147,7 +147,7 @@ prim_action(down).
 poss(down, and(locRobot(me)=loc(_,Y),  Y<gridSizeY)).
 
 prim_action(pick).
-poss(pick, and(isGold(locRobot(me))=true, noGold < maxNoGold)).
+poss(pick, and(isGold(locRobot(me))=true, neg(fullLoaded))).
 
 prim_action(drop).
 poss(drop, true).
@@ -253,6 +253,12 @@ causes_val(simStart(_,_), noGold, 0, true).
 % maxNoGold: a rigid fluent storing how many pieces of gold we can carry
 fun_fluent(maxNoGold).
 def_fluent(maxNoGold, 1, true).
+
+% fullLoaded: the agent is carrying the maximum number of gold pieces
+fun_fluent(fullLoaded).
+def_fluent(fullLoaded, false, noGold < maxNoGold).
+def_fluent(fullLoaded, true, neg(noGold < maxNoGold)).
+
 
 
 % isPit(L): whether there is an object/pit at location L
@@ -486,7 +492,7 @@ initially(actionRequested,false).
 % THIS IS THE MAIN EXECUTOR
 proc(main,  	[while(neg(inDungeon), [?(writeln('Waiting simulation to start')), wait]), 
 			?(setupSimulation(gridSizeX, gridSizeY)), 
-			mainControl(1)]).
+			mainControl(2)]).
 
 setupSimulation(X,Y) :-
 	retractall(gridsizeX(_)),
@@ -534,7 +540,7 @@ proc(mainControl(2),
 	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
 	  interrupt(hasGold=true,
 			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
-	  interrupt(isGold(locRobot(me))=true, pick),
+	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick),
 	  interrupt([(dir,direction), loc], 
 			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
 	  interrupt([(dir,[ne,nw,se,sw]), loc], 

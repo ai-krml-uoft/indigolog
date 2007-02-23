@@ -419,16 +419,16 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %     L: the history has to be longer than this, or dont bother
 %     M: if the history is longer than this, forced roll
 %     N: the length of the tail of the history to be preserved
-%		(set N=0 to never roll forward)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
 
-%roll_parameters(1,1,0).  % Never roll forward
 %roll_parameters(20,40,5). % keep histories of size 20
-roll_parameters(0,0,1).
+roll_parameters(0,0,3).
 
-can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, N>0.
-must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, N>0.
+%roll_parameters(_,_,_):- fail.	% never roll forward
+
+can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, L1>N.
+must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, L1>N.
 
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
@@ -441,14 +441,19 @@ roll_db(H1,H2) :-
 
 roll_db_safe(H1,H2) :- 
 	roll_parameters(_,_,N), 	
-	split(N,H1,_,H3), 
+	split(N,H1,H22,H3),
+	report_message(system(4),['(BAT) Trying to progress subhistory: ',H3]),
+	report_message(system(4),['(BAT) ...and staying with subhistory: ',H22]),  
 	preserve_safe(H3,H33),
+	report_message(system(4),['(BAT) Progressed subhistory: ',H33]),
 	split(_,H1,H2,H33).
+
 
 % split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N.
 % H1 will be the new history that remains, with length N
 % H2 is the remaining past history that ought to be dropped from H
-split(0,H,[],H).
+split(0,H,[],H) :- !.
+split(_,[],[],[]) :- !.
 split(N,[A|H],[A|H1],H2) :- ground(N), N > 0, N1 is N-1, split(N1,H,H1,H2).
 split(N,H,H1,H2) :- \+ ground(N), append(H1,H2,H), length(H1,N).
 
@@ -471,9 +476,12 @@ preserve_safe2([A|H],H2,H3):-
 	catch(roll_action_safe(A), exog_action, 
 				(retractall(watch_for_exog), Status=aborted) ),
 	(Status==aborted ->
+		report_message(system(4),'(BAT) Progression aborted...'),
 		retractall(temp(_,_)),	% clean-up whatever it was computed
 		H3 = H2
 	;	
+	%	report_message(system(4),
+	%		['(BAT) Action *',A,'* progressed, moving temp/2 to currently/2']),
 		move_temp_to_currently,
 		update_cache([A]),
 		preserve_safe2(H,[A|H2],H3)

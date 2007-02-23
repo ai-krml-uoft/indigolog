@@ -302,11 +302,15 @@ trans(rpi(V,D,E),H,E1,H1)  :- rdomain(W,D), subv(V,W,E,E2), trans(E2,H,E1,H1).
 %% (D.1) search(E)    : linear search on E	
 %% (D.1) searchg(P,E,M) : linear search on E, with message M, replanning condition P
 %% (D.1) search(P,E)    : linear search on E, replanning condition P	
+%%
 %% (D.2) searchc(E,M) : conditional  search on E, with message M   
 %% (D.2) searchc(E)   : conditional  search on E
+%%
 %% (D.3) achieve(G,Max,IA) : CONDITIONAL PLANNER WSCP (Hector Levesque)
+%%
 %% (D.4) fullSearch   : INTERRUPTABLE SEARCH (BETA VERSION)
-%% (D.5) RATIONAL SEARCH (BETA VERSION)
+%%			still not attached to any Golog construct
+%% (D.5) searchr(E,LGoals,FluentAssum,M): RATIONAL SEARCH (BETA VERSION)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -319,8 +323,8 @@ trans(rpi(V,D,E),H,E1,H1)  :- rdomain(W,D), subv(V,W,E,E2), trans(E2,H,E1,H1).
 % search(E): search on E, using caching and replanning only when
 %		situation is not the expected one
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-final(search(E,_),H):- final(search(E),H).
-final(search(E),H)  :- final(E,H).
+final(search(E,_),H) :- final(search(E),H).
+final(search(E),H) :- final(E,H).
 
 trans(search(E,M),H,E1,H1):- 
         report_message(program, ['Thinking linear plan on:      ', M]),
@@ -354,17 +358,19 @@ trans(search(E,M),H,E1,H1):-
 % If last action was commit, then try to find a plan with what remains
 % if no plan is possible then throw exception "search" to abort the
 % whole search
-findpath(E,[commit|H],L)    :- !, (findpath(E,H,L) -> true ; throw(search)).
-findpath(E,H,[E,H])         :- final(E,H).
-findpath(E,H,[E,H|L])       :- 
+findpath(E,[commit|H],L) :- !, (findpath(E,H,L) -> true ; throw(search)).
+findpath(E,H,[E,H]) :- final(E,H).
+findpath(E,H,[E,H|L]) :- 
 %	store_node(search, E, H),  % For debugging only
         trans(E,H,E1,H1), 
         findpath(E1,H1,L).
 
 % This was the previous version to handle commit by passing around a mark
 % meaning failure in the bottom to be propageted up to the top
+% This approach would work in vanilla-Prolog without catch/3 but is much
+% more demanding computationally, so we use the above version.
 %findpath(E,[commit|H],R)    :- findpath(E,H,R).
-%findpath(E,[commit|H],fail)  :- !.
+%findpath(E,[commit|H],fail) :- !.
 %findpath(E,H,[E,H]) :- final(E,H).
 %findpath(E,H,L)     :- trans(E,H,E1,H1), findpath(E1,H1,L2),
 %                       (L2=fail -> (!, L=fail) ; L=[E,H|L2]).
@@ -375,7 +381,7 @@ findpath(E,H,[E,H|L])       :-
 %	if the current history does not match the next expected one
 % 	in L (i.e., H\=HEx), then redo the search for E from H
 final(followpath(E,[E,H]),H) :- !.
-final(followpath(E,_),H)     :- final(E,H).  /* off path; check again */
+final(followpath(E,_),H) :- final(E,H).  /* off path; check again */
 
 trans(followpath(E,[E,H,E1,H1|L]),H,followpath(E1,[E1,H1|L]),H1) :- !.
 trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
