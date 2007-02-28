@@ -108,13 +108,12 @@
 :- dynamic clima_agentID/2.
 
 % This is the address of the CLIMA server
-clima_location(localhost, 12300).
-clima_agentID(china1, 1).
+clima_location(tea, 12300).
 
 % Information required for the MESSENGER environment
 mess_location('localhost', 5000).
 agentID(Id) :- clima_agentID(Id,_).
-teammember(A) :- member(A,[china1,china2,china3,china4]).
+teammember(A) :- member(A,[germany1,germany2,germany3,germany4]).
 
 
 % Port of environment manager has to be fixed in SWI
@@ -124,7 +123,7 @@ server_port(_).
 % Define what environment managers the application will use
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(clima07([]), swi),(messenger([quiet]), swi)]),
+        member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -157,10 +156,10 @@ translateExogAction(CodeAction, Action) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % main/2: Initiate a CLIMA agent with AgentID and PassID
-main1:- main(china1,1).
-main2:- main(china2,2).
-main3:- main(china3,3).
-main4:- main(china4,4).
+main1:- main(germany1,1).
+main2:- main(germany2,2).
+main3:- main(germany3,3).
+main4:- main(germany4,4).
 
 main(AgentId, PassID) :-
 	retractall(clima_agentID(_,_)),

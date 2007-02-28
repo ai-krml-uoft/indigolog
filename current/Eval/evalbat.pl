@@ -422,8 +422,8 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
 
-%roll_parameters(20,40,5). % keep histories of size 20
-roll_parameters(0,0,3).
+roll_parameters(20,40,5). % keep histories of size 20
+%roll_parameters(0,0,3).
 
 %roll_parameters(_,_,_):- fail.	% never roll forward
 
@@ -507,6 +507,7 @@ roll_action(_).
 % move all temp/2 into currently/2
 move_temp_to_currently :-
 	retract(temp(F,V)),
+	writeln(F),
 	retractall(currently(F,_)),	% There should be just one currently/2 for F!
 	assert(currently(F,V)),
 	fail.

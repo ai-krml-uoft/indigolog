@@ -339,18 +339,21 @@ system_action(reset_exec).	% Reset agent execution from scratch
 
 	
 % Wait continously until an exogenous action occurrs
-%doWaitForExog(H1,H2):- 	type_prolog(swi),
-%        report_message(system(2), 'Waiting for exogenous action to happen'), 
-%	thread_get_message(?Term),
-%        handle_exog(H1,H2),
-%        (H2=H1 -> fail ; true).
-
-
-doWaitForExog(H1,H2):- 	
-        report_message(system(2), 'Waiting for exogenous action to happen'), 
+doWaitForExog(H1,H2):- 	type_prolog(swi), !,	% block and wait for exception
+	repeat,
+        report_message(system(2), 'Waiting for exogenous action to happen...'), 
+	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
+                 (exists_pending_exog_event -> abort_work_duetoexog ; true),
+                  thread_get_message(_)		% just to block the thread somehow..
+                ), exog_action, retractall(watch_for_exog)),
+        handle_exog(H1,H2),
+	H1\=H2.
+doWaitForExog(H1,H2):- 		% busy waiting (bad, expensive)
+        report_message(system(2), 'Waiting for exogenous action to happen...'), 
         repeat, 
         handle_exog(H1,H2),
         (H2=H1 -> fail ; true).
+
 
 % Predicates to prepare everthing for the computation of the next
 % single step. Up to now, we just disable the GC to speed up the execution
@@ -394,7 +397,7 @@ abort_work_duetoexog :-
 %
 mayEvolve(E1,H1,E2,H2,S,T):- (T=ecl ; T=swi),
 	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
-                 (exists_pending_exog_event -> abort_work_duetoexog(T) ; true),
+                 (exists_pending_exog_event -> abort_work_duetoexog ; true),
                  (final(E1,H1,T)       -> S=final ;
                   trans(E1,H1,E2,H2,T) -> S=trans ;
                                           S=failed),
@@ -403,7 +406,7 @@ mayEvolve(E1,H1,E2,H2,S,T):- (T=ecl ; T=swi),
 
 % Abort mechanism for ECLIPSE: just throw exception
 abort_work_duetoexog(ecl) :- 
-	report_message(system(4), 'Aborting work due to exogenous action!'),
+	report_message(system(4), 'Informing main cycle of exog action!'),
 	throw(exog_action).  
 
 % Abort mechanism for SWI: throw exception to main thread only
@@ -413,7 +416,7 @@ abort_work_duetoexog(ecl) :-
 %		from the DB and that mayEvolve/6 is already finished. In that
 %		case the event should not be raised
 abort_work_duetoexog(swi) :- 
-	report_message(system(0), 'Aborting work due to exogenous action!'),
+	report_message(system(4), 'Informing main cycle of exog action!'),
 	thread_signal(main, (watch_for_exog -> throw(exog_action) ; true)).
 
 
@@ -538,16 +541,16 @@ action_failed(Action, H) :-
 handle_exog(H1, H2) :- 
 	save_exog,				% Collect on-demand exogenous actions
 	exists_pending_exog_event,		% Any indi_exog/1 in the database?
-		% 1 - Collect SYSTEM exogenous actions (e.g., debug)
-	findall(A, (indi_exog(A), type_action(A, system)), LSysExog),
-		% 2 - Collect NON-SYSTEM exogenous actions (e.g., domain actions)  
-	findall(A, (indi_exog(A), \+ type_action(A, system)), LNormal),	
-		% 3 - Append the lists to the current hitory (system list on front)
+		% 1 - Collect all exog actions in the DB
+	findall(A, retract(indi_exog(A)), LExogActions),
+		% 2 - Get the SYSTEM exogenous actions (e.g., debug)
+	findall(A, (member(A,LExogActions), type_action(A, system)), LSysExog),
+		% 3 - Get DOMAIN exogenous actions 
+	findall(A, (member(A,LExogActions), \+ type_action(A, system)), LNormal),	
+		% 4 - Append the lists to the current hitory (system list on front)
 	append(LSysExog, LNormal, LTotal),
 	append(LTotal, H1, H2), 
-	update_now(H2),
-		% 4 - Remove all indi_exog/1 clauses
-	retractall(indi_exog(_)).
+	update_now(H2).
 handle_exog(H1, H1). 	% No exogenous actions, keep same history
 
 
@@ -561,12 +564,13 @@ store_exog([A|L]) :- assertz(indi_exog(A)), store_exog(L).
 exists_pending_exog_event :- indi_exog(_).
 
 
+
 % exog_action_occurred(L) : called to report the occurrence of a list L of 
 % 	                    exogenous actions (called from env. manager)
 % 
 % First we add each exogenous event to the clause indi_exog/1 and
 % in the end, if we are performing an evolution step, we abort the step.
-exog_action_occurred([]) :- watch_for_exog -> abort_work_duetoexog ; true.
+exog_action_occurred([]) :-  watch_for_exog -> abort_work_duetoexog ; true.
 exog_action_occurred([ExoAction|LExoAction]) :-
         assert(indi_exog(ExoAction)),   
         report_message(exogaction, ['Exog. Action *',ExoAction,'* occurred']),
