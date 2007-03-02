@@ -238,13 +238,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    /* Move initially(-,-) to currently(-,-) and clear exog actions  */
-initializeDB:- 
-	retractall(currently(_,_)), 
+initializeDB :- initializeDB(_). 
+initializeDB(F):- 	% Resets fluent F to the values of initially/2
+	retractall(currently(F,_)), 
 	initially(F,V),
 	assert(currently(F,V)),
-	clean_cache,	
 	fail.
-initializeDB.
+initializeDB(F) :- clean_cache(F).
 
   /* Clean all the currently(-.-) predicates */
 %finalizeDB:-  retractall(currently(_,_)), clean_cache.
@@ -258,8 +258,9 @@ eval(P,H,true):- holds(P,H).
 handle_sensing(A,H,Sr,[e(A,Sr)|H]). 
 
 
-% clean_cache: remove all has_valc/3
-clean_cache :- retractall(has_valc(_,_,_)).
+% clean_cache: remove all has_valc/3 or the ones for one fluent
+clean_cache :- clean_cache(_).
+clean_cache(F) :- retractall(has_valc(F,_,_)).
 
 % Set F to value V at H, return H1 (add e(F,V) to history H)
 assume(F,V,H,[e(F,V)|H]).
@@ -393,8 +394,8 @@ has_val(F,V,[A|H])	:- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
 
 sets_val(e(F,V),F,V,_)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_,_)
 sets_val(e(A,V),F,V,_)	:- senses(A,F).	% Action A sets F directly
-sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H). % A sets F indirectly
-sets_val(A,F,V,H)	:- causes_val(A,F,V,P), holds(P,H).   % Non-sensing reasoning
+sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H).  % A sets F indirectly
+sets_val(A,F,V,H)	:- causes_val(A,F,V,P), holds(P,H).    % Non-sensing reasoning
 sets_val(A,F,V,H)	:- def_fluent(F,V,P), holds(P,[A|H]).  % A definition fluent
 
 % So far, one forgets the value of F when it is sensed (may be improved)
@@ -422,8 +423,10 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
 
-roll_parameters(20,40,5). % keep histories of size 20
+
+%roll_parameters(20,40,5). % keep histories of size 20
 %roll_parameters(0,0,3).
+roll_parameters(0,0,0).	   % roll-forward every single action
 
 %roll_parameters(_,_,_):- fail.	% never roll forward
 
@@ -467,6 +470,8 @@ preserve([A|H]) :-
 	move_temp_to_currently,
 	update_cache([A]).
 
+
+
 % preserve_safe(+H,-H2) : rolls forward the initial database from [] to H if possible
 %		          or to H2 if an exogenous event happens in the middle
 %	this preserve_safe/2 can be stopped in the middle
@@ -504,14 +509,29 @@ roll_action(A) :-
 	fail.
 roll_action(_).
 
+
+
 % move all temp/2 into currently/2
 move_temp_to_currently :-
 	retract(temp(F,V)),
-	writeln(F),
+%	writeln(F),
 	retractall(currently(F,_)),	% There should be just one currently/2 for F!
 	assert(currently(F,V)),
 	fail.
 move_temp_to_currently.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

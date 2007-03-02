@@ -265,7 +265,7 @@ def_fluent(fullLoaded, true, neg(noGold < maxNoGold)).
 fun_fluent(isPit(L)):- location(L).
 causes(requestAction(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
 causes(told(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
-causes(simStart(_, _), isPit(L), possibly, location(L)).
+%causes(simStart(_, _), isPit(L), possibly, location(L)).
 
 
 % A is an action that the agent can do in the CLIMA world
@@ -280,12 +280,13 @@ clima_action(A) :- member(A,[up,down,left,right,pick,drop]).
 rel_fluent(actionRequested).
 causes_true(requestAction(_, _), actionRequested, true).
 causes_false(A, actionRequested, clima_action(A)).
+causes_false(simStart(_,_), actionRequested, true).
 
 % brodcasted: have we already boradcasted the info that we got from the sensors?
 rel_fluent(broadcasted).
 causes_true(broadcast(_), broadcasted, true).
 causes_false(requestAction(_, _), broadcasted, true).
-
+causes_false(simStart(_, _), broadcasted, true).
 
 % lastSensor: store the last sensing information obtained from game server
 fun_fluent(lastSensor).
@@ -323,7 +324,7 @@ fun_fluent(visited(L)) :- location(L).
 causes(requestAction(_, Data), visited(L), true, sense_location(Data, L)).
 causes(reset, visited(L), false, and(location(L), neg(L=locRobot(me)))).
 causes(reset, visited(L), true, locRobot(me)=L).
-causes(simStart(_,_), visited(L), false, location(L)).
+%causes(simStart(_,_), visited(L), false, location(L)).
 
 % noVisited(L): number of times location L has been 
 fun_fluent(noVisited(L)) :- location(L).
@@ -331,15 +332,27 @@ causes(requestAction(_, Data), noVisited(L), V,
 		and(sense_location(Data, L), V is noVisited(L)+1)).
 causes(reset, noVisited(L), 0, and(location(L), neg(L=locRobot(me)))).
 causes(reset, noVisited(L), 1, locRobot(me)=L).
-causes(simStart(_,_), noVisited(L), 0, location(L)).
+%causes(simStart(_,_), noVisited(L), 0, location(L)).
+
 
 % counter 
 fun_fluent(tries).
 causes(reset, tries, V, V is tries+1).
 
+
+fun_fluent(restartGame).
+causes(simStart(_,_), restartGame, true, resetInitialDB).
+
+
 % No sensing actions in the domain. all sensing is done via exog actions
 senses(_, _) :- fail.
 senses(_, _, _, _, _) :- fail.
+
+
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  3 - ABBREVIATIONS
@@ -456,11 +469,14 @@ initially(visited(R), false):- location(R).
 
 	% Others
 initially(tries,1).
-initially(brodcasted,false).
+initially(broadcasted,false).
 initially(actionRequested,false).
 
 	
-
+resetInitialDB :- 
+	initializeDB(isPit(_)),
+	initializeDB(isGold(_)),
+	initializeDB(visited(_)).
 
 
 
