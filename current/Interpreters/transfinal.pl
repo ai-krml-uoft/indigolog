@@ -217,19 +217,30 @@ final(interrupt(V,Trigger,Body),H) :-
 
 
 % BUILT-IN exogenous actions that will be mapped to system actions for the cycle
-exog_action(debug).	% Show debugging information	
+exog_action(debug).		% Show debugging information	
 exog_action(halt).		% Terminate program execution by jumping to the empty program
 exog_action(abort).		% Abort program execution by jumping to ?(false) program
 exog_action(break).		% Pause the execution of the program
 exog_action(reset).		% Reset agent execution from scratch
 exog_action(start).		% Start the execution of the program
 
+exog_action(debug_exec).	% Show debugging information	
+exog_action(halt_exec).		% Terminate program execution by jumping to the empty program
+exog_action(abort_exec).	% Abort program execution by jumping to ?(false) program
+exog_action(break_exec).	% Pause the execution of the program
+exog_action(reset_exec).	% Reset agent execution from scratch
+exog_action(start_exec).	% Start the execution of the program
+
 trans(prioritized_interrupts(L),H,E1,H1) :- 
-    expand_interrupts([interrupt(last(halt),  halt_exec),
-    		       interrupt(last(abort), abort_exec),
-    		       interrupt(last(pause), break_exec),
-    		       interrupt(last(reset), reset_exec),
-		       interrupt(last(debug), debug_exec)|L],E), !,
+    expand_interrupts([interrupt(haveExecuted(halt),  halt_exec),
+    		       interrupt(haveExecuted(abort), abort_exec),
+    		       interrupt(haveExecuted(pause), break_exec),
+    		       interrupt(haveExecuted(reset), reset_exec),
+		       interrupt(haveExecuted(debug), debug_exec)|L],E), !,
+    trans(E,H,E1,H1).
+
+trans(prioritized_interrupts_simple(L),H,E1,H1) :- 
+    expand_interrupts([interrupt(haveExecuted(halt),halt_exec)|L],E), !,
     trans(E,H,E1,H1).
 
 expand_interrupts([],stop_interrupts).
@@ -794,8 +805,8 @@ trans(E,H,[],[E1|H])    :-
 isTrue(interrupts_running,H)      :- !, \+ (H=[stop_interrupts|_]).
 isTrue(neg(interrupts_running),H) :- !, \+ isTrue(interrupts_running,H).
 %isTrue(last(A),S) 	:- !, S=[A|_]. % true if the last executed action was A
-isTrue(last(A),S) 	:- !, member(A,S). % true if the A has been executed
-isTrue(neg(last(A)),S)	:- !, \+ isTrue(last(A),S).
+isTrue(haveExecuted(A),S) 	:- !, member(A,S). % true if the A has been executed
+isTrue(neg(haveExecuted(A)),S)	:- !, \+ isTrue(haveExecuted(A),S).
 
 % GENERAL PROJECTOR
 isTrue(C,H):- eval(C,H,true).

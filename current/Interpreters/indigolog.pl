@@ -278,6 +278,7 @@ indigo(E,H) :-
 	mayEvolve(E,H3,E4,H4,S), !,		% Compute next configuration evolution
 	wrap_up_step,				% Finish step
 	(S=trans -> indigo2(H3,E4,H4) ;
+	 S=system -> indigo2(H3,E4,H4) ;
 	 S=final -> report_message(program,  'Success.') ;
 	 S=exog  -> (report_message(program, 'Restarting step.'), indigo(E,H3)) ; 
 	 S=failed-> report_message(program,  'Program fails.') 
@@ -290,8 +291,6 @@ indigo(E,H) :-
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition
 %%
-indigo2(H,E,H)          :- 
-	indigo(E,H).	% The case of Trans for tests
 indigo2(H,E,[sim(_)|H]) :- !, 
 	indigo(E,H).	% Drop simulated actions
 indigo2(H,E,[wait|H])   :- !,	
@@ -323,6 +322,8 @@ indigo2(_,_,[reset_exec|_]) :- !,
 	indigo(E,[]).		% restart main with empty history
 indigo2(H,E,[stop_interrupts|H]) :- !, 
 	indigo(E,[stop_interrupts|H]).
+indigo2(H,E,H)          :- 
+	indigo(E,H).	% The case of Trans for tests
 indigo2(H,E,[A|H]) :- 
 	indixeq(A, H, H1), 
 	indigo(E, H1).  % DOMAIN ACTION
@@ -336,6 +337,11 @@ system_action(abort_exec).	% Action to force sudden nonclean termination
 system_action(start_exec).	% Action to start execution
 system_action(break_exec).	% Action to break the agent execution to top-level Prolog
 system_action(reset_exec).	% Reset agent execution from scratch
+
+% History H includes a system action A
+has_system_action(H,A) :- 
+	type_action(A, system),
+	member(A,H).
 
 	
 % Wait continously until an exogenous action occurrs
@@ -379,8 +385,11 @@ wrap_up_step     :- retractall(watch_for_exog), % After computing a step
 % * any vanilla Prolog 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
 % If the step is a system-action, then just propagate it
-%mayEvolve(E1,[A|H1],E1,[A|H1], system):- type_action(A, system), !.
+mayEvolve(E,H,E,[A|H2],system):- 
+	has_system_action(H,A), !,
+	delete(H,A,H2).
 
 mayEvolve(E1,H1,E2,H2,S):- 
 	type_prolog(T) -> mayEvolve(E1,H1,E2,H2,S,T) ; 
@@ -477,7 +486,7 @@ trans(E,H,E1,H1,van):- trans(E,H,E1,H1).
 
 % type_action(Action, Type) : finds out the type of an action 
 type_action(Act, sensing)    :- sensing(Act, _), !.
-type_action(Act, system)     :- system_action(Act), !.
+type_action(Act, system)     :- system_action(Act).
 type_action(_, nonsensing).
 
 indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
@@ -494,7 +503,8 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
 	        update_now(H2)
 	;
                 report_message(action,  
-                	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing outcome: ', S]),
+                	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing 
+			outcome: ', S]),
 	        wait_if_neccessary,
 		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME!
 		update_now(H2)
@@ -504,7 +514,8 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         report_message(system(1), ['Sending nonsensing action *',Act,'* for execution']),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S=failed -> 
-		report_message(error, ['Action *', Act, '* could not be executed at history: ',H]),
+		report_message(error, 
+				['Action *', Act, '* could not be executed at history: ',H]),
 		H2 = [abort,failed(Act)|H],
 	        update_now(H2)
 	;
@@ -589,10 +600,14 @@ exog_action_occurred([ExoAction|LExoAction]) :-
 %	can_roll(H) : we COULD roll at H (if there is time)
 %	roll_db(H1,H2): roll from H1 to H2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-handle_rolling(H1,H2) :- must_roll(H1), !, roll(H1, H2).
+handle_rolling(H1,H2) :- 
+	\+ has_system_action(H1,_),
+	 must_roll(H1), !, roll(H1, H2).
 handle_rolling(H1,H1).
 
-pause_or_roll(H1,H2) :- can_roll(H1), !, roll(H1, H2).
+pause_or_roll(H1,H2) :- 
+	\+ has_system_action(H1,_),
+	can_roll(H1), !, roll(H1, H2).
 pause_or_roll(H1,H1).
 
 roll(H1, H2) :-

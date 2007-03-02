@@ -201,7 +201,7 @@ handle_xml_message(XMLMess) :-
 handle_xml_message(XMLMess) :-
 	unfold_clima_message(XMLMess, bye, _, _), !,
 	assert(bye_message_received),
-	report_exog_event(halt, _).
+	report_exog_event(halt_exec, _).
 handle_xml_message(XMLMess) :-
 	unfold_clima_message(XMLMess, sim-end, TimeStamp, BodyXMLMess), !,
 	report_exog_event(simEnd(TimeStamp, BodyXMLMess), _).

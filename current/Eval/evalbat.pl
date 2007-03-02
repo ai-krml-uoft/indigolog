@@ -66,7 +66,9 @@
 % SYSTEM TOOLS (used by the top-level cycle)::
 %
 % -- initializeDB/0
-%           initialize the projector
+%           initialize the whole projector
+% -- initializeDB(F)/1
+%           initializes a particular fluent F
 % -- finalizeDB/0
 %           finalize the projector
 % -- can_roll(+H1) 
