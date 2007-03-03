@@ -505,7 +505,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
                 report_message(action,  
                 	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing 
 			outcome: ', S]),
-	        wait_if_neccessary,
+	        wait_between_actions,
 		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME!
 		update_now(H2)
 	).
@@ -520,17 +520,17 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
 	        update_now(H2)
 	;
                 report_message(action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
-		wait_if_neccessary,
+		wait_between_actions,
                 H2 = [Act|H],
 		update_now(H2)
 	).
 
 % Simulated pause between execution of actions if requested by user
-wait_if_neccessary :-
+wait_between_actions :-
         wait_at_action(Sec), !,   % Wait Sec numbers of seconds
         report_message(system(2),['Waiting at step ',Sec,' seconds']), 
         sleep(Sec). 
-wait_if_neccessary.
+wait_between_actions.
 
 % Updates the current history to H
 update_now(H):- 
@@ -601,20 +601,20 @@ exog_action_occurred([ExoAction|LExoAction]) :-
 %	roll_db(H1,H2): roll from H1 to H2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 handle_rolling(H1,H2) :- 
-	\+ has_system_action(H1,_),
+	\+ has_system_action(H1,_),	% roll-forward only if no system action is in H1
 	 must_roll(H1), !, roll(H1, H2).
 handle_rolling(H1,H1).
 
 pause_or_roll(H1,H2) :- 
-	\+ has_system_action(H1,_),
+	\+ has_system_action(H1,_),	% roll-forward only if no system action is in H1
 	can_roll(H1), !, roll(H1, H2).
 pause_or_roll(H1,H1).
 
 roll(H1, H2) :-
-        report_message(system(0),'Rolling down the river.......'), 
+        report_message(system(1),'Rolling down the river.......'), 
 	roll_db_safe(H1, H2), 
-        report_message(system(0), 'done progressing the database!'), 
-        report_message(system(3), ['New History: ', H2]), 
+        report_message(system(1), 'done progressing the database!'), 
+        report_message(system(3), ['New History after roll-forward: ', H2]), 
 	update_now(H2), 			% Update the current history	
 	retract(rolled_now(HO)),		% Update the rollednow/1 predicate
 	append(H1,HO,HN),			% rolled_now(H): H is the full system history
