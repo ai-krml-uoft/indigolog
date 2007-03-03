@@ -118,6 +118,7 @@ teammember(A) :- member(A,[germany1,germany2,germany3,germany4]).
 
 % Port of environment manager has to be fixed in SWI
 server_port(_).
+server_host('127.0.0.1').
 
 
 % Define what environment managers the application will use

@@ -20,10 +20,7 @@
 %                       pathfind_heuristic/3 specifies a heuristic metric needed
 %                       for prioritizing the possible actions
 %    
-%    NOTES:          - pathfind/3 only finds one solution and does not backtrack.
-%                    - As it is now, it uses a dynamic predicate pathf/1 to
-%                    keep track of visited locations. This should be 
-%                    replaced by a list which is passed along the predicates.
+%    NOTES:          
 %                    - All predicates in this file have the prefix "pathfind" so
 %                    that there is no conflict with any other library.
 %    
@@ -35,9 +32,15 @@
 %                  A is the ancestor list for the node
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+:- multifile pathfind_f_function/5.
+	
 :- op(400,yfx,'#').    /* Node builder notation */
 %:- dynamic(pathf/1).
 
+
+%path finding that takes considers exactly one heuristic function along with the depth of
+%the search so far. pathfind_f_function is the actual function used to order the nodes,
+%pathfind_heuristic is the one given by the user
 pathfind(State,Goal,Soln) :- 
 		pathfind_f_function(State,Goal,0,F),
 		%retractall(pathf(_)),
@@ -74,6 +77,28 @@ pathfind_expand(State#D#_#S,Goal,All_My_Children) :-
 			%\+ pathf(Child),
 			pathfind_f_function(Child,Goal,D1,F)),
            	All_My_Children).
+
+
+%path finding that takes as an argument which determins which pair of heuristic-moves to use.
+%the user provides functions by giving definitions for pathfind_f_function/5 and pathfind_move/4
+%which are conditioned on a type
+pathfind(State,Goal,Type,Soln) :- 
+		pathfind_f_function(State,Goal,Type,0,F),
+		pathfind_search([State#0#F#[]],Goal,Type,S), reverse(S,Soln).
+
+pathfind_search([State#_#_#Soln|_], State, _, Soln).
+pathfind_search([B|R],Goal,Type,S) :- 
+		pathfind_expand(B,Goal,Type,Children),
+		pathfind_insert_all(Children,R,Open),
+		pathfind_search(Open,Goal,Type,S).
+
+pathfind_expand(State#D#_#S,Goal,Type,All_My_Children) :-
+     bagof(Child#D1#F#[Move|S],
+			(D1 is D+1,
+			pathfind_move(State,Child,Type,Move),
+			pathfind_f_function(Child,Goal,Type,D1,F)),
+           	All_My_Children).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: lib/alpha_star.pl

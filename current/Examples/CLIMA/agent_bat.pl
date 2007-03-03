@@ -808,21 +808,89 @@ neighbor(loc(I1,J1),loc(I2,J2),N):-
 in_line(R1,_,R1).
 in_line(R1,D,R2) :- adj(R1,R3,D), in_line(R3,D,R2).
 
-% Set up path finding. Here it will be used to find paths between locs
-% Start and End, such that the path goes through locs visited before.
-pathfind_move(Start, End, move(D)):- 
+
+
+
+% Set up path finding. Here it will be used to find paths between locs Start and End
+
+% type opt1: optimistic for the shortest possible path
+
+% any location that is probably not a pit is ok to go
+pathfind_move(Start, End, opt1, D):- 
 	direction(D), 
 	apply(D,[Start,End]),
 	now(H),
-	holds(visited(End)=true,H).
+	\+ holds(isPit(End)=yes,H).
 
-% Set heuristic (manhattan distance)
-pathfind_heuristic(loc(I,J), loc(I2,J2), H):- 
+% manhattan distance + plan length as the heuristic
+pathfind_f_function(loc(I,J), loc(I2,J2), opt1, D, V):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
-	H is AbsDiffI+AbsDiffJ.
+	V is AbsDiffI+AbsDiffJ+D.
+
+
+% type safe1: the shortest path that goes through places known to be safe
+
+% any location that is not a pit is ok to go
+pathfind_move(Start, End, safe1, D):- 
+	direction(D), 
+	apply(D,[Start,End]),
+	now(H),
+	holds(isPit(End)=no,H).
+
+% manhattan distance + plan length as the heuristic
+pathfind_f_function(loc(I,J), loc(I2,J2), safe1, D, V):- 
+	DiffI is I-I2, 
+	DiffJ is J-J2,
+	abs(DiffI,AbsDiffI), 
+	abs(DiffJ,AbsDiffJ),
+	V is AbsDiffI+AbsDiffJ+D.
+
+
+% type safe2(N): the shortest path that may go through a possibly unsafe
+% place as long as this makes the path feasible or gives a shortcut that
+% will gain 1/N moves. a value for N we should try is .3
+
+% any location that is probably not a pit is ok to go
+pathfind_move(Start, End, safe2(_), D):- 
+	direction(D), 
+	apply(D,[Start,End]),
+	now(H),
+	\+ holds(isPit(End)=yes,H).
+
+% manhattan distance + plan length as the heuristic + demote
+pathfind_f_function(loc(I,J), loc(I2,J2), safe2(N), D, V):- 
+	DiffI is I-I2, 
+	DiffJ is J-J2,
+	abs(DiffI,AbsDiffI), 
+	abs(DiffJ,AbsDiffJ),
+	now(H),
+	(holds(isPit(loc(I2,J2))=possibly,H) -> Demote is N; Demote=0),
+	V is AbsDiffI+AbsDiffJ+D+Demote.
+
+
+% type expl1(N): a not-necessarily-shortest exporatory path that may go
+% through a possibly unsafe place as long as this does not make the
+% path longer than 1/N moves. a value for N we should try is .3
+
+% any location that is probably not a pit is ok to go
+pathfind_move(Start, End, expl1(_), D):- 
+	direction(D), 
+	apply(D,[Start,End]),
+	now(H),
+	\+holds(isPit(End)=yes,H).
+
+% manhattan distance + plan length as the heuristic + promote
+pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), D, V):- 
+	DiffI is I-I2, 
+	DiffJ is J-J2,
+	abs(DiffI,AbsDiffI), 
+	abs(DiffJ,AbsDiffJ),
+	now(H),
+	(holds(isPit(loc(I2,J2))=possibly,H) -> Promote is N; Promote=0),
+	V is AbsDiffI+AbsDiffJ+D-Promote.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
