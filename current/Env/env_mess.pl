@@ -155,11 +155,29 @@ disconnectFromMessServer :-
 % OBS: handle_stream/1 must always end up succeeding!
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Handle data comming from the MESSENGER server
+% if messenger disconnects just drop connection
 handle_stream(comm_mess) :- 
 	get_socket_stream(comm_mess, read, Read), 
 	at_end_of_stream(Read), !,
 	disconnectFromMessServer.
+
+
+% % if messenger disconnects, tries to re-connect (unless device is terminating)
+handle_stream(comm_mess) :- 
+	get_socket_stream(comm_mess, read, Read),
+	at_end_of_stream(Read), 
+	report_message(system(2), ['Messenger server disconnection']), !,
+	(terminate -> 
+		report_message(system(2), 
+			['Termination message was already received. No reconnectoin'])
+		
+	;
+		repeat,
+		report_message(system(2), ['Reconnecting to messenger server...']),
+		disconnectFromMessServer,
+		(connectToMessServer -> true ; (sleep(2), fail))
+	).
+
 
 handle_stream(comm_mess) :- 
         mess_receive(Mess), !,
