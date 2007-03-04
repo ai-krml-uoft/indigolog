@@ -32,7 +32,7 @@
 %                  A is the ancestor list for the node
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- multifile pathfind_f_function/5.
+:- multifile pathfind_f_function/6.
 	
 :- op(400,yfx,'#').    /* Node builder notation */
 %:- dynamic(pathf/1).
@@ -83,20 +83,34 @@ pathfind_expand(State#D#_#S,Goal,All_My_Children) :-
 %the user provides functions by giving definitions for pathfind_f_function/5 and pathfind_move/4
 %which are conditioned on a type
 pathfind(State,Goal,Type,Soln) :- 
-		pathfind_f_function(State,Goal,Type,0,F),
-		pathfind_search([State#0#F#[]],Goal,Type,S), reverse(S,Soln).
+		pathfind_f_function(State,Goal,Type,0,_,F),
+		pathfind_search_adv([State#0#F#[]#[State]],Goal,Type,S), reverse(S,Soln).
 
-pathfind_search([State#_#_#Soln|_], State, _, Soln).
-pathfind_search([B|R],Goal,Type,S) :- 
-		pathfind_expand(B,Goal,Type,Children),
-		pathfind_insert_all(Children,R,Open),
-		pathfind_search(Open,Goal,Type,S).
+pathfind_search_adv([State#D#F#Soln#_|L], State, _, Soln):- writeln(D), writeln(F),length(L,N),writeln(N).
+pathfind_search_adv([B|R],Goal,Type,S) :- 
+		pathfind_expand_adv(B,Goal,Type,Children),
+		pathfind_insert_all_adv(Children,R,Open),
+		pathfind_search_adv(Open,Goal,Type,S).
 
-pathfind_expand(State#D#_#S,Goal,Type,All_My_Children) :-
-     bagof(Child#D1#F#[Move|S],
-			(D1 is D+1,
-			pathfind_move(State,Child,Type,Move),
-			pathfind_f_function(Child,Goal,Type,D1,F)),
+pathfind_insert_all_adv([F|R],Open1,Open3) :- 
+		pathfind_insert_adv(F,Open1,Open2),
+		pathfind_insert_all_adv(R,Open2,Open3).
+pathfind_insert_all_adv([],Open,Open).
+
+pathfind_insert_adv(B,Open,Open) :- pathfind_repeat_node_adv(B,Open), ! .
+pathfind_insert_adv(B,[C|R],[B,C|R]) :- pathfind_cheaper_adv(B,C), ! .
+pathfind_insert_adv(B,[B1|R],[B1|S]) :- pathfind_insert_adv(B,R,S), !.
+pathfind_insert_adv(B,[],[B]).
+
+pathfind_repeat_node_adv(P#_#_#_#_, [P#_#_#_#_|_]).
+
+pathfind_cheaper_adv( _#D1#F1#_#_ , _#D2#F2#_#_ ) :- V1 is F1+D1,V2 is F2+D2, V1 < V2.
+
+pathfind_expand_adv(State#D#_#S#Path,Goal,Type,All_My_Children) :-
+     bagof(Child#D1#F1#[Move|S]#[Child|Path],
+			(pathfind_move(State,Child,Type,Move),
+			\+ member(Child,Path),
+			pathfind_f_function(Child,Goal,Type,D,D1,F1)),
            	All_My_Children).
 
 

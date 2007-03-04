@@ -122,6 +122,7 @@ gridsize(X,Y) :- gridsizeX(X), gridsizeY(Y).
 
 % This are the domains/sorts used in the application
 direction(V) :- member(V, [up,down,left,right]).
+
 all_direction(V) :- member(V, [n,s,r,l,ne,nw,se,sw,cur]).
 location(loc(I,J)) :- gridindexX(I), gridindexY(J).
 agent(A) :- A=me.
@@ -782,7 +783,8 @@ rotateRight(down,left).
 rotateRight(left,up).
 
 % is loc(I,J) a valid location?
-valid_loc(loc(I,J)) :- domain(I,gridindexX), domain(J,gridindexY).
+%valid_loc(loc(I,J)) :- domain(I,gridindexX), domain(J,gridindexY).
+valid_loc(loc(I,J)) :- gridindexX(I), gridindexY(J).
 
 % location R1 and R2 are adjacents
 adj(R1,R2) :- (up(R1,R2) ; down(R1,R2) ; left(R1,R2) ; right(R1,R2)).
@@ -810,70 +812,83 @@ in_line(R1,D,R2) :- adj(R1,R3,D), in_line(R3,D,R2).
 
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  PATH FINDING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Set up path finding. Here it will be used to find paths between locs Start and End
-
-% type opt1: optimistic for the shortest possible path
+% type opt1: optimistic path finding
 
 % any location that is probably not a pit is ok to go
 pathfind_move(Start, End, opt1, D):- 
-	direction(D), 
+	%direction(D), 
+	rdomain(D,[up,down,left,right]), 
 	apply(D,[Start,End]),
+	valid_loc(End),
 	now(H),
 	\+ holds(isPit(End)=yes,H).
 
 % manhattan distance + plan length as the heuristic
-pathfind_f_function(loc(I,J), loc(I2,J2), opt1, D, V):- 
+% the cost of each action is .99 so that there is preference in
+% continuing a path rather than searching for a new one with the same cost
+pathfind_f_function(loc(I,J), loc(I2,J2), opt1, CostSoFar, UpdatedCost, Estimation):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
-	V is AbsDiffI+AbsDiffJ+D.
+	UpdatedCost is CostSoFar+0.99,
+	Estimation is AbsDiffI+AbsDiffJ.
 
 
 % type safe1: the shortest path that goes through places known to be safe
 
-% any location that is not a pit is ok to go
+% only go to a location if it is known that there is no pit
 pathfind_move(Start, End, safe1, D):- 
-	direction(D), 
+	%direction(D), 
+	rdomain(D,[up,down,left,right]), 
 	apply(D,[Start,End]),
+	valid_loc(End),
 	now(H),
 	holds(isPit(End)=no,H).
 
 % manhattan distance + plan length as the heuristic
-pathfind_f_function(loc(I,J), loc(I2,J2), safe1, D, V):- 
+% the cost of each action is .99 so that there is preference in
+% continuing a path rather than searching for a new one with the same cost
+pathfind_f_function(loc(I,J), loc(I2,J2), safe1, CostSoFar, UpdatedCost, Estimation):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
-	V is AbsDiffI+AbsDiffJ+D.
+	UpdatedCost is CostSoFar+0.99,
+	Estimation is AbsDiffI+AbsDiffJ.
 
-
-% type safe2(N): the shortest path that may go through a possibly unsafe
-% place as long as this makes the path feasible or gives a shortcut that
-% will gain 1/N moves. a value for N we should try is .3
+% type safe2(N): only go trhough unsafe places as long as 
+% this makes the path feasible or gives a shortcut that
+% will gain N moves. 
 
 % any location that is probably not a pit is ok to go
 pathfind_move(Start, End, safe2(_), D):- 
-	direction(D), 
+	rdomain(D,[up,down,left,right]), 
+%	direction(D), 
 	apply(D,[Start,End]),
+	valid_loc(End),
 	now(H),
 	\+ holds(isPit(End)=yes,H).
 
 % manhattan distance + plan length as the heuristic + demote
-pathfind_f_function(loc(I,J), loc(I2,J2), safe2(N), D, V):- 
+pathfind_f_function(loc(I,J), loc(I2,J2), safe2(N), CostSoFar, UpdatedCost, Estimation):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
 	now(H),
-	(holds(isPit(loc(I2,J2))=possibly,H) -> Demote is N; Demote=0),
-	V is AbsDiffI+AbsDiffJ+D+Demote.
+	(holds(isPit(loc(I,J))=possibly,H) -> Demote is N; Demote=0),
+	UpdatedCost is CostSoFar+0.99+Demote,
+	Estimation is AbsDiffI+AbsDiffJ.
 
 
 % type expl1(N): a not-necessarily-shortest exporatory path that may go
 % through a possibly unsafe place as long as this does not make the
-% path longer than 1/N moves. a value for N we should try is .3
+% path longer than N moves.
 
 % any location that is probably not a pit is ok to go
 pathfind_move(Start, End, expl1(_), D):- 
@@ -883,14 +898,15 @@ pathfind_move(Start, End, expl1(_), D):-
 	\+holds(isPit(End)=yes,H).
 
 % manhattan distance + plan length as the heuristic + promote
-pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), D, V):- 
+pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), CostSoFar, UpdatedCost, Estimation):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
 	now(H),
 	(holds(isPit(loc(I2,J2))=possibly,H) -> Promote is N; Promote=0),
-	V is AbsDiffI+AbsDiffJ+D-Promote.
+	UpdatedCost is CostSoFar+1-Promote,
+	Estimation is AbsDiffI+AbsDiffJ.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
