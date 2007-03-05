@@ -2,7 +2,6 @@
 %
 % FILE: Env/env_man.pl
 %
-
 %  AUTHOR : Sebastian Sardina (2004-2006)
 %  EMAIL  : ssardina@cs.toronto.edu
 %  WWW    : www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
@@ -153,7 +152,7 @@ initializeEM :-
         Address=ServerHost/ServerPort,
         bind(em_socket, Address),
           report_message(system(1),'(EM) 3 - Loading different devices...'),
-        findall(Env, load_device(Env,_, _), LEnv),
+        setof(Env, A^B^load_device(Env,A, B), LEnv),
         (LEnv=[] ->
                report_message(warning,'(EM) No devices defined to load!') 
 	;
@@ -188,6 +187,7 @@ finalizeEM :-
         type_manager(thread),
 	report_message(system(2), '(EM) 2 - Terminating EM cycle...'),
 	catch(wait_for_children,_,true),
+	report_message(system(3), '(EM) All device managers finished...'),
         type_manager(Type),
 	finish_env_cycle(Type),   	% Terminate main env. manager cycle
 	fail.
@@ -209,6 +209,7 @@ finalizeEM :-
 
 
 wait_for_children :-
+        report_message(system(2), '(EM) Waiting for devices processes to finish...'),
 	wait(PId, S), !,
 	(ground(S) -> true ; S=free),
         report_message(system(3), ['(EM) Successful proccess waiting: ',(PId,S)]),
@@ -237,7 +238,7 @@ start_env_cycle(thread) :-
 		)),_,[alias(em_thread)]).
 em_cycle_thread :- em_one_cycle(block), !, em_cycle_thread.
 em_cycle_thread :-	 % if em_one_cycle/1 has nothing to wait, then just terminate
-	 	report_message(system(5),'(EM) EM cycle finished, no more streams to wait for...').
+	 report_message(system(2),'(EM) EM cycle finished, no more streams to wait for...').
 	
 
 finish_env_cycle(thread) :-

@@ -221,14 +221,16 @@ set_option(debug_level, N) 	:-
 %      defyining a 3-phase main cycle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :- 
-%	set_option(debug_level,3),
 	report_message(system(0),'Starting ENVIRONMENT MANAGER...'),
 	initializeEM,    	  	% Initialization of environment
 	report_message(system(0),'ENVIRONMENT MANAGER was started successfully.'),
 	report_message(system(0),'Starting PROJECTOR...'),
 	initializeDB,             	% Initialization of projector
 	report_message(system(0),'PROJECTOR was started successfully.'),
-	reset_indigolog_dbs.      	% Reset the DB wrt the controller
+	reset_indigolog_dbs, !.      	% Reset the DB wrt the controller
+init :- fin, init.	% For some reason, init/0 didnt work. Retry.
+
+
 
 fin  :- 
 	report_message(system(0),'Finalizing PROJECTOR...'),
@@ -260,7 +262,12 @@ indigolog(_) :-		% Used to require a program, now we start proc. main always (Ma
 	init,  !, 
 	(proc(main, E) ->		% obtain main agent program
 		report_message(system(0),'Starting to execute the main program'),
-		indigo(E,[]), !
+		catch(indigo(E,[]),Exc,
+			(report_message(system(0),
+				['Main program interrupted due to exception: ',Exc]),
+			 report_message(system(0),['Break? (yes/no) ',Exc]),
+			 read(Answer),
+			 (Answer=yes -> break ; true)) ), !
 	;
 		report_message(system(0),'No main program to execute')
 	),

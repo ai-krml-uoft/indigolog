@@ -236,19 +236,26 @@ causes(told(_, Data), isGold(L), V, sense_gold(Data, L, V)).
 fun_fluent(hasGold).
 causes_val(pick, hasGold, possibly, true).
 causes_val(requestAction(_, Data), hasGold, true,
-			and(lastAction=pick, sense_data(Data, gold, cur, false))). 
+			and(sense_items(Data,N),
+			and(N<0,
+			and(lastAction=pick, sense_data(Data, gold, cur, false))))). 
 causes_val(drop, hasGold, false, true).
 causes_val(simStart(_,_), hasGold, false, true).
+causes_val(requestAction(_, Data), hasGold, true, and(sense_items(Data,N),N>0)). 
+causes_val(requestAction(_, Data), hasGold, false, and(sense_items(Data,N),N=0)). 
 
 
 % noGold: number of gold pieces we are carrying
 fun_fluent(noGold).
 causes_val(pick, noGold, M2, and(noGold=M1,M2 is M1+1)).
 causes_val(drop, noGold, 0, true).
+causes_val(requestAction(_, Data), noGold, N, and(sense_items(Data,N), N>=0)).
 causes_val(requestAction(_, Data), noGold, M2,
+		and(sense_items(Data,N),
+		and(N<0,
 		and(lastAction=pick, 
 		and(sense_data(Data, gold, cur, true),  % there is still gold here
-		and(noGold=M1,M2 is M1-1)))).
+		and(noGold=M1,M2 is M1-1)))))).
 causes_val(simStart(_,_), noGold, 0, true).
 
 % maxNoGold: a rigid fluent storing how many pieces of gold we can carry
@@ -391,6 +398,9 @@ sense_step(Data, Step) :-  member(step(Step),Data).
 
 % Extract step number from Data
 sense_id(Data, Id) :-  member(id(Id),Data).
+
+% Extract number of items carrying on
+sense_items(Data, Items) :-  member(items(Items),Data).
 
 
 % location Loc is a cell around the centre and V is true/false depending
@@ -563,13 +573,19 @@ proc(mainControl(1),
 proc(mainControl(2),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), wait),
-	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
+	  interrupt(locRobot(me)=locDepot,
+			[drop,
+			 search(pi([(dir,direction),loc],
+				[?(apply(dir, [locRobot(me), loc])), 
+				 ?(isPit(loc)=false),
+			     	 dir]))
+			]),
 	  interrupt(hasGold=true,
 			pi(plan,
-			[writeln('Got gold will plan to go to depot'),
-			 ?(pathplan(locRobot(me), locDepot, safe1, plan)),
-			 writeln(plan),
-			 plan,drop])),
+			[say('Planning to go to depot...'),
+			 ?(pathfind(locRobot(me), locDepot, opt1, plan)),
+			 say(plan),
+			 execute_plan(plan)])),
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick),
 	  interrupt([(dir,direction), loc], 
 			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
@@ -577,6 +593,7 @@ proc(mainControl(2),
 			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
 			search(star([pi((a,[up,down,left,right]),a), 
 					?(locRobot(me)=loc)], 6)) ),
+	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
 	  interrupt([(dir,direction),loc], 
 			and(apply(dir, [locRobot(me), loc]), 
 			and(isPit(loc)=false, neg(visited(loc)))), dir),
@@ -585,6 +602,30 @@ proc(mainControl(2),
          ])  % END OF INTERRUPTS
 ).
 
+
+
+% Follows the list of movement actions Plan one-by-one 
+% The whole Plan may not be carried on fully because we hit an obstacle
+proc(execute_plan(Plan),
+	ndet([?(Plan=[]),say('Arrived to destination...')],
+	     	[
+		?(Plan=[A|RestPlan]),
+	      	?(apply(A,[locRobot(me), Expected])),
+	      	try_move(3,A,locRobot(me)=Expected),
+	      	if(locRobot(me)=Expected,execute_plan(RestPlan),say('Drop remaining plan..'))
+		]
+	)
+).
+
+% Action A is tried N number of times to get to Expected location
+proc(try_move(N,A,SuccessCond),
+	if(N=0, say('Gave up on action!'),
+	      	if(and(neg(isPit(Expected)=true),neg(SuccessCond)),
+			pi(m,[A,?(m is N-1),try_move(m,A,Expected)]),
+			?(true)
+		)
+	)
+).
 
 
 
@@ -692,69 +733,14 @@ proc(goodBorderPair(VLoc, NLoc),
 	).
 
 
-proc(explore_grid, 
-	search(pi([s,q],[?(gridsize(s)), ?(q is 2*s-2), explore_limit(0,q)]))
-).
-
-proc(explore_limit(N,MAX), 
-	  wndet(search([
-	  	  	pi(y,[
-	  	  		?(neighbor(locRobot(me),y,N)),
-				?(visited(y)=true),
-				%?(and(write('----->Y:'),writeln(y))),
-	  	  		pi(z,[
-	  	  			?(radj(y,z)),
-	  	  			?(visited(z)=false),
-	  	  			?(or(aliveWumpus=false,neg(locWumpus=z))),
-	  	  			?(isPit(z)=false),
-					%?(and(write('----->Z:'),writeln(z))),
-	  	  			?(pathfind(locRobot(me),y,L)),
-	  	  			L,
-					%?(and(write('----->L:'),writeln(L))),
-	  	  			rpi(w,direction,[move(w),
-					%?(and(write('----->W:'),writeln(w))),
-						?(locRobot(me)=z)])
-	  	  		])
-	  	  	])
-	      		],['SEARCH FOR A LOCATION ', N, ' STEPS AWAY......']),
-		   search([?(and(M is N+1,M=<MAX)),explore_limit(M,MAX)])
-		   )
-	).
-
-
-proc(explore_grid2, 
-	search(pi([s,q],[?(gridsize(s)), ?(q is 2*s-2), explore_limit2(0,q)]))
-).
-proc(explore_limit2(N,MAX), 
-	  wndet(search([
-	  	  	pi(y,[
-	  	  		?(neighbor(locRobot(me),y,N)),
-				?(visited(y)=true),
-	  	  		pi(z,[
-	  	  			?(adj(y,z)),
-	  	  			?(visited(z)=false),
-	  	  			?(or(aliveWumpus=false,neg(locWumpus=z))),
-	  	  			?(isPit(z)=false),
-	  	  			?(pathfind(locRobot(me),y,L)),
-	  	  			L,
-	  	  			pi(w,direction,[move(w),?(locRobot(me)=z)])
-	  	  		])
-	  	  	])
-	      		],['SEARCH FOR A LOCATION ', N, ' STEPS AWAY......']),
-		   search([?(and(M is N+1,M=<MAX)),explore_limit2(M,MAX)])
-		   )
-	).
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  MAP TOOLS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Map Relative Definitions 
-% In order to change the relative orientation of the grid, one has to only change this
-% definitions. All the rest below should work out well and transparently of the grid orientation
+% To change the relative orientation of the grid, one has to only change this definitions 
+% All the rest below should work out well and transparently of the grid orientation
 up(loc(X,Y),loc(X,YN))    	:- YN is Y-1, location(loc(X,YN)). 
 down(loc(X,Y),loc(X,YN)) 	:- YN is Y+1, location(loc(X,YN)).  
 right(loc(X,Y),loc(XN,Y)) 	:- XN is X+1, location(loc(XN,Y)).  
@@ -763,7 +749,7 @@ left(loc(X,Y),loc(XN,Y))  	:- XN is X-1, location(loc(XN,Y)).
 % to_up(Loc1,Loc2): Loc2 is towards direction "up" from Loc1
 to_up(loc(_, Y1),loc(_, Y2)) 	:- gridindexY(Y1), gridindexY(Y2), Y2<Y1.
 to_right(loc(X1, _),loc(X2, _))	:- gridindexX(X1), gridindexX(X2), X2>X1.
-to_down(Loc1, Loc2):- to_up(Loc2, Loc1).
+to_down(Loc1, Loc2) :- to_up(Loc2, Loc1).
 to_left(Loc1, Loc2)	:- to_right(Loc2, Loc1).
 
 
@@ -838,7 +824,7 @@ pathfind_move(Start, End, opt1, D):-
 	apply(D,[Start,End]),
 	valid_loc(End),
 	now(H),
-	\+ holds(isPit(End)=yes,H).
+	\+ holds(isPit(End)=true,H).
 
 % manhattan distance + plan length as the heuristic
 % the cost of each action is .99 so that there is preference in
@@ -861,7 +847,7 @@ pathfind_move(Start, End, safe1, D):-
 	apply(D,[Start,End]),
 	valid_loc(End),
 	now(H),
-	holds(isPit(End)=no,H).
+	holds(isPit(End)=false,H).
 
 % manhattan distance + plan length as the heuristic
 % the cost of each action is .99 so that there is preference in
@@ -885,7 +871,7 @@ pathfind_move(Start, End, safe2(_), D):-
 	apply(D,[Start,End]),
 	valid_loc(End),
 	now(H),
-	\+ holds(isPit(End)=yes,H).
+	\+ holds(isPit(End)=true,H).
 
 % manhattan distance + plan length as the heuristic + demote
 pathfind_f_function(loc(I,J), loc(I2,J2), safe2(N), CostSoFar, UpdatedCost, Estimation):- 
@@ -908,7 +894,7 @@ pathfind_move(Start, End, expl1(_), D):-
 	direction(D), 
 	apply(D,[Start,End]),
 	now(H),
-	\+holds(isPit(End)=yes,H).
+	\+ holds(isPit(End)=true,H).
 
 % manhattan distance + plan length as the heuristic + promote
 pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), CostSoFar, UpdatedCost, Estimation):- 

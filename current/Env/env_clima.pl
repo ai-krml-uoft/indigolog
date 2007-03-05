@@ -344,17 +344,19 @@ clima_message(Mess, Type, TimeStamp, ListElements) :-
 	Mess=element(message, LAttrMess, LContentMess),
 	member(type=Type, LAttrMess),
 	(member(timestamp=TimeStamp, LAttrMess) -> true ; TimeStamp = -1),
-	findall([NameE, LAttrE, LContE], member(element(NameE, LAttrE, LContE), LContentMess), ListElements).
+	findall([NameE, LAttrE, LContE], 
+		member(element(NameE, LAttrE, LContE), LContentMess), ListElements).
 
 clima_message(Mess, Type, TimeStamp, ListElements) :-
 	var(Mess),
 	Mess=element(message, [type=Type|LAttrMess], LContentMess),
 	(TimeStamp = -1 -> LAttrMess=[] ; LAttrMess=[timestamp=TimeStamp]),
-	setof(element(NameE, LAttrE, LContE), member([NameE, LAttrE, LContE], ListElements),  LContentMess).
+	setof(element(NameE, LAttrE, LContE), 
+		member([NameE, LAttrE, LContE], ListElements),  LContentMess).
 
 
 % unfold_clima_messages(XMLMess, Type, TimeStamp, BodyXMLMess)
-%	Extract all information from a CLIMA message
+%	Extract all information from a CLIMA message XMLMess
 
 % Messages from the simulation server: server---> agent
 unfold_clima_message(XMLMess, auth-response, NTimeStamp, Data) :-
@@ -366,7 +368,8 @@ unfold_clima_message(XMLMess, auth-response, NTimeStamp, Data) :-
 	member(result=Result, LAttr).
 unfold_clima_message(XMLMess, sim-start, NTimeStamp, Data) :-
 	permutation(Data,
-		[id(Id), opponent(Opp), steps(NSteps), gsizeX(NGX), gsizeY(NGY), depotX(NDX), depotY(NDY)]), !,
+		[id(Id), opponent(Opp), steps(NSteps), 
+			gsizeX(NGX), gsizeY(NGY), depotX(NDX), depotY(NDY)]), !,
 	(T= 'sim-start' ; T = sim-start),
 	clima_message(XMLMess, T, TimeStamp, LElements),
 	any_to_number(TimeStamp, NTimeStamp),
@@ -381,8 +384,10 @@ unfold_clima_message(XMLMess, sim-start, NTimeStamp, Data) :-
 unfold_clima_message(XMLMess, sim-end, NTimeStamp, Data) :-
 	permutation(Data, [id(Id), score(NScore), result(Result)]), !,
 	(T= 'sim-end' ; T = sim-end),
-	clima_message(XMLMess, T, TimeStamp, LElements), any_to_number(TimeStamp, NTimeStamp),
-	(member([sim-result, LAttr, []], LElements) ; member(['sim-result', LAttr, []], LElements)),
+	clima_message(XMLMess, T, TimeStamp, LElements), 
+	any_to_number(TimeStamp, NTimeStamp),
+	(member([sim-result, LAttr, []], LElements) ; 
+			member(['sim-result', LAttr, []], LElements)),
 	member(score=Score, LAttr), any_to_number(Score, NScore),
 	member(result=Result, LAttr),
 	member(id=Id, LAttr).
@@ -390,7 +395,8 @@ unfold_clima_message(XMLMess, bye, TimeStamp, []) :-
 	(T= 'bye' ; T = bye),
 	clima_message(XMLMess, T, TimeStamp, []).
 unfold_clima_message(XMLMess, request-action, NTimeStamp, Data) :-
-	permutation(Data, [step(NStep),posX(NPosX),posY(NPosY),deadline(NDeadline),id(Id),cells(CellsInfo)]), !,
+	permutation(Data, [step(NStep),posX(NPosX),posY(NPosY),items(NItems),
+				deadline(NDeadline),id(Id),cells(CellsInfo)]), !,
 	(T= 'requestaction' ; T = requestaction),
 	clima_message(XMLMess, T, TimeStamp, LElements), 
 	any_to_number(TimeStamp, NTimeStamp),
@@ -398,6 +404,8 @@ unfold_clima_message(XMLMess, request-action, NTimeStamp, Data) :-
 	member(step=Step, LAttr),  any_to_number(Step, NStep),
 	member(posx=PosX, LAttr), any_to_number(PosX, NPosX),
 	member(posy=PosY, LAttr), any_to_number(PosY, NPosY),
+		% No of gold items is only present in the 2007 edition of CLIMA
+	(member(items=Items, LAttr) -> any_to_number(Items, NItems) ; NItems=(-1)),
 	member(deadline=Deadline, LAttr), any_to_number(Deadline, NDeadline),
 	member(id=Id, LAttr),
 	extract_cells_info(LCont, CellsInfo).

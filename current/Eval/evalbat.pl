@@ -282,7 +282,13 @@ domain(V, D)  :- getdomain(D, L), member(V, L).
 rdomain(V, D) :- getdomain(D, L), shuffle(L,L2), !, member(V, L2).
 
 % L is the list-domain associated to name D
-getdomain(D, L) :- is_list(D) -> L=D ; (P =.. [D,L], call(P)).
+getdomain(D, L) :- 
+	is_list(D) -> 
+		L=D 
+	; 
+		P =.. [D,L2], 
+		call(P),
+		(is_list(L2) -> L=L2 ; L=[L2]).
 
 % Computes the arguments of an action or a fluent P
 % Action/Fluent P1 is action/fluent P with all arguments evaluated 
