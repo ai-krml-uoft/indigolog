@@ -158,10 +158,10 @@ translateExogAction(CodeAction, Action) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % main/2: Initiate a CLIMA agent with AgentID and PassID
-main1:- main(germany1,1).
-main2:- main(germany2,2).
-main3:- main(germany3,3).
-main4:- main(germany4,4).
+main1:- main(participant1,1).
+main2:- main(participant2,2).
+main3:- main(participant3,3).
+main4:- main(participant4,4).
 
 main(AgentId, PassId) :-
 	set_agentID(AgentId,PassId),!,

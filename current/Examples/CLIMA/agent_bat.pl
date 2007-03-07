@@ -1,4 +1,4 @@
-8%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % FILE    : Examples/CLIMA/agent_clima.pl
 %
@@ -238,29 +238,33 @@ causes(told(_, Data), isGold(L), V, sense_gold(Data, L, V)).
 
 % hasGold: is the robot holding a gold brick?
 fun_fluent(hasGold).
-causes_val(pick, hasGold, true, true).
-causes_val(requestAction(_, Data), hasGold, true,
-			and(sense_items(Data,N),
-			and(N<0,
-			and(lastAction=pick, sense_data(Data, gold, cur, false))))). 
-causes_val(drop, hasGold, false, true).
-causes_val(simStart(_,_), hasGold, false, true).
+% For CLIMA07
 causes_val(requestAction(_, Data), hasGold, true, and(sense_items(Data,N),N>0)). 
 causes_val(requestAction(_, Data), hasGold, false, and(sense_items(Data,N),N=0)). 
+causes_val(drop, hasGold, false, true).
+causes_val(simStart(_,_), hasGold, false, true).
+
+% For CLIMA06 (OLD)
+%causes_val(pick, hasGold, true, true).
+%causes_val(requestAction(_, Data), hasGold, true,
+%			and(sense_items(Data,N),
+%			and(N<0,
+%			and(lastAction=pick, sense_data(Data, gold, cur, false))))). 
 
 
 % noGold: number of gold pieces we are carrying
 fun_fluent(noGold).
-causes_val(pick, noGold, M2, and(noGold=M1,M2 is M1+1)).
+%causes_val(pick, noGold, M2, and(noGold=M1,M2 is M1+1)).
+causes_val(simStart(_,_), noGold, 0, true).
 causes_val(drop, noGold, 0, true).
 causes_val(requestAction(_, Data), noGold, N, and(sense_items(Data,N), N>=0)).
-causes_val(requestAction(_, Data), noGold, M2,
-		and(sense_items(Data,N),
-		and(N<0,
-		and(lastAction=pick, 
-		and(sense_data(Data, gold, cur, true),  % there is still gold here
-		and(noGold=M1,M2 is M1-1)))))).
-causes_val(simStart(_,_), noGold, 0, true).
+%causes_val(requestAction(_, Data), noGold, M2,
+%		and(sense_items(Data,N),
+%		and(N<0,
+%		and(lastAction=pick, 
+%		and(sense_data(Data, gold, cur, true),  % there is still gold here
+%		and(noGold=M1,M2 is M1-1)))))).
+
 
 % maxNoGold: a rigid fluent storing how many pieces of gold we can carry
 fun_fluent(maxNoGold).
