@@ -332,7 +332,7 @@ indigo2(H,E,[stop_interrupts|H]) :- !,
 indigo2(H,E,H)          :- 
 	indigo(E,H).	% The case of Trans for tests
 indigo2(H,E,[A|H]) :- 
-	indixeq(A, H, H1), 
+	indixeq(A, H, H1), !, 
 	indigo(E, H1).  % DOMAIN ACTION
 
 % This are special actions that if they are in the current history
@@ -505,8 +505,9 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         report_message(system(1), ['Sending sensing Action *',Act,'* for execution']),
         execute_action(Act, H, sensing, IdAct, S), !,
 	(S=failed -> 
-		report_message(error, ['Action *', Act, '* FAILED to execute at history: ',H]),
-		H2 = [abort,failed(Act)|H],	% Request abortion of program
+		report_message(error, 
+			['Action *', Act, '* FAILED to execute at history: ',H]),
+		H2 = [abort_exec,failed(Act)|H],	% Request abortion of program
 	        update_now(H2)
 	;
                 report_message(action,  
@@ -521,9 +522,8 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         report_message(system(1), ['Sending nonsensing action *',Act,'* for execution']),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S=failed -> 
-		report_message(error, 
-				['Action *', Act, '* could not be executed at history: ',H]),
-		H2 = [abort,failed(Act)|H],
+		report_message(error, ['Action *', Act, '* could not be executed at: ',H]),
+		H2 = [abort_exec,failed(Act)|H],
 	        update_now(H2)
 	;
                 report_message(action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
@@ -544,8 +544,8 @@ update_now(H):-
         retract(now(_)) -> assert(now(H)) ; assert(now(H)).
 
 action_failed(Action, H) :-
-	report_message(error,['Action *', Action, '* could not be executed',
-	                      ' at history: ',H]),
+	report_message(error,
+		['Action *',Action,'* could not be executed at history: ',H]),
 	halt.
 
 

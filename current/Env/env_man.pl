@@ -471,18 +471,23 @@ execute_action(Action, H, Type, N2, Outcome) :-
 	map_execution(Action, Env, Code),   % From domain spec
 		% Send "execute" message to corresponding device
 	report_message(system(2), 
-		['(EM) Start to execute the following action: ',(N2, Action, Env, Code)]),
-	env_data(Env, _, SocketEnv),
-	send_data_socket(SocketEnv, [execute, N2, Type, Code]),
-	report_message(system(3),
-		['(EM) Action ',N2,' sent to device ',Env,' - Waiting for sensing outcome to arrive']),!,
+		['(EM) Start to execute the following action: ',(N2, Action, Env, Code)]),!,
+	(Env=internal ->
+		Outcome=ok
+	;
+		env_data(Env, _, SocketEnv),
+		send_data_socket(SocketEnv, [execute, N2, Type, Code]),
+		report_message(system(3),
+			['(EM) Action ',N2,' sent to device ',Env,
+				' - Waiting for sensing outcome to arrive']),!,
 		% Busy waiting for sensing outcome to arrive (ALWAYS)
-	repeat,   
-	got_sensing(N2, Outcome),
-	retract(executing_action(N2, _, _)),
-	retract(got_sensing(N2, _)), !,
-	report_message(system(2), 
-		['(EM) Action *', (N2, Action, Env, Code), '* completed with outcome: ',Outcome]).
+		repeat,   
+		got_sensing(N2, Outcome),
+		retract(executing_action(N2, _, _)),
+		retract(got_sensing(N2, _))
+	),
+	report_message(system(2), ['(EM) Action *', (N2, Action, Env, Code), 
+					'* completed with outcome: ',Outcome]), !.
 execute_action(_, _, _, N, failed) :- counter_actions(N).
 
 
@@ -492,6 +497,8 @@ map_execution(Action, Env, Code) :-
         env_data(Env, _, _), !.  % The device is running 
 % Otherwise, try to run Action in the simulator device 
 map_execution(Action, simulator, Action) :- env_data(simulator, _, _), !.
+% If no simulator is running, treat is as an internal action (always succeeds)
+map_execution(Action, internal, Action).
 
 % Otherwise, try to run Action in the simulator device 
 map_execution(Action, _, _) :-

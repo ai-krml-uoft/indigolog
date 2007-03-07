@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+8%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % FILE    : Examples/CLIMA/agent_clima.pl
 %
@@ -165,6 +165,9 @@ poss(tell(_,_), true).
 prim_action(broadcast(_Message)).
 poss(broadcast(_), true).
 
+prim_action(assumePit(_)).
+poss(assumePit(_), true).
+
 
 /* Exogenous Actions Available */
 exog_action(simStart(_, _)).
@@ -220,6 +223,7 @@ causes(right, 	locRobot(me), Y, right(locRobot(me),Y)).
 causes(requestAction(_, Data), locRobot(me), L,  sense_location(Data, L)).
 causes(told(A, Data), locRobot(A), L,  sense_location(Data, L)).
 
+
 % locRobotBefore: previous position of robot me before moving
 fun_fluent(locRobotBefore).
 causes(A, locRobotBefore, locRobot(me), member(A,[up,down,right,left])).
@@ -234,7 +238,7 @@ causes(told(_, Data), isGold(L), V, sense_gold(Data, L, V)).
 
 % hasGold: is the robot holding a gold brick?
 fun_fluent(hasGold).
-causes_val(pick, hasGold, possibly, true).
+causes_val(pick, hasGold, true, true).
 causes_val(requestAction(_, Data), hasGold, true,
 			and(sense_items(Data,N),
 			and(N<0,
@@ -271,8 +275,12 @@ def_fluent(fullLoaded, true, neg(noGold < maxNoGold)).
 
 % isPit(L): whether there is an object/pit at location L
 fun_fluent(isPit(L)):- location(L).
-causes(requestAction(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
+causes(requestAction(_, Data), isPit(L), true, sense_obstacle(Data, L, true)).
+causes(requestAction(_, Data), isPit(L), false, sense_data(Data, empty, L, true)).
+causes(requestAction(_, Data), isPit(L), false, 
+		and(sense_agent(Data, L, true), neg(isPit(L)=true))).
 causes(told(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
+causes(assumePit(L), isPit(L), true, neg(locDepot=L)).
 %causes(simStart(_, _), isPit(L), possibly, location(L)).
 
 
@@ -417,6 +425,11 @@ sense_data(Data, Obj, Loc, V) :-	% Loc is a veriable or a loc(_,_)
 	member(cell(CellID, LCellProp), LCells),
 	apply(CellID, [LocRobot, Loc]),
 	(member(Obj, LCellProp) -> V=true ; V=false).
+
+% Does Data says that there is an agent (enemy/ally) in Loc?
+sense_agent(Data, Loc, V) :- sense_data(Data, agent(enemy), Loc, V).
+sense_agent(Data, Loc, V) :- sense_data(Data, agent(ally), Loc, V).
+
 
 % location Loc is a cell around the centre and V is true/false depending
 % on whether gold was sensed in Loc
@@ -567,25 +580,17 @@ proc(mainControl(1),
 ).
 
 
-
-
-
 proc(mainControl(2),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), wait),
-	  interrupt(locRobot(me)=locDepot,
-			[drop,
-			 search(pi([(dir,direction),loc],
-				[?(apply(dir, [locRobot(me), loc])), 
-				 ?(isPit(loc)=false),
-			     	 dir]))
-			]),
+	  interrupt(and(locRobot(me)=locDepot,hasGold=true),drop),
 	  interrupt(hasGold=true,
 			pi(plan,
 			[say('Planning to go to depot...'),
 			 ?(pathfind(locRobot(me), locDepot, opt1, plan)),
 			 say(plan),
 			 execute_plan(plan)])),
+	  interrupt(locRobot(me)=locDepot, randomMove),					  
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick),
 	  interrupt([(dir,direction), loc], 
 			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
@@ -603,28 +608,34 @@ proc(mainControl(2),
 ).
 
 
-
 % Follows the list of movement actions Plan one-by-one 
 % The whole Plan may not be carried on fully because we hit an obstacle
 proc(execute_plan(Plan),
 	ndet([?(Plan=[]),say('Arrived to destination...')],
 	     	[
 		?(Plan=[A|RestPlan]),
-	      	?(apply(A,[locRobot(me), Expected])),
-	      	try_move(3,A,locRobot(me)=Expected),
-	      	if(locRobot(me)=Expected,execute_plan(RestPlan),say('Drop remaining plan..'))
+	      	?(apply(A,[locRobot(me), ExpectedLoc])),
+	      	try_action(3,A,isPit(ExpectedLoc)=true,locRobot(me)=ExpectedLoc,
+				assumePit(ExpectedLoc)),
+	      	if(locRobot(me)=ExpectedLoc,
+			execute_plan(RestPlan),
+			[say('Drop remaining plan....')])
 		]
 	)
 ).
 
-% Action A is tried N number of times to get to Expected location
-proc(try_move(N,A,SuccessCond),
-	if(N=0, say('Gave up on action!'),
-	      	if(and(neg(isPit(Expected)=true),neg(SuccessCond)),
-			pi(m,[A,?(m is N-1),try_move(m,A,Expected)]),
-			?(true)
-		)
+% Action A is tried N number of times to get SuccessCond or fail abort when FailureCond
+proc(try_action(N,A,FailureCond,SuccessCond,PFailureProgram),
+	[A,
+	?(true), 	% Here there should be a condition to wait for evaluation exec of A
+	if(and(neg(FailureCond),neg(SuccessCond)),
+		if(N=1, [say('Gave up on action!'),PFailureProgram],
+			pi(m,[?(m is N-1), 	
+				try_action(m,A,FailureCond,SuccessCond,PFailureProgram)])
+		),
+		?(true)
 	)
+	]
 ).
 
 
@@ -912,6 +923,7 @@ pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), CostSoFar, UpdatedCost, Esti
 %  INFORMATION FOR THE EXECUTOR
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 actionNum(X,X).	% Translations of actions are one-to-one
+
 
 		
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

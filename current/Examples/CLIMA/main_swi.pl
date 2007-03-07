@@ -140,7 +140,8 @@ load_device(Env, Command, Address) :-
 
 how_to_execute(Action, messenger(_), Action) :-
 	member(Action, [tell(_,_), broadcast(_)]), !.
-how_to_execute(Action, clima07(_), Action).
+how_to_execute(Action, clima07(_), Action) :-
+	clima_action(Action).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
