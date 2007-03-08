@@ -397,7 +397,8 @@ unfold_clima_message(XMLMess, bye, TimeStamp, []) :-
 unfold_clima_message(XMLMess, request-action, NTimeStamp, Data) :-
 	permutation(Data, [step(NStep),posX(NPosX),posY(NPosY),items(NItems),
 				deadline(NDeadline),id(Id),cells(CellsInfo)]), !,
-	(T= 'requestaction' ; T = requestaction),
+		% CLIMA06 uses 'requestaction' - CLIMA07 uses 'request-action'
+	(T= 'requestaction' ; T = requestaction ; T=request-action ; T='request-action'),
 	clima_message(XMLMess, T, TimeStamp, LElements), 
 	any_to_number(TimeStamp, NTimeStamp),
 	member([perception,LAttr,LCont],  LElements),
