@@ -514,7 +514,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
                 	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing 
 			outcome: ', S]),
 	        wait_between_actions,
-		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME!
+		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME TO HISTORY!
 		update_now(H2)
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS

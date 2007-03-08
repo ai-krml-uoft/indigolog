@@ -366,10 +366,18 @@ handle_event([_, [sensing, N, OutcomeCode]]) :- !,
         ; 
 	        Outcome=OutcomeCode
 	),
-        assert(got_sensing(N, Outcome)),
+	notify_sensing(N, Outcome),
         report_message(system(5),
 	               ['(EM) Sensing outcome arrived for action ',
 		        (N, Action), ' - Sensing Outcome:: ',(OutcomeCode,Outcome)]).
+
+% Notify that action N has received sensing outcome Outcome
+notify_sensing(N, Outcome) :-
+	type_prolog(swi), !,
+	thread_send_message(main,got_sensing(N, Outcome)).	
+notify_sensing(N, Outcome) :-
+        assert(got_sensing(N, Outcome)).
+
 
 handle_event([_, [exog_action, CodeAction]]):- 
 	(translateExogAction(CodeAction, Action) -> 
@@ -481,14 +489,21 @@ execute_action(Action, H, Type, N2, Outcome) :-
 			['(EM) Action ',N2,' sent to device ',Env,
 				' - Waiting for sensing outcome to arrive']),!,
 		% Busy waiting for sensing outcome to arrive (ALWAYS)
-		repeat,   
-		got_sensing(N2, Outcome),
-		retract(executing_action(N2, _, _)),
-		retract(got_sensing(N2, _))
+		wait_for_sensing(N2, Outcome),
+		retract(executing_action(N2, _, _))
 	),
 	report_message(system(2), ['(EM) Action *', (N2, Action, Env, Code), 
 					'* completed with outcome: ',Outcome]), !.
 execute_action(_, _, _, N, failed) :- counter_actions(N).
+
+% Wait for action N to get sensing Outcome
+wait_for_sensing(N, Outcome) :- type_prolog(swi), !,		% Via thread messages
+		thread_get_message(got_sensing(N, Outcome)).	% Block if necessary
+wait_for_sensing(N, Outcome) :- 	% Busy waiting (inefficient)
+		repeat,   
+		got_sensing(N, Outcome),
+		retract(got_sensing(N, Outcome)).
+
 
 
 % Find an adequate device manager that can execute Action and it is active
