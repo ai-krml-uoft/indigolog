@@ -124,7 +124,7 @@ server_host('127.0.0.1').
 % Define what environment managers the application will use
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(clima07([]), swi),(messenger([]), swi)]),
+        member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -162,6 +162,8 @@ main1:- main(participant1,1).
 main2:- main(participant2,2).
 main3:- main(participant3,3).
 main4:- main(participant4,4).
+main5:- main(participant5,5).
+main6:- main(participant6,6).
 
 main(AgentId, PassId) :-
 	set_agentID(AgentId,PassId),!,

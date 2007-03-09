@@ -289,7 +289,7 @@ causes(assumePit(L), isPit(L), true, neg(locDepot=L)).
 
 
 % A is an action that the agent can do in the CLIMA world
-clima_action(A) :- member(A,[up,down,left,right,pick,drop]).
+clima_action(A) :- member(A,[up,down,left,right,pick,drops,skip]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -306,7 +306,7 @@ causes_false(simStart(_,_), actionRequested, true).
 rel_fluent(broadcasted).
 causes_true(broadcast(_), broadcasted, true).
 causes_false(requestAction(_, _), broadcasted, true).
-causes_false(simStart(_, _), broadcasted, true).
+causes_true(simStart(_, _), broadcasted, true).
 
 % lastSensor: store the last sensing information obtained from game server
 fun_fluent(lastSensor).
@@ -503,7 +503,7 @@ initially(noVisited(R), 0):- location(R).
 
 	% Others
 initially(tries,1).
-initially(broadcasted,false).
+initially(broadcasted,true).
 initially(actionRequested,false).
 
 	
@@ -579,7 +579,7 @@ proc(mainControl(1),
 	  interrupt([(r(dir),direction),loc], 
           		and(apply(dir, [locRobot(me), loc]), 
           		and(isPit(loc)=false, neg(visited(loc)))), dir),
-	  interrupt(true, [say('Random movement.....'), randomMove]),
+	  interrupt(true, [say('Trying Random movement.....'), randomMove]),
 	  interrupt(true, [say('Cannot do anything, thus we skip...'), skip])
          ])  % END OF INTERRUPTS
 ).
@@ -587,7 +587,8 @@ proc(mainControl(1),
 
 proc(mainControl(2),
    prioritized_interrupts(
-         [interrupt(neg(actionRequested), wait),
+         [interrupt(neg(actionRequested), 
+			if(neg(broadcasted), broadcast(lastSensor), wait)),
 	  interrupt(and(locRobot(me)=locDepot,hasGold=true),drop),
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
 	  interrupt(hasGold=true,	% do we have gold? go back to depot?
