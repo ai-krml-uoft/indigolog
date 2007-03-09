@@ -800,18 +800,22 @@ max([X], X).
 max([X|L], Y) :- min(L, ML), (X > ML -> Y=X, Y=ML).
 
 
-
 % shuffle(+List, -ShuffledList) : Shuffle a list, ie randomize the element order
-shuffle([],[]).
-shuffle(D,DR) :- get_random_element(W,D), 
-		 delete(D,W,D2), 
-                 shuffle(D2,DR2), DR=[W|DR2].
-%get a random element from domain
-get_random_element(W,D)  :- 
-	length(D,L), 
-	L>0,
-	I is random(L),
-        nth0(I,D,W).
+shuffle(L1,L2) :- length(L1,LL1), shuffle2(L1,LL1,L2).
+shuffle2([],_,[]):- !.
+shuffle2(L,LL,[Element|L2]) :-
+	Idx is random(LL),
+	nth0(Idx,L,Element),
+	select(Element,L,L3),
+	LL3 is LL-1,
+	shuffle2(L3,LL3,L2).
+	
+%get a random element from 
+get_random_element(E,L)  :-  
+	L\=[],
+	length(L,LL), 
+	Idx is random(LL),
+        nth0(Idx,L,E).
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: lib/eclipse_swi.pl

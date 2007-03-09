@@ -104,10 +104,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Indigolog caching: fluents that are heavily used should be cached 
+cache(_):-fail, !.	% Do no caching.
 cache(locRobot(me)).
 cache(isPit(_)).
-cache(isGold(_)).
-%cache(_):-fail.
+%cache(isGold(_)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  0 - DEFINITIONS OF DOMAINS/SORTS
@@ -350,8 +350,7 @@ causes(reset, visited(L), true, locRobot(me)=L).
 fun_fluent(noVisited(L)) :- location(L).
 causes(requestAction(_, Data), noVisited(L), V, 
 		and(sense_location(Data, L), V is noVisited(L)+1)).
-causes(reset, noVisited(L), 0, and(location(L), neg(L=locRobot(me)))).
-causes(reset, noVisited(L), 1, locRobot(me)=L).
+causes(reset, noVisited(L), 0, location(L)).
 %causes(simStart(_,_), noVisited(L), 0, location(L)).
 
 
@@ -500,6 +499,7 @@ initially(gridSize, (99,99)).
 initially(isPit(R), possibly)	:- location(R).
 initially(isGold(R), possibly) 	:- location(R).
 initially(visited(R), false):- location(R).
+initially(noVisited(R), 0):- location(R).
 
 	% Others
 initially(tries,1).
@@ -510,7 +510,8 @@ initially(actionRequested,false).
 resetInitialDB :- 
 	initializeDB(isPit(_)),
 	initializeDB(isGold(_)),
-	initializeDB(visited(_)).
+	initializeDB(visited(_)),
+	initializeDB(noVisited(_)).
 
 
 
@@ -569,13 +570,13 @@ proc(mainControl(1),
 	  interrupt(hasGold=true, 
 			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
 	  interrupt(isGold(locRobot(me))=true, pick),
-	  interrupt([(dir,direction), loc], 
+	  interrupt([(r(dir),direction), loc], 
           		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
-	  interrupt([(dir,[ne,nw,se,sw]), loc], 
+	  interrupt([(r(dir),[ne,nw,se,sw]), loc], 
           		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
           		search(star([pi((a,[up,down,left,right]),a), 
 					?(locRobot(me)=loc)], 6)) ),
-	  interrupt([(dir,direction),loc], 
+	  interrupt([(r(dir),direction),loc], 
           		and(apply(dir, [locRobot(me), loc]), 
           		and(isPit(loc)=false, neg(visited(loc)))), dir),
 	  interrupt(true, [say('Random movement.....'), randomMove]),
@@ -588,27 +589,45 @@ proc(mainControl(2),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), wait),
 	  interrupt(and(locRobot(me)=locDepot,hasGold=true),drop),
-	  interrupt(hasGold=true,
+	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
+	  interrupt(hasGold=true,	% do we have gold? go back to depot?
 			pi(plan,
 			[say('Planning to go to depot...'),
 			 ?(pathfind(locRobot(me), locDepot, opt1, plan)),
 			 say(plan),
 			 execute_plan(plan)])),
-	  interrupt(locRobot(me)=locDepot, randomMove),					  
-	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick),
-	  interrupt([(dir,direction), loc], 
-			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
-	  interrupt([(dir,[ne,nw,se,sw]), loc], 
-			and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
-			search(star([pi((a,[up,down,left,right]),a), 
-					?(locRobot(me)=loc)], 6)) ),
-	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
-	  interrupt([(dir,direction),loc], 
-			and(apply(dir, [locRobot(me), loc]), 
-			and(isPit(loc)=false, neg(visited(loc)))), dir),
-	  interrupt(true, [say('Random movement.....'), randomMove]),
+	  interrupt(locRobot(me)=locDepot, safeRandomMove),	% get out of depot!
+	  interrupt([(dir,direction), loc], 	% Gold around us?
+		and(neg(fullLoaded),
+		and(apply(dir, [locRobot(me), loc]), 
+		    isGold(loc)=true)), dir),
+	  interrupt((dir,direction), bestAdjacent(dir), 
+				[say('Moving to the best cell around'), 
+				pi(result,try_movement(3,dir,result))]),
+	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),	% Broadcast last sensor
+	  interrupt(true, [say('Random movement.....'), safeRandomMove]),
 	  interrupt(true, [say('Cannot do anything, thus we skip...'), skip])
          ])  % END OF INTERRUPTS
+).
+
+% Dir is the best direction to go if:
+% 	- there is no pit & it has the lowest noVisited() score
+proc(bestAdjacent(Dir),
+	some(n, 
+	some(loc,
+		and(apply(Dir, [locRobot(me), loc]), 
+		and(isPit(loc)=false, 
+		and(noVisited(loc)=n,
+		    all(dir2,direction,
+			or(dir2=Dir,
+			   some(loc2,
+				or(neg(apply(dir2,[locRobot(me),loc2])), % no loc2: out grid
+			   	   and(apply(dir2,[locRobot(me),loc2]),
+			  		or(neg(isPit(loc2)=false),noVisited(loc2)>=n)
+				)))
+			))
+		)))
+	))
 ).
 
 
@@ -618,32 +637,39 @@ proc(execute_plan(Plan),
 	ndet([?(Plan=[]),say('Arrived to destination...')],
 	     	[
 		?(Plan=[A|RestPlan]),
-	      	?(apply(A,[locRobot(me), ExpectedLoc])),
-	      	try_action(3,A,isPit(ExpectedLoc)=true,locRobot(me)=ExpectedLoc,
-				assumePit(ExpectedLoc)),
-	      	if(locRobot(me)=ExpectedLoc,
-			execute_plan(RestPlan),
-			[say('Drop remaining plan....')])
+	      	pi(result,
+		[
+		try_movement(3,A,result),
+		if(result=ok,execute_plan(RestPlan),say('Drop remaining plan....'))
+		])
 		]
 	)
 ).
 
-% Action A is tried N number of times to get SuccessCond or fail abort when FailureCond
-proc(try_action(N,A,FailureCond,SuccessCond,PFailureProgram),
+% Try to do movement A, N times with Result (ok, failed, limit)
+proc(try_movement(N,A,Result),
+   	[?(apply(A,[locRobot(me), ExpectedLoc])),
+	 try_action(N,A,isPit(ExpectedLoc)=true,locRobot(me)=ExpectedLoc,
+				assumePit(ExpectedLoc), Result)
+	]
+).	
+
+
+% Action A is tried N number of times to get SuccessCond (Result=ok) or  fail when
+% FailureCond (Result=failed) or A has been tried N times already (Result=limit)
+proc(try_action(N,A,FailCond,SuccCond,PFailProg, Result),
 	[A,
 	?(true), 	% Here there should be a condition to wait for evaluation exec of A
-	if(and(neg(FailureCond),neg(SuccessCond)),
-		if(N=1, [say('Gave up on action!'),PFailureProgram],
-			pi(m,[?(m is N-1), 	
-				try_action(m,A,FailureCond,SuccessCond,PFailureProgram)])
-		),
-		?(true)
+	if(FailCond,?(Result=failed),
+		if(SuccCond, ?(Result=ok),
+			if(N=1,[?(Result=limit),say('Gave up on action!'),PFailProg],
+				pi(m,[?(m is N-1), 	
+				try_action(m,A,FailCond,SuccCond,PFailProg,Result)])
+			)
+		)
 	)
 	]
 ).
-
-
-
 
 
 % Say Text. For now it just prints the text in the console...
@@ -652,11 +678,12 @@ proc(say(Text),
 ).
 
 % Just picks a direct adjacent direction where there is no obstacle and go
-proc(randomMove,
-	search([rpi((a,[up,down,left,right]),a), ?(isPit(locRobot(me))=false)])
-).
+proc(randomMove, rpi((a,[up,down,left,right]),a)).
 
+proc(safeRandomMove, search([randomMove,?(isPit(locRobot(me))=false)])).
 
+% Solve P, if possible with C holding at the end
+proc(search_pref(P,C), wndet(search([P,?(C)]),search(P))).
 
 
 
@@ -756,10 +783,17 @@ proc(goodBorderPair(VLoc, NLoc),
 % Map Relative Definitions 
 % To change the relative orientation of the grid, one has to only change this definitions 
 % All the rest below should work out well and transparently of the grid orientation
-up(loc(X,Y),loc(X,YN))    	:- YN is Y-1, location(loc(X,YN)). 
-down(loc(X,Y),loc(X,YN)) 	:- YN is Y+1, location(loc(X,YN)).  
-right(loc(X,Y),loc(XN,Y)) 	:- XN is X+1, location(loc(XN,Y)).  
-left(loc(X,Y),loc(XN,Y))  	:- XN is X-1, location(loc(XN,Y)).  
+up(loc(X,Y),loc(X,YN))    	:- YN is Y-1, location(loc(X,YN)).
+down(loc(X,Y),loc(X,YN)) 	:- YN is Y+1, location(loc(X,YN)).
+right(loc(X,Y),loc(XN,Y)) 	:- XN is X+1, location(loc(XN,Y)).
+left(loc(X,Y),loc(XN,Y))  	:- XN is X-1, location(loc(XN,Y)).
+
+% in case we got out of the grid
+up(loc(X,Y),out)    	:- YN is Y-1, \+ location(loc(X,YN)).
+down(loc(X,Y),out) 	:- YN is Y+1, \+ location(loc(X,YN)).
+right(loc(X,Y),out) 	:- XN is X+1, \+ location(loc(XN,Y)).
+left(loc(X,Y),out)  	:- XN is X-1, \+ location(loc(XN,Y)).
+ 
 
 % to_up(Loc1,Loc2): Loc2 is towards direction "up" from Loc1
 to_up(loc(_, Y1),loc(_, Y2)) 	:- gridindexY(Y1), gridindexY(Y2), Y2<Y1.
@@ -780,21 +814,31 @@ se(L, L2)	:- s(L, A), e(A, L2).
 cur(L,L).
 
 % to_north(Loc1,Loc2): Loc2 is towards direction "north" from Loc1
-to_north(Loc1, Loc2)	:- to_up(Loc1,Loc2).
-to_east(Loc1, Loc2)	:- to_right(Loc1, Loc2).
-to_south(Loc1, Loc2):- to_down(Loc1, Loc2).
-to_west(Loc1, Loc2)	:- to_left(Loc1, Loc2).
-to_northwest(Loc1, Loc2)	:- to_north(Loc1, Loc2), to_west(Loc1, Loc2).
-to_northeast(Loc1, Loc2)	:- to_north(Loc1, Loc2), to_east(Loc1, Loc2).
-to_southwest(Loc1, Loc2)	:- to_south(Loc1, Loc2), to_west(Loc1, Loc2).
-to_southeast(Loc1, Loc2)	:- to_south(Loc1, Loc2), to_east(Loc1, Loc2).
+to_north(Loc1, Loc2) :- to_up(Loc1,Loc2).
+to_east(Loc1, Loc2) :- to_right(Loc1, Loc2).
+to_south(Loc1, Loc2) :- to_down(Loc1, Loc2).
+to_west(Loc1, Loc2) :- to_left(Loc1, Loc2).
+to_northwest(Loc1, Loc2) :- to_north(Loc1, Loc2), to_west(Loc1, Loc2).
+to_northeast(Loc1, Loc2) :- to_north(Loc1, Loc2), to_east(Loc1, Loc2).
+to_southwest(Loc1, Loc2) :- to_south(Loc1, Loc2), to_west(Loc1, Loc2).
+to_southeast(Loc1, Loc2) :- to_south(Loc1, Loc2), to_east(Loc1, Loc2).
 
 
-% rotateRight(R1, R2): R2 is the new direction from R1 after rotating clockwise once
+% rotateRight(R1, R2): R2 is the new direction from R1 after rotating clockwise
+% rotateLeft(R1, R2): R2 is the new direction from R1 after rotating counter-clockwise
 rotateRight(up,right).
 rotateRight(right,down).
 rotateRight(down,left).
 rotateRight(left,up).
+rotateLeft(R1, R2) :- rotateRight(R2,R1).
+
+% oppdir(D1,D2): D2 is the oppositive movement to D1
+oppdir(up,down).
+oppdir(down,up).
+oppdir(left,right).
+oppdir(right,left).
+
+
 
 % is loc(I,J) a valid location?
 %valid_loc(loc(I,J)) :- domain(I,gridindexX), domain(J,gridindexY).
