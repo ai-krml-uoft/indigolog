@@ -594,7 +594,7 @@ proc(mainControl(2),
 	  interrupt(hasGold=true,	% do we have gold? go back to depot?
 			pi(plan,
 			[say('Planning to go to depot...'),
-			 ?(pathfind(locRobot(me), locDepot, opt1, plan)),
+			 ?(pathfind(locRobot(me), locDepot, opt, plan,_)),
 			 say(plan),
 			 execute_plan(plan)])),
 	  interrupt(locRobot(me)=locDepot, safeRandomMove),	% get out of depot!
@@ -875,10 +875,18 @@ in_line(R1,D,R2) :- adj(R1,R3,D), in_line(R3,D,R2).
 %  PATH FINDING
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% type opt1: optimistic path finding
+% pathfind(L1, L2, Type, Limit, Plan, Stats)
+% Find a plan that takes you from L1 to L2 using path planning of type Type and
+% with limit Limit. The heuristic, the cost model, the property used for 
+% termination, and some statistics (Stats) are specified in the definition of the type. 
 
-% any location that is probably not a pit is ok to go
-pathfind_move(Start, End, opt1, D):- 
+% pathfind(L1, L2, Type, inf, Plan, Stats)
+% same as pathfind/6 but without a limit condition.
+%
+% pathfind_move/4 defines which locations to consider as part of a plan.
+% Any valid location that is probably not a pit is ok to check as part of a plan.
+% This is the same for all types of path finding. 
+pathfind_move(Start, End, _, D):- 
 	%direction(D), 
 	rdomain(D,[up,down,left,right]), 
 	apply(D,[Start,End]),
@@ -886,75 +894,40 @@ pathfind_move(Start, End, opt1, D):-
 	now(H),
 	\+ holds(isPit(End)=true,H).
 
-% manhattan distance + plan length as the heuristic
-% the cost of each action is .99 so that there is preference in
-% continuing a path rather than searching for a new one with the same cost
-pathfind_f_function(loc(I,J), loc(I2,J2), opt1, CostSoFar, UpdatedCost, Estimation):- 
-	DiffI is I-I2, 
-	DiffJ is J-J2,
-	abs(DiffI,AbsDiffI), 
-	abs(DiffJ,AbsDiffJ),
-	UpdatedCost is CostSoFar+0.99,
-	Estimation is AbsDiffI+AbsDiffJ.
-
-
-% type safe1: the shortest path that goes through places known to be safe
-
-% only go to a location if it is known that there is no pit
-pathfind_move(Start, End, safe1, D):- 
-	%direction(D), 
-	rdomain(D,[up,down,left,right]), 
-	apply(D,[Start,End]),
-	valid_loc(End),
-	now(H),
-	holds(isPit(End)=false,H).
-
-% manhattan distance + plan length as the heuristic
-% the cost of each action is .99 so that there is preference in
-% continuing a path rather than searching for a new one with the same cost
-pathfind_f_function(loc(I,J), loc(I2,J2), safe1, CostSoFar, UpdatedCost, Estimation):- 
-	DiffI is I-I2, 
-	DiffJ is J-J2,
-	abs(DiffI,AbsDiffI), 
-	abs(DiffJ,AbsDiffJ),
-	UpdatedCost is CostSoFar+0.99,
-	Estimation is AbsDiffI+AbsDiffJ.
-
-% type safe2(N): only go trhough unsafe places as long as 
-% this makes the path feasible or gives a shortcut that
-% will gain N moves. 
-
-% any location that is probably not a pit is ok to go
-pathfind_move(Start, End, safe2(_), D):- 
-	rdomain(D,[up,down,left,right]), 
-%	direction(D), 
-	apply(D,[Start,End]),
-	valid_loc(End),
-	now(H),
-	\+ holds(isPit(End)=true,H).
-
-% manhattan distance + plan length as the heuristic + demote
-pathfind_f_function(loc(I,J), loc(I2,J2), safe2(N), CostSoFar, UpdatedCost, Estimation):- 
+% Pathfinding type safe(N): 
+% Only go trhough unsafe places as long as this makes the path feasible or gives a shortcut 
+% that will gain N moves. 
+%
+% Uses manhattan distance as the heuristic for the remaining path.
+% Uses the following for computing the cost of the path found so far. 
+% i)  The cost of each action is .99 so that there is preference in continuing a path rather
+%     than searching for a new one with the same cost
+% ii) The cost of an action that leads to an unsafe location is further increased by N
+% Uses the number of possibly unsafe locations as termination condition
+pathfind_f_function(loc(I,J), loc(I2,J2), safe(N), Cost, UpdCost, Assump, UpdAssump, Estimation):- 
 	DiffI is I-I2, 
 	DiffJ is J-J2,
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
 	now(H),
-	(holds(isPit(loc(I,J))=possibly,H) -> Demote is N; Demote=0),
-	UpdatedCost is CostSoFar+0.99+Demote,
+	(holds(isPit(loc(I,J))=false,H)-> UpdAssump=Assump, Demote=0 ; UpdAssump is Assump+1, Demote is N),
+	UpdCost is Cost+0.99+Demote,
 	Estimation is AbsDiffI+AbsDiffJ.
 
+pathfind(L1, L2, safe, Plan, Stats) :- pathfind(L1, L2, safe(0), 1, Plan, Stats).
+pathfind(L1, L2, opt, Plan, Stats)  :- pathfind(L1, L2, safe(0), inf, Plan, Stats).
 
-% type expl1(N): a not-necessarily-shortest exporatory path that may go
+% Use pathfind(L1, L2, safe, Plan, Stats) to force going through safe locations only.
+% Use pathfind(L1, L2, opt, Plan, Stats) to find the most optimistic plan.
+% Use pathfind(L1, L2, safe(N), Limit, Plan, Stats) with high values of N and L>1 
+% to avoid going through possibly unsafe locations unless it is necessary or it works 
+% as a short cut and limit the possibly unsafe ones to be less than Limit.
+
+
+% not ready yet
+% type expl(N): a not-necessarily-shortest exporatory path that may go
 % through a possibly unsafe place as long as this does not make the
 % path longer than N moves.
-
-% any location that is probably not a pit is ok to go
-pathfind_move(Start, End, expl1(_), D):- 
-	direction(D), 
-	apply(D,[Start,End]),
-	now(H),
-	\+ holds(isPit(End)=true,H).
 
 % manhattan distance + plan length as the heuristic + promote
 pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), CostSoFar, UpdatedCost, Estimation):- 

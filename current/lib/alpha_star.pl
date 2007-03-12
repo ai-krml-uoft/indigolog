@@ -82,15 +82,27 @@ pathfind_expand(State#D#_#S,Goal,All_My_Children) :-
 %path finding that takes as an argument which determins which pair of heuristic-moves to use.
 %the user provides functions by giving definitions for pathfind_f_function/5 and pathfind_move/4
 %which are conditioned on a type
-pathfind(State,Goal,Type,Soln) :- 
-		pathfind_f_function(State,Goal,Type,0,_,F),
-		pathfind_search_adv([State#0#F#[]#[State]],Goal,Type,S), reverse(S,Soln).
 
-pathfind_search_adv([State#D#F#Soln#_|L], State, _, Soln):- writeln(D), writeln(F),length(L,N),writeln(N).
-pathfind_search_adv([B|R],Goal,Type,S) :- 
-		pathfind_expand_adv(B,Goal,Type,Children),
+%     Nodes have form    S#D#F#P#A#T
+%            where S describes the state or configuration
+%                  D is the cost computed so far to go from the starting node to this one
+%                  F is the evaluation of the additional cost needed to get to the destination
+%                  P is the list of actions performed so far
+%                  A is the list of ancestor nodes visited so far
+%                  T termination condition
+
+pathfind(State,Goal,Type,Lim,Soln,Stats) :- 
+		pathfind_f_function(State,Goal,Type,0,_,0,_,F),
+		pathfind_search_adv([State#0#F#[]#[State]#0],Goal,Type,Lim,S,Stats), reverse(S,Soln).
+
+pathfind_search_adv([State#D#_#Soln#_#T|L], State, _, _, Soln,[D,T,N]):- %length(L,N).
+		write('total cost '),writeln(D), 
+		write('alpha* stack size '),length(L,N),writeln(N),
+		write('termination value '),writeln(T),writeln('').
+pathfind_search_adv([B|R],Goal,Type,Lim,S,Stats) :-
+		pathfind_expand_adv(B,Goal,Type,Lim,Children),
 		pathfind_insert_all_adv(Children,R,Open),
-		pathfind_search_adv(Open,Goal,Type,S).
+		pathfind_search_adv(Open,Goal,Type,Lim,S,Stats).
 
 pathfind_insert_all_adv([F|R],Open1,Open3) :- 
 		pathfind_insert_adv(F,Open1,Open2),
@@ -104,13 +116,14 @@ pathfind_insert_adv(B,[],[B]).
 
 pathfind_repeat_node_adv(P#_#_#_#_, [P#_#_#_#_|_]).
 
-pathfind_cheaper_adv( _#D1#F1#_#_ , _#D2#F2#_#_ ) :- V1 is F1+D1,V2 is F2+D2, V1 < V2.
+pathfind_cheaper_adv( _#D1#F1#_#_#_ , _#D2#F2#_#_#_ ) :- V1 is F1+D1,V2 is F2+D2, V1 < V2.
 
-pathfind_expand_adv(State#D#_#S#Path,Goal,Type,All_My_Children) :-
-     bagof(Child#D1#F1#[Move|S]#[Child|Path],
+pathfind_expand_adv(State#D#_#S#Path#T,Goal,Type,Lim,All_My_Children) :-
+     bagof(Child#D1#F1#[Move|S]#[Child|Path]#T1,
 			(pathfind_move(State,Child,Type,Move),
 			\+ member(Child,Path),
-			pathfind_f_function(Child,Goal,Type,D,D1,F1)),
+			pathfind_f_function(Child,Goal,Type,D,D1,T,T1,F1),
+			(Lim=inf -> true; T1<Lim)), 
            	All_My_Children).
 
 
