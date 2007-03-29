@@ -77,7 +77,8 @@
            argv/2,
            argc/1,
 	   min/2,                  % Minimum of a list
-	   max/2                   % Maximum of a list
+	   max/2,                  % Maximum of a list
+	   timeout/3		
           ]). 
 
 
@@ -652,7 +653,7 @@ exec(Command, [ServerOut, ServerIn, _], Pid) :-
                              register_stream_name(ServerIn2, ServerIn)),
         fork(Pid),
         (   Pid == child,
-	    % detach_IO % may this work to detach the child ?
+	    detach_IO, % may this work to detach the child ?
             (ServerOut == null -> true ; (close(ServerOut), 
 					  dup(CGIIn, 0),     % stdin
 					  close(CGIIn))),
@@ -757,6 +758,9 @@ copy_pipe(In, Out) :-
 % -- argv(+N, ?Argument)
 %         Succeeds if the Nth argument given on the command line when 
 %         invoking ECLiPSe is the string Argument.
+%
+% -- timeout(+Goal,+Sec,+TimeOutGoal): 
+%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on timeout
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -816,6 +820,13 @@ get_random_element(E,L)  :-
 	length(L,LL), 
 	Idx is random(LL),
         nth0(Idx,L,E).
+
+
+% timeout(+Goal,+Sec,+TimeOutGoal): 
+%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on timeout
+timeout(Goal, Sec, TimeOutGoal) :-
+	catch(call_with_time_limit(Sec, Goal),time_limit_exceeded, TimeOutGoal).
+
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: lib/eclipse_swi.pl

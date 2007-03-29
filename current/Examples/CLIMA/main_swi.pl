@@ -108,10 +108,11 @@
 :- dynamic clima_agentID/2.
 
 % This is the address of the CLIMA server
-clima_location(tea, 12300).
+%clima_location(tea, 12300).
+clima_location(localhost, 12300).
 
 % Information required for the MESSENGER environment
-mess_location('localhost', 5000).
+mess_location('localhost', 5001).
 agentID(Id) :- clima_agentID(Id,_).
 teammember(A) :- member(A,[germany1,germany2,germany3,germany4]).
 
@@ -125,6 +126,7 @@ server_host('127.0.0.1').
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
         member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
+%        member((Env,Type), [(clima07([]), swi),(messenger([]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -178,7 +180,7 @@ set_agentID(AgentId,PassId) :-
 % PREDICATES WITH SYSTEM DEPENDENT CODE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- set_option(debug_level,0).
+:- set_option(debug_level,1).
 :- set_option(wait_step,0).
 :- set_option(debug_level,warn_off).
 

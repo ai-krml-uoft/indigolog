@@ -96,6 +96,8 @@
 %            (provide empty implementations of both if there is no support 
 %            for exceptions available)
 % -- shuffle/2 : shuffle a list into another list in a random way
+%
+% -- call_with_time_limit(+Sec, +Goal): True if Goal completes within Time. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,7 +120,8 @@
     /*    wait         : Meta action to wait until an exogenous event    */
     /*    commit       : Meta action to commit to the plan found so far  */
     /*    abort        : Meta action to, suddenly,  abort execution      */
-    /*									 */
+    /*	  time(P,Sec)  : Make first step on P in less than Sec seconds	 */
+    /*	  ttime(P,Sec) : Make every step on P in less than Sec seconds 	 */
 % Try to execute program E1 first. If impossible, then try program E2 instead
 trans(wndet(E1,E2),H,E,H1) :- trans(E1,H,E,H1) -> true ; trans(E2,H,E,H1).
 final(wndet(E1,E2),H)      :- final(E1,H), final(E2,H).
@@ -139,13 +142,42 @@ trans(rconc(E1,E2),H,rconc(E11,E22),H1) :-
 final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
 
 % Execute program E as long as condition P holds; finish E if neg(P)
-final(gexec(_,E), H)                   :- final(E,H).
+final(gexec(_,E), H) :- final(E,H).
 trans(gexec(P,E), H, gexec2(P,E1), H1) :- 
         assume(P, true, H, H2),    % Set P to be TRUE
         trans(E, H2, E1, H1).
 
-final(gexec2(P,E), H)                   :- isTrue(neg(P),H) ; final(E,H).
+final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
 trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
+
+final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
+trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
+
+
+% gexec(PSucc,E,PFail,ERec): full guarded execution
+%	PSucc 	: finalize successfully if PSucc holds
+%	E	: the program to be executed
+%	PFial	: Terminate the program E and execute recovery procedure ERec
+final(gexec(PSucc,E,_,_), H) :- isTrue(PSucc,H) ; final(E,H).
+trans(gexec(PSucc,_,PFail,ERec), H, E2, H2) :-
+	isTrue(neg(PSucc),H),
+	isTrue(PFail,H),
+	trans(ERec,H, E2, H2).
+trans(gexec(PSucc,E,PFail,ERec), H, gexec(PSucc,E2,PFail,ERec), H2) :-
+	isTrue(neg(PSucc),H),
+	isTrue(neg(PFail),H),
+	trans(E,H,E2,H2).
+
+
+
+
+% goal(PSucc,E,PFail)
+final(goal(PSucc,E,_),H) :- isTrue(PSucc,H) ; final(E,H).
+trans(goal(_,_,PFail),H,?(false),H) :- isTrue(PFail,H).
+trans(goal(PSucc,E,PFail),H,goal(PSucc,E2,PFail),H2) :- 
+	isTrue(neg(PSucc),H),
+	isTrue(neg(PFail),H),
+	trans(E,H,E2,H2).
 
 % Abort process identified with P by setting P to false in H
 trans(abort(P), H, [], H1) :- assume(P, false, H, H1).
@@ -175,6 +207,19 @@ trans(sim(E),H,[],[sim(E)|H]):- !, calc_arg(E,E1,H), exog_action(E1).
 trans(wait,H,[],[wait|H])    :- !. % wait is a no-op but encourages rolling db
 trans(commit,S,[],[commit|S]).	   % commit to the plan found so far! 
 trans(abort,S,[],[abort|S]).	   % completely abort execution
+
+
+% Time bounded steps
+% time(E,Sec)  : make the *first* step in E before Sec seconds
+% ttime(E,Sec) : make every step before in E before Sec seconds
+trans(time(E,Sec),H,E2,H2) :-
+	timeout(trans(E,H,E2,H2), Sec, fail).
+final(time(E,Sec),H) :-
+	timeout(final(E,H), Sec, fail).
+trans(ttime(E,Sec),H,time(E2,Sec),H2) :- trans(time(E,Sec),H,E2,H2).
+final(ttime(E,Sec),H) :- final(time(E,Sec),H).
+
+
 
 
     /* (B) CONGOLOG CONSTRUCTS                                           */

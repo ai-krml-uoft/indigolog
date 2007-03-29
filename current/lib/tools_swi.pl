@@ -117,13 +117,17 @@ call_to_exec(unix, Command, sh('-c',Command2)) :-
 	string_concat(Command,' ; exit',Command2).
 
 % Killing a thread means signal it with an "abort" event
-thread_kill(ThreadId) :- thread_signal(ThreadId, throw(abort)),
-                         wait(ThreadId, _).
+thread_kill(ThreadId) :- 
+	thread_signal(ThreadId, throw(abort)),
+	wait(ThreadId, _).
 thread_wait(ThreadId, Status) :- 
         current_thread(ThreadId, _) -> thread_join(ThreadId, Status) ; true.
 
-proc_kill(Pid)    :- kill(Pid, 9).
-proc_wait(Pid, S) :- repeat, wait(Pid, S).
+proc_kill(Pid)    :- 
+	catch(kill(Pid, 9),error(system_error, context(divide(kill, _), _)),true).
+proc_wait(Pid, S) :- 
+	repeat, 
+	catch(wait(Pid, S),error(system_error, context(divide(wait, _), _)),true).
 file_exists(File) :- exists_file(File).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

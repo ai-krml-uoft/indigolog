@@ -369,6 +369,7 @@ holds(P,H)			:- subf(P,P1,H), call(P1).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
 subf(P1,P2,_)  :- (var(P1) ; number(P1)), !, P2 = P1.
+subf(textual(P1),P1,_) :- !.
 subf(P1,P2,H)  :- atom(P1), !, subf2(P1,P2,H).
 subf(P1,P2,H)  :- P1=..[F|L1], subfl(L1,L2,H), P3=..[F|L2], subf2(P3,P2,H).
 

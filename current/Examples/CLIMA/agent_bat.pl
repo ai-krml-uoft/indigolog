@@ -168,12 +168,16 @@ poss(broadcast(_), true).
 prim_action(assumePit(_)).
 poss(assumePit(_), true).
 
+prim_action(setState(_,_)).
+poss(setState(_,TimeStamp), get_time(TimeStamp)).
+
 
 /* Exogenous Actions Available */
 exog_action(simStart(_, _)).
 exog_action(simEnd(_, _)).
 exog_action(requestAction(_, _)).
 exog_action(told(_,_)).
+
 
 
 
@@ -190,7 +194,11 @@ causes_val(A, F, V, C) :- causes(A, F, V, C).
 %% FLUENTS USED TO MODEL THE WORLD STATE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% inDungeon: robot is inside the dungeon playing the game!
+% playingGame: are we still playing in the simulation?
+rel_fluent(playingGame).
+causes_true(bye, playingGame, true).
+causes_false(nothing, playingGame, true).
+
 rel_fluent(inDungeon).
 causes_true(simStart(_, _), inDungeon, true).
 causes_false(simEnd(_, _), inDungeon, true).
@@ -223,10 +231,23 @@ causes(right, 	locRobot(me), Y, right(locRobot(me),Y)).
 causes(requestAction(_, Data), locRobot(me), L,  sense_location(Data, L)).
 causes(told(A, Data), locRobot(A), L,  sense_location(Data, L)).
 
-
 % locRobotBefore: previous position of robot me before moving
 fun_fluent(locRobotBefore).
-causes(A, locRobotBefore, locRobot(me), member(A,[up,down,right,left])).
+causes(A, locRobotBefore, V, and(member(A,[up,down,right,left]),V=locRobot(me))).
+
+% locExpected: location the agent is expected to be (after moving)
+fun_fluent(locExpected).
+causes(up, 	locExpected, Y, up(locRobot(me),Y)).
+causes(down, 	locExpected, Y, down(locRobot(me),Y)).
+causes(left, 	locExpected, Y, left(locRobot(me),Y)).
+causes(right, 	locExpected, Y, right(locRobot(me),Y)).
+
+
+
+% robotState: sets the current state of the robot
+fun_fluent(robotState).
+causes(setState(State,Time), robotState, [State,Time], true).
+causes(simStart(_,_), robotState, idle, true).
 
 
 % isGold(L): whether there is gold at location L
@@ -268,7 +289,7 @@ causes_val(requestAction(_, Data), noGold, N, and(sense_items(Data,N), N>=0)).
 
 % maxNoGold: a rigid fluent storing how many pieces of gold we can carry
 fun_fluent(maxNoGold).
-def_fluent(maxNoGold, 1, true).
+def_fluent(maxNoGold, 3, true).
 
 % fullLoaded: the agent is carrying the maximum number of gold pieces
 fun_fluent(fullLoaded).
@@ -287,9 +308,13 @@ causes(told(_, Data), isPit(L), V, sense_obstacle(Data, L, V)).
 causes(assumePit(L), isPit(L), true, neg(locDepot=L)).
 %causes(simStart(_, _), isPit(L), possibly, location(L)).
 
+% deadline: next server deadline to submit action
+fun_fluent(deadline).
+causes(requestAction(_, Data), deadline, V, sense_deadline(Data, V)).
+
 
 % A is an action that the agent can do in the CLIMA world
-clima_action(A) :- member(A,[up,down,left,right,pick,drops,skip]).
+clima_action(A) :- member(A,[up,down,left,right,pick,drop,skip]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -384,7 +409,7 @@ senses(_, _, _, _, _) :- fail.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Data is a list of the following form:
 %
-% [step(19), posX(13), posY(0), deadline(1143592298798), id('20'), 
+% [step(19), posX(13), posY(0), deadline(1143592298798), id('20'), items(2),
 % cells([cell(cur, [agent(ally)]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), 
 % cell(se, [gold]), cell(e, [obstacle])])]) which includes all the information received
 % 
@@ -491,6 +516,7 @@ initially(locRobot(me),loc(0,0)).
 initially(hasGold,false).
 initially(noGold,0).
 initially(inDungeon, false).
+initially(playingGame, true).
 initially(gridSizeX, 99).
 initially(gridSizeY, 99).
 initially(gridSize, (99,99)).
@@ -505,6 +531,7 @@ initially(noVisited(R), 0):- location(R).
 initially(tries,1).
 initially(broadcasted,true).
 initially(actionRequested,false).
+initially(robotState, idle).
 
 	
 resetInitialDB :- 
@@ -513,15 +540,12 @@ resetInitialDB :-
 	initializeDB(visited(_)),
 	initializeDB(noVisited(_)).
 
-
-
-
-
-
-
-
-
-
+% Setup simulation with X and Y as the limits of the grid
+setupSimulation(X,Y) :-
+	retractall(gridsizeX(_)),
+	retractall(gridsizeY(_)),
+	assert(gridsizeX(X)),
+	assert(gridsizeY(Y)).
 
 
 
@@ -541,15 +565,12 @@ resetInitialDB :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % THIS IS THE MAIN EXECUTOR
-proc(main,  	[while(neg(inDungeon), [?(writeln('Waiting simulation to start')), wait]), 
-			?(setupSimulation(gridSizeX, gridSizeY)), 
-			mainControl(2)]).
+proc(main,  	[while(and(neg(inDungeon),playingGame), 
+					[?(writeln('Waiting simulation to start')), wait]), 
+		if(playingGame,[?(setupSimulation(gridSizeX, gridSizeY)), mainControl(2)],
+				say('Game over.......'))]
+).
 
-setupSimulation(X,Y) :-
-	retractall(gridsizeX(_)),
-	retractall(gridsizeY(_)),
-	assert(gridsizeX(X)),
-	assert(gridsizeY(Y)).
 
 % Controller for the CLIMA agent:
 %	1. Wait until a new action is requested from the game server
@@ -564,52 +585,119 @@ setupSimulation(X,Y) :-
 proc(mainControl(1),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), 
-		[wait, if(lastActionFailed=true,
-				say('last action failed!!!!!!!!!!!!!'),?(true))]),
-	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),
-	  interrupt(hasGold=true, 
-			[while(neg(locRobot(me)=locDepot), stepTo(locDepot)), drop]),
-	  interrupt(isGold(locRobot(me))=true, pick),
-	  interrupt([(r(dir),direction), loc], 
-          		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), dir),
-	  interrupt([(r(dir),[ne,nw,se,sw]), loc], 
-          		and(apply(dir, [locRobot(me), loc]), isGold(loc)=true), 
-          		search(star([pi((a,[up,down,left,right]),a), 
-					?(locRobot(me)=loc)], 6)) ),
-	  interrupt([(r(dir),direction),loc], 
-          		and(apply(dir, [locRobot(me), loc]), 
-          		and(isPit(loc)=false, neg(visited(loc)))), dir),
-	  interrupt(true, [say('Trying Random movement.....'), randomMove]),
-	  interrupt(true, [say('Cannot do anything, thus we skip...'), skip])
+			if(neg(broadcasted), broadcast(lastSensor), wait)),
+	  interrupt(and(locRobot(me)=locDepot,hasGold=true), drop),
+	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
+	  interrupt(hasGold=true,	% do we have gold? go back to depot?
+			[say('Planning to go to depot...'),
+			 goByPlanning2(opt, locDepot)]
+		),
+	  interrupt([(dir,direction), loc], 	% Gold around us?
+			and(neg(fullLoaded), and(apply(dir, [locRobot(me), loc]), isGold(loc)=true)), 
+			[say('Spotted gold around! Moving there..'), dir]
+		),
+	  interrupt(locRobot(me)=locDepot, 	% Get out of depot quick!
+			[say('Getting out of depot with a random move'), safeRandomMove]),	
+	  interrupt(locWithGold, destinationGold(locWithGold,10),
+			[say(['Going for gold at location: ',locWithGold]),
+			 goByPlanning(opt, locWithGold)]
+		),
+	  interrupt((dir,direction), bestAdjacent(dir), 
+			[say('Moving to the best unknown cell around maximazing exploration'),
+			 pi(result,try_movement(3,dir,result))]),
+	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),	% Broadcast last sensor
+	  interrupt(playingGame, [say('Random movement.....'), safeRandomMove]),
+	  interrupt(playingGame, [say('Cannot do anything, thus we skip...'), skip])
          ])  % END OF INTERRUPTS
 ).
-
 
 proc(mainControl(2),
    prioritized_interrupts(
          [interrupt(neg(actionRequested), 
 			if(neg(broadcasted), broadcast(lastSensor), wait)),
-	  interrupt(and(locRobot(me)=locDepot,hasGold=true),drop),
+	  interrupt(and(locRobot(me)=locDepot,hasGold=true), drop),
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
-	  interrupt(hasGold=true,	% do we have gold? go back to depot?
-			pi(plan,
-			[say('Planning to go to depot...'),
-			 ?(pathfind(locRobot(me), locDepot, opt, plan,_)),
-			 say(plan),
-			 execute_plan(plan)])),
-	  interrupt(locRobot(me)=locDepot, safeRandomMove),	% get out of depot!
 	  interrupt([(dir,direction), loc], 	% Gold around us?
-		and(neg(fullLoaded),
-		and(apply(dir, [locRobot(me), loc]), 
-		    isGold(loc)=true)), dir),
+			and(neg(fullLoaded), and(apply(dir, [locRobot(me), loc]), isGold(loc)=true)), 
+			[say('Spotted gold around! Moving there..'), 
+			 pi(time,setState(pickCloseGold,time)),
+			 dir]
+		),
+	  interrupt(hasGold=true,	% do we have gold? go back to depot?
+			[say('Planning to go to depot...'),
+			 goByPlanning2(opt, locDepot)]
+		),
+	  interrupt(locRobot(me)=locDepot, 	% Get out of depot quick!
+			[say('Getting out of depot with a random move'), safeRandomMove]),	
+	  interrupt(locWithGold, destinationGold(locWithGold,10),
+			[say(['Going for gold at location: ',locWithGold]),
+			 goByPlanning(opt, locWithGold)]
+		),
 	  interrupt((dir,direction), bestAdjacent(dir), 
-				[say('Moving to the best cell around'), 
-				pi(result,try_movement(3,dir,result))]),
+			[say('Moving to the best unknown cell around maximazing exploration'),
+			 pi(result,try_movement(3,dir,result))]),
 	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),	% Broadcast last sensor
-	  interrupt(true, [say('Random movement.....'), safeRandomMove]),
-	  interrupt(true, [say('Cannot do anything, thus we skip...'), skip])
+	  interrupt(playingGame, [say('Random movement.....'), safeRandomMove]),
+	  interrupt(playingGame, [say('Cannot do anything, thus we skip...'), skip])
          ])  % END OF INTERRUPTS
 ).
+
+% Go to Destination using planning Method (opt, safe)
+proc(goByPlanning(Method, Destination),
+	 pi([plan,myLocation,precPlan,planQual],
+		[?(and(myLocation=locRobot(me),
+			pathfind(myLocation,Destination,Method,plan,planQual))),
+		?(buildPreconditions(plan,myLocation,precPlan)),
+		say(plan),
+		execute_plan(plan,precPlan)]
+	)
+).
+
+% buildPreconditions(ListMoves, ExpectedNext, ListPreconditions)
+buildPreconditions([_],ExpLocation, [locRobot(me)=ExpLocation]) :- !.
+buildPreconditions([A|RestA],ExpLocation,[locRobot(me)=ExpLocation|RestPrec]) :-
+	apply(A, [ExpLocation, NewExpLocation]), NewExpLocation\=out, !,
+	buildPreconditions(RestA,NewExpLocation,RestPrec).
+buildPreconditions([_|_],ExpLocation,[locRobot(me)=ExpLocation]) :-
+	writeln('Error building precondition list for plan....').
+
+
+
+
+
+
+proc(goByPlanning2(Method, Destination),
+	 pi([plan,myLocation,precPlan,planQual,time],
+		[?(and(myLocation=locRobot(me),
+			pathfind(myLocation,Destination,Method,plan,planQual))),
+		say(plan),
+                setState(goingTo(Destination),time),
+		gexec(locRobot=Destination,
+			insist(plan), 
+			or(neg(robotState=[goingTo(Destination),time]),
+				neg(or(locRobot(me)=locRobotBefore,locRobot(me)=locExpected))),
+			[say(['Aborting plan to destination :',time]),
+			say(neg(or(locRobot(me)=locRobotBefore,locRobot(me)=locExpected)))])
+		]
+	)
+).
+
+proc(insist(Plan),
+	ndet(?(Plan=[]),
+	      	pi(result,
+		[
+		?(textual(Plan=[A|RestPlan])),
+		?(actionRequested),	% block until next action is requested
+		try_movement(A,result),
+		if(result=ok,insist(RestPlan),say('Drop remaining plan....'))
+		])
+	)
+).
+	
+
+	
+	
+
 
 % Dir is the best direction to go if:
 % 	- there is no pit & it has the lowest noVisited() score
@@ -632,40 +720,58 @@ proc(bestAdjacent(Dir),
 ).
 
 
+proc(destinationGold(LocWithGold, Limit),
+	and(isGold(LocWithGold)=true, 
+	    some(dist,and(manhattanDistance(LocWithGold,locRobot(me),dist), dist<Limit))
+	)	
+).
+
+
 % Follows the list of movement actions Plan one-by-one 
 % The whole Plan may not be carried on fully because we hit an obstacle
-proc(execute_plan(Plan),
+% Plan is a list of actions that need to be carried on
+% PrecPlan are the list of preconditions for each action in Plan
+% If the precondition of a step is not satisfied, the plan is aborted fully
+proc(execute_plan(Plan,PrecPlan),
 	ndet([?(Plan=[]),say('Arrived to destination...')],
 	     	[
-		?(Plan=[A|RestPlan]),
+		?(and(textual(Plan=[A|RestPlan]),textual(PrecPlan=[PrecA|RestPrecPlan]))),
 	      	pi(result,
 		[
-		try_movement(3,A,result),
-		if(result=ok,execute_plan(RestPlan),say('Drop remaining plan....'))
+		?(actionRequested),	% block until next action is requested
+		if(PrecA, try_movement(A,result),
+			[say('Precondition of plan failed...'), ?(result=failed)]),
+		if(result=ok,execute_plan(RestPlan,RestPrecPlan),say('Drop remaining plan....'))
 		])
 		]
 	)
 ).
 
+	
+
 % Try to do movement A, N times with Result (ok, failed, limit)
-proc(try_movement(N,A,Result),
+proc(try_movement(A,Result),
    	[?(apply(A,[locRobot(me), ExpectedLoc])),
-	 try_action(N,A,isPit(ExpectedLoc)=true,locRobot(me)=ExpectedLoc,
-				assumePit(ExpectedLoc), Result)
+		% Try 3 times action A, failing by executing assumePit(ExpectedLoc)
+		% Abort if isPit(ExpectedLoc)=true
+		% Succeed if locRobot(me)=ExpectedLoc 
+	 try_action(3, A, isPit(ExpectedLoc)=true, locRobot(me)=ExpectedLoc,
+		if(adj(locRobot(me),ExpectedLoc),assumePit(ExpectedLoc),?(true)), Result)
 	]
 ).	
 
 
-% Action A is tried N number of times to get SuccessCond (Result=ok) or  fail when
-% FailureCond (Result=failed) or A has been tried N times already (Result=limit)
-proc(try_action(N,A,FailCond,SuccCond,PFailProg, Result),
+% Action A is tried N number of times to get SuccessCond (Result=ok) 
+% Abort when AbortCond with Result=aborted 
+% Fail with Result=failed if A has been tried N times already; execute PFailProg
+proc(try_action(N,A,AbortCond,SuccCond,PFailProg,Result),
 	[A,
 	?(true), 	% Here there should be a condition to wait for evaluation exec of A
-	if(FailCond,?(Result=failed),
+	if(AbortCond,[say('Abort condition applied.. aborting'),?(Result=aborted)],
 		if(SuccCond, ?(Result=ok),
-			if(N=1,[?(Result=limit),say('Gave up on action!'),PFailProg],
+			if(N=1,[?(Result=failed),say('Gave up on action!'),PFailProg],
 				pi(m,[?(m is N-1), 	
-				try_action(m,A,FailCond,SuccCond,PFailProg,Result)])
+				try_action(m,A,AbortCond,SuccCond,PFailProg,Result)])
 			)
 		)
 	)
@@ -674,9 +780,17 @@ proc(try_action(N,A,FailCond,SuccCond,PFailProg, Result),
 
 
 % Say Text. For now it just prints the text in the console...
-proc(say(Text),
-	?(writeln(Text))
-).
+proc(say(Text), ?(report(Text))).
+
+report(Message):-
+	is_list(Message),
+	maplist(any_to_string,Message,LS),
+	any_to_string(' ', Space),
+	join_string(LS, Space, M2), % Include space between each element
+	writeln(M2).
+report(Message):- writeln(Message).
+
+
 
 % Just picks a direct adjacent direction where there is no obstacle and go
 proc(randomMove, rpi((a,[up,down,left,right]),a)).
@@ -736,44 +850,6 @@ proc(move(D),  [search([star(turn,4),?(dirRobot=D),moveFwd])]).
 proc(shoot(D), [search([star(turn,4),?(dirRobot=D),shootFwd])]).
 
 
-% Think of a plan (random walk) to safely move to some unvisited location 
-proc(newRandomWalk, 
-	  search([
-	  	  	rpi(y,location,[
-	  	  		?(visited(y)=true),
-	  	  		rpi(z,location,[
-	  	  			?(adj(y,z)),
-	  	  			?(visited(z)=false),
-	  	  			?(or(aliveWumpus=false,neg(locWumpus=z))),
-	  	  			?(isPit(z)=false),
-	  	  			?(pathfind(locRobot(me),y,L)),
-	  	  			L,
-	  	  			rpi(w,direction,[move(w),?(locRobot(me)=z)])
-	  	  		])
-	  	  	])
-	      ],
-		  "SEARCH FOR A (NEW) RANDOM WALK......")
-	).
-
-
-proc(goto(Loc), 
-	  search([?(pathfind(locRobot(me),Loc,L)), L
-			  ], ["PLANNING TO GO TO LOCATION: ",Loc])
-	).
-
-
-proc(goto1step(Loc), 
-	  pi(x,direction,[move(x),?(locRobot(me)=Loc)])
-	).
-
-
-proc(goodBorderPair(VLoc, NLoc), 
-	[?(visited(VLoc)=true),
-	?(adj(VLoc,NLoc)),
-	?(visited(NLoc)=false),
-	?(or(aliveWumpus=false,neg(locWumpus=NLoc))),
-	?(isPit(NLoc)=false)]
-	).
 
 
 
@@ -870,6 +946,15 @@ in_line(R1,_,R1).
 in_line(R1,D,R2) :- adj(R1,R3,D), in_line(R3,D,R2).
 
 
+% manhattanDistance(Loc1,Loc2,Distance): calculates Manhattan Distance between Loc1 and Loc2
+manhattanDistance(loc(X1,Y1),loc(X2,Y2), Distance) :-
+	DiffX is X1-X2, 
+	DiffY is Y1-Y2,
+	abs(DiffX,AbsDiffX), 
+	abs(DiffY,AbsDiffY),
+	Distance is AbsDiffX+AbsDiffY.
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  PATH FINDING
@@ -914,8 +999,14 @@ pathfind_f_function(loc(I,J), loc(I2,J2), safe(N), Cost, UpdCost, Assump, UpdAss
 	UpdCost is Cost+0.99+Demote,
 	Estimation is AbsDiffI+AbsDiffJ.
 
-pathfind(L1, L2, safe, Plan, Stats) :- pathfind(L1, L2, safe(0), 1, Plan, Stats).
-pathfind(L1, L2, opt, Plan, Stats)  :- pathfind(L1, L2, safe(0), inf, Plan, Stats).
+pathfind(L1, L2, safe, Plan, Stats) :- 
+	write('Doing safe pathfind from location *'), 
+	write(L1), write('* to location *'), write(L2), writeln('*'),
+	pathfind(L1, L2, safe(0), 1, Plan, Stats).
+pathfind(L1, L2, opt, Plan, Stats)  :- 
+	write('Doing opt pathfind from location *'), 
+	write(L1), write('* to location *'), write(L2), writeln('*'),
+	pathfind(L1, L2, safe(0), inf, Plan, Stats).
 
 % Use pathfind(L1, L2, safe, Plan, Stats) to force going through safe locations only.
 % Use pathfind(L1, L2, opt, Plan, Stats) to find the most optimistic plan.
@@ -940,6 +1031,8 @@ pathfind_f_function(loc(I,J), loc(I2,J2), expl1(N), CostSoFar, UpdatedCost, Esti
 	UpdatedCost is CostSoFar+1-Promote,
 	Estimation is AbsDiffI+AbsDiffJ.
 
+
+	
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  INFORMATION FOR THE EXECUTOR

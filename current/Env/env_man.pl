@@ -417,21 +417,21 @@ handle_event(Data):-                         % The event is completely unknown
 %  env_data/3 stores the Pid and Address of each device started
 start_env([], _).
 start_env([Env|LEnv], Address) :-
-        report_message(system(4), ['(EM) Will start environment ', Env]),
-        Address = Host/Port,
-        load_device(Env, Command, [Host,Port]), 
-        report_message(system(4), 
+	report_message(system(4), ['(EM) Will start environment ', Env]),
+	Address = Host/Port,
+	load_device(Env, Command, [Host,Port]), 
+	report_message(system(4), 
 	['(EM) About to start environment ', Env, ' with the following command: ', Command]),
-        call_to_exec(unix, Command, Command2), % Select right command for exec
-        exec_group(Command2, [], Pid),
+	call_to_exec(unix, Command, Command2), % Select right command for exec
+	exec_group(Command2, [], Pid),
 	(type_manager(thread) ->	% Wait TCP connection from device manager
 		accept(em_socket, From, Env) 	 
 	;
 		accept(em_socket, From, sigio(Env))
 	),
-        report_message(system(1), ['(EM) Device ', Env, ' initialized at: ', From]),
-        assert(env_data(Env, Pid, Env)),
-        start_env(LEnv, Address).
+	report_message(system(1), ['(EM) Device ', Env, ' initialized at: ', From]),
+	assert(env_data(Env, Pid, Env)),
+	start_env(LEnv, Address).
 
 
 
@@ -447,7 +447,7 @@ close_dev([Env|LEnv]) :-
 % delete_dev/1 is called automatically when the device has reported to be terminated
 delete_dev(Env) :-
         retract(env_data(Env, Pid, SocketEnv)),
-        %catch((wait(Pid, S) -> true ; true),E,true),
+	timeout(proc_wait(Pid, S),5,proc_kill(Pid)),		% wait for Pid or kill it!
 	(ground(S) -> true ; S=free),
        	report_message(system(3),['(EM) Environment *',Env,'* deleted!',
        				  ' - Waiting result: ',(Pid, S)]),

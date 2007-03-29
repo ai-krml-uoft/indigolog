@@ -502,7 +502,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
         update_now(H2).
 indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         type_action(Act, sensing), !,
-        report_message(system(1), ['Sending sensing Action *',Act,'* for execution']),
+        report_message(system(2), ['Sending sensing Action *',Act,'* for execution']),
         execute_action(Act, H, sensing, IdAct, S), !,
 	(S=failed -> 
 		report_message(error, 
@@ -519,7 +519,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         type_action(Act, nonsensing), !, 
-        report_message(system(1), ['Sending nonsensing action *',Act,'* for execution']),
+        report_message(system(2), ['Sending nonsensing action *',Act,'* for execution']),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S=failed -> 
 		report_message(error, ['Action *', Act, '* could not be executed at: ',H]),
@@ -618,9 +618,9 @@ pause_or_roll(H1,H2) :-
 pause_or_roll(H1,H1).
 
 roll(H1, H2) :-
-        report_message(system(1),'Rolling down the river.......'), 
+        report_message(system(2),'Rolling down the river.......'), 
 	roll_db_safe(H1, H2), 
-        report_message(system(1), 'done progressing the database!'), 
+        report_message(system(2), 'done progressing the database!'), 
         report_message(system(3), ['New History after roll-forward: ', H2]), 
 	update_now(H2), 			% Update the current history	
 	retract(rolled_now(HO)),		% Update the rollednow/1 predicate
