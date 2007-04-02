@@ -193,27 +193,36 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CLIMA GAME SIMULATOR DEVICE: to communicate with the game simulator
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(clima07(LOptions), swi, Command, [Host, Port]):- 
+device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):- 
         main_dir(Dir),
         clima_location(IPCLIMA, PORTCLIMA),
         clima_agentID(TAgentName, TAgentPass),
         term_to_atom(TAgentName, AgentName),
         term_to_atom(TAgentPass, AgentPass),
         concat_atom([Dir,'Env/env_clima.pl'], File),
-	(member(quiet, LOptions) -> 
-			Xterm='',		% Will run in quietly
-			Silent=' 1>/dev/null 2>/dev/null' 
-	; 
-			Xterm='xterm -e',	% We want an xterm to show results
-			Silent=''
-	),
 	(member(debug(Debug), LOptions) -> true ; Debug=3),
-        concat_atom([Xterm, 
-                     ' pl ', ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=', Debug,
-                     ' ipsim=', IPCLIMA, ' portsim=', PORTCLIMA,
-                     ' agentLogin=', AgentName, ' agentPass=', AgentPass,
-			Silent], Command).
+		% Build the set of arguments
+	concat_atom(['host=', HostEM], ArgHost),
+	concat_atom(['port=', PortEM], ArgPort),
+	concat_atom(['debug=', Debug], ArgDebug),
+	concat_atom(['ipsim=', IPCLIMA], ArgIPCLIMA),
+	concat_atom(['portsim=', PORTCLIMA], ArgPortCLIMA),
+	concat_atom(['agentLogin=', AgentName], ArgAgentLog),
+	concat_atom(['agentPass=', AgentPass], ArgAgentPass),
+       	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPCLIMA,ArgPortCLIMA,
+				ArgAgentLog,ArgAgentPass],
+		% Now build the final pair of (Command, LArgs)
+	(member(quiet, LOptions) ->
+        	append(LPrologArgs,['>/dev/null 2>/dev/null'],LPrologArgs2),
+		join_atom(['pl '|LPrologArgs2], ' ',Arg),
+		LArgs=['-c', Arg],
+		Command=sh
+	;
+        	join_atom(['pl '|LPrologArgs], ' ',Arg),
+		LArgs=['-e', Arg],
+		Command=xterm
+	).
+
 
 % This is the address of the CLIMA server
 % (this would be defined in the main_xxx.pl application file)
@@ -223,34 +232,35 @@ device_manager(clima07(LOptions), swi, Command, [Host, Port]):-
 
 
 
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MESSENGER SERVER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(messenger(LOptions), swi, Command, [HostEM, PortEM]):- 
+device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):- 
         main_dir(Dir),
         mess_location(IPMESS, PORTMESS),
         agentID(TAgentName),
         term_to_atom(TAgentName, AgentName),
         concat_atom([Dir,'Env/env_mess.pl'], File),
-	(member(quiet, LOptions) -> 
-			Xterm='',		% Will run in quietly
-			Silent=' 1>/dev/null 2>/dev/null' 
-	; 
-			Xterm='xterm -e',	% We want an xterm to show results
-			Silent=''
-	),
 	(member(debug(Debug), LOptions) -> true ; Debug=3),
-        concat_atom([Xterm, 
-                     ' pl ', ' -t ', ' start', ' -f ', File,
-		     ' host=', HostEM, ' port=', PortEM,' debug=', Debug,
-                     ' ipmess=', IPMESS, ' portmess=', PORTMESS,
-                     ' agentLogin=', AgentName,
-		     Silent], Command).
-
-
-
+		% Build the set of arguments
+	concat_atom(['host=', HostEM], ArgHost),
+	concat_atom(['port=', PortEM], ArgPort),
+	concat_atom(['debug=', Debug], ArgDebug),
+	concat_atom(['ipmess=', IPMESS], ArgIPMESS),
+	concat_atom(['portmess=', PORTMESS], ArgPortMESS),
+	concat_atom(['agentLogin=', AgentName], ArgAgent),
+       	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPMESS,ArgPortMESS,ArgAgent],
+		% Now build the final pair of (Command, LArgs)
+	(member(quiet, LOptions) ->
+        	append(LPrologArgs,['>/dev/null 2>/dev/null'],LPrologArgs2),
+		join_atom(['pl '|LPrologArgs2], ' ',Arg),
+		LArgs=['-c', Arg],
+		Command=sh
+	;
+        	join_atom(['pl '|LPrologArgs], ' ',Arg),
+		LArgs=['-e',Arg],
+		Command=xterm
+	).
 
 
 % This is the address of the MESSENGER server

@@ -105,28 +105,51 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (4,5) ENVIRONMENTS TO LOAD
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- dynamic clima_agentID/2.
+:- dynamic clima_agentID/2, teammember/1.
 
-% This is the address of the CLIMA server
-%clima_location(tea, 12300).
+% This is the address of the CLIMA GAME server environment
 clima_location(localhost, 12300).
+%clima_location('agentslave.in.tu-clausthal.de', 12300).
+clima_agentID(participant1,1).	% default
 
-% Information required for the MESSENGER environment
-mess_location('localhost', 5001).
+
+
+% set the agent ID and PASSWORD and the corresponding teammates
+set_agentID(AgentId,PassId) :-
+	retractall(clima_agentID(_,_)),
+	assert(clima_agentID(AgentId, PassId)).
+
+
+% This is the address and information for the MESSENGER environment
+mess_location(tea, 5000).
 agentID(Id) :- clima_agentID(Id,_).
-teammember(A) :- member(A,[germany1,germany2,germany3,germany4]).
+teammember(participant1).	% Default team-members
+teammember(participant2).
+teammember(participant3).
+teammember(participant4).
+teammember(participant5).
+teammember(participant6).
+
+% set the team
+set_team(ListPlayers) :- 
+	retractall(teammember(_)), 
+	member(Player, ListPlayers),
+	assert(teammember(Player)),
+	fail.
+set_team(_).
 
 
 % Port of environment manager has to be fixed in SWI
 server_port(_).
-server_host('127.0.0.1').
+%server_host('127.0.0.1').
+server_host(localhost).
 
 
 % Define what environment managers the application will use
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
         member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
-%        member((Env,Type), [(clima07([]), swi),(messenger([]), swi)]),
+        %member((Env,Type), [(clima07([]), swi),(messenger([]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -139,7 +162,6 @@ load_device(Env, Command, Address) :-
 % HOW TO EXECUTE ACTIONS: Environment + low-level Code
 %        how_to_execute(Action, Environment, Code)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 how_to_execute(Action, messenger(_), Action) :-
 	member(Action, [tell(_,_), broadcast(_)]), !.
 how_to_execute(Action, clima07(_), Action) :-
@@ -159,21 +181,31 @@ translateExogAction(CodeAction, Action) :-
 % MAIN PREDICATE - evaluate this to run demo
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% main/2: Initiate a CLIMA agent with AgentID and PassID
-main1:- main(participant1,1).
-main2:- main(participant2,2).
-main3:- main(participant3,3).
-main4:- main(participant4,4).
-main5:- main(participant5,5).
-main6:- main(participant6,6).
+% participant team
+main1:- set_participant_team, main(participant1,1).
+main2:- set_participant_team, main(participant2,2).
+main3:- set_participant_team, main(participant3,3).
+main4:- set_participant_team, main(participant4,4).
+main5:- set_participant_team, main(participant5,5).
+main6:- set_participant_team, main(participant6,6).
+set_participant_team :- 
+	set_team([participant1,participant2,participant3,participant4,participant5,participant6]).
 
+% golog team
+golog1 :- set_golog_team, main('GOLOGteam1',va5Liove).
+golog2 :- set_golog_team, main('GOLOGteam2','Aerai6Pa').
+golog3 :- set_golog_team, main('GOLOGteam3','Efool1lu').
+golog4 :- set_golog_team, main('GOLOGteam4',cahk6Oi7).
+golog5 :- set_golog_team, main('GOLOGteam5',iuY1soj5).
+golog6 :- set_golog_team, main('GOLOGteam6',deiZak5f).
+set_golog_team :- 
+	set_team(['GOLOGteam1','GOLOGteam2','GOLOGteam3','GOLOGteam4','GOLOGteam5','GOLOGteam6']).
+
+
+% set an agent player and go!
 main(AgentId, PassId) :-
-	set_agentID(AgentId,PassId),!,
+	set_agentID(AgentId,PassId), !,
 	indigolog.	
-
-set_agentID(AgentId,PassId) :-
-	retractall(clima_agentID(_,_)),
-	assert(clima_agentID(AgentId, PassId)).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -115,6 +115,7 @@
     /*    rconc(E1,E2) : Real concurrency     		     	    	 */
     /*    rpi(X,D)     : Real nondeterministic choice of argument from D */
     /*    gexec(P,E)   : Guarded execution of program E wrt condition P  */
+    /*    gexec(PSucc,E,PFail,ERec): full guarded execution		 */
     /*    abort(P)     : Abort process identified with P                 */
     /*    ??(P)        : Like ?(P) but it leaves a test(P) mark in H     */
     /*    wait         : Meta action to wait until an exogenous event    */
@@ -141,23 +142,20 @@ trans(rconc(E1,E2),H,rconc(E11,E22),H1) :-
             ( (trans(E2,H,E22,H1), E11=E1) ; (trans(E1,H,E11,H1), E22=E2) ) ).
 final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
 
-% Execute program E as long as condition P holds; finish E if neg(P)
+% Execute program E as long as condition P holds; finish E if neg(P) holds
 final(gexec(_,E), H) :- final(E,H).
-trans(gexec(P,E), H, gexec2(P,E1), H1) :- 
+trans(gexec(P,E), H, gexec2(P,E1), H1) :- 	% P needs to be a simple fluent
         assume(P, true, H, H2),    % Set P to be TRUE
         trans(E, H2, E1, H1).
-
 final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
 trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
-final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
-trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
 
 % gexec(PSucc,E,PFail,ERec): full guarded execution
 %	PSucc 	: finalize successfully if PSucc holds
 %	E	: the program to be executed
-%	PFial	: Terminate the program E and execute recovery procedure ERec
+%	PFail	: Terminate the program E and execute recovery procedure ERec
 final(gexec(PSucc,E,_,_), H) :- isTrue(PSucc,H) ; final(E,H).
 trans(gexec(PSucc,_,PFail,ERec), H, E2, H2) :-
 	isTrue(neg(PSucc),H),
@@ -212,10 +210,8 @@ trans(abort,S,[],[abort|S]).	   % completely abort execution
 % Time bounded steps
 % time(E,Sec)  : make the *first* step in E before Sec seconds
 % ttime(E,Sec) : make every step before in E before Sec seconds
-trans(time(E,Sec),H,E2,H2) :-
-	timeout(trans(E,H,E2,H2), Sec, fail).
-final(time(E,Sec),H) :-
-	timeout(final(E,H), Sec, fail).
+trans(time(E,Sec),H,E2,H2) :- timeout(trans(E,H,E2,H2), Sec, fail).
+final(time(E,Sec),H) :-	timeout(final(E,H), Sec, fail).
 trans(ttime(E,Sec),H,time(E2,Sec),H2) :- trans(time(E,Sec),H,E2,H2).
 final(ttime(E,Sec),H) :- final(time(E,Sec),H).
 
@@ -374,6 +370,7 @@ trans(rpi(V,D,E),H,E1,H1)  :- rdomain(W,D), subv(V,W,E,E2), trans(E2,H,E1,H1).
 %%
 %% Linear plans, ignore sensing
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % search(E): search on E, using caching and replanning only when

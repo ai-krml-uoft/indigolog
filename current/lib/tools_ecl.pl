@@ -202,6 +202,12 @@ gethostname(Host) :- get_flag(hostname, Host).
 % Command2 executes Command in plataform unix
 call_to_exec(unix, Command, Command2) :-
         concat_atom(['sh -c \"', Command, '\"'], Command2).
+call_to_exec(unix(shell), Command, Command2) :-
+        concat_atom(['sh -c \"', Command, '\"'], Command2).
+call_to_exec(term, Command, Command2) :-
+        concat_atom(['xterm -e \"', Command, '\"'], Command2).
+call_to_exec(term(Title), Command, Command2) :-
+        concat_atom(['xterm -T ',Title,' -e \"', Command, '\"'], Command2).
 
 % time(Goal) : Execute Goal just like once/1 (i.e., leaving no choice points), 
 % but print used time

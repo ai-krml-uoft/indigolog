@@ -85,6 +85,7 @@
 % This utility will replace every call to read/2, write/2, etc. by their
 % corresponding ECLIPSE versions eclipse_read/2, eclipse_write/2, etc.
 :- module_transparent init_eclipse_lib/0.
+
 init_eclipse_lib :- 
         context_module(M),
         assert(M:goal_expansion(read(A1,A2),  eclipse_read(A1,A2))),
@@ -195,7 +196,8 @@ accept(SocketId, Host/unknown, NewSocketId2) :-
        retract(socket_info(SocketId, S, null, null)), 
        assert(socket_info(SocketId, S, R, null)),
        %
-       tcp_accept(R, S2, Host),
+%       tcp_accept(R, S2, Host),	% OLD SWI-PROLOG (5.6.28)
+       tcp_accept(S, S2, Host),		% NEW SWI-PROLOG (>5.6.32)
        tcp_open_socket(S2, ReadS, WriteS),
        (ground(NewSocketId2) -> 
 	       true
@@ -206,10 +208,11 @@ accept(SocketId, Host/unknown, NewSocketId2) :-
 
 % Handle the general case when the socket is just new
 accept(SocketId, Host/unknown, NewSocketId2) :-
-       socket_info(SocketId, _, R, _), 
+       socket_info(SocketId, S, R, _), 
        R\=null,             % SocketId must have been binded already
        %
-       tcp_accept(R, S2, Host),
+%       tcp_accept(R, S2, Host),	% OLD SWI-PROLOG (5.6.28)
+       tcp_accept(S, S2, Host),		% NEW SWI-PROLOG (>5.6.32)
        tcp_open_socket(S2, ReadS, WriteS),
        (ground(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
@@ -653,15 +656,14 @@ exec(Command, [ServerOut, ServerIn, _], Pid) :-
                              register_stream_name(ServerIn2, ServerIn)),
         fork(Pid),
         (   Pid == child,
-	    detach_IO, % may this work to detach the child ?
             (ServerOut == null -> true ; (close(ServerOut), 
 					  dup(CGIIn, 0),     % stdin
 					  close(CGIIn))),
             (ServerIn  == null -> true ; (close(ServerIn),
 				          dup(CGIOut, 1),    % stdout
 					  close(CGIOut))),
-%           exec('/bin/sh '('-c', Command))
-            exec(Command)
+	    detach_IO, % may this work to detach the child ?
+	    exec(Command)		
         ;   
 	    (ServerOut == null -> true ; close(CGIIn)), 
 	    (ServerIn  == null -> true ; close(CGIOut))
@@ -822,10 +824,50 @@ get_random_element(E,L)  :-
         nth0(Idx,L,E).
 
 
-% timeout(+Goal,+Sec,+TimeOutGoal): 
-%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on timeout
+
+%%      timeout(+TimeLimit, :Goal, +TimeOutGoal) is det.
+%
+%	Goal is executed as if called via call(Goal), but only for a maximum of
+%	TimeLimit seconds. If the goal is still executing after TimeLimit, time-out
+%	occurs, the execution of the goal is terminated (via exit_block/1) and
+%	TimeOutGoal is executed. If the value of TimeLimit is 0 or less, no timeout is
+%	applied to the Goal. 
+%	Note that, if Goal is nondeterministic, execution flow may leave the scope of
+%	timeout/3 on success and re-enter on failure. In this case, all time spent
+%	outside within Goal will also be counted towards the TimeLimit.  
+%	(different from Eclipse)
+%
+%       @tbd    Theoretically, alarm may fire before entering
+%               call_cleanup/2, leaking an alarm handle. This is a
+%               common schema for which I do not have a good solution.
+%       @throws =time_limit_exceeded=
 timeout(Goal, Sec, TimeOutGoal) :-
-	catch(call_with_time_limit(Sec, Goal),time_limit_exceeded, TimeOutGoal).
+        Sec > 0, !,
+        alarm(Sec, throw(time_limit_exceeded(Id)), Id),
+	catch(once((Goal,!,delete_alarm(Id))),
+			time_limit_exceeded(IdEx),once(recover(Id,IdEx,TimeOutGoal))).
+timeout(_Time, Goal) :- call(Goal).
+
+recover(Id, Id, TimeOutGoal) :- !,
+	delete_alarm(Id), !,
+	call(TimeOutGoal).
+recover(Id, IdEx, _TimeOutGoal) :-	% Id\=IdExec
+	delete_alarm(Id), !,
+	throw(time_limit_exceeded(IdEx)).
+
+% delete alarm with Id no matter what
+%delete_alarm(Id) :- catch(remove_alarm(Id),error(_Signal, context(remove_alarm/1, _)),true).
+delete_alarm(Id) :- 
+	catch(remove_alarm(Id),
+		error(domain_error(alarm, _), context(divide(get_timer, 1), _)),true).
+
+
+% timeout(+Goal,+Sec,+TimeOutGoal): 
+%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on
+%timeout
+%timeout(Goal, Sec, TimeOutGoal) :-
+%	catch(call_with_time_limit(Sec, Goal),time_limit_exceeded, TimeOutGoal).
+
 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

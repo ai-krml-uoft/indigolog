@@ -228,9 +228,6 @@ init :-
 	initializeDB,             	% Initialization of projector
 	report_message(system(0),'PROJECTOR was started successfully.'),
 	reset_indigolog_dbs, !.      	% Reset the DB wrt the controller
-init :- fin, init.	% For some reason, init/0 didnt work. Retry.
-
-
 
 fin  :- 
 	report_message(system(0),'Finalizing PROJECTOR...'),
@@ -354,7 +351,7 @@ has_system_action(H,A) :-
 % Wait continously until an exogenous action occurrs
 doWaitForExog(H1,H2):- 	type_prolog(swi), !,	% block and wait for exception
 	repeat,
-        report_message(system(2), 'Waiting for exogenous action to happen...'), 
+        report_message(system(1), 'Waiting for exogenous action to happen...'), 
 	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
                  (exists_pending_exog_event -> abort_work_duetoexog ; true),
                   thread_get_message(_)		% just to block the thread somehow..

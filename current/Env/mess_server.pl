@@ -54,6 +54,7 @@
 % define how many agent connections will be allowed
 max_no_agents(10).
 
+
 server(Port) :-
 	report_message(system(0), ['Starting MESSENGER server at port ', Port]),
 	close_socket(Port),
@@ -156,7 +157,9 @@ close_socket(X) :-
 
 
 
-:- server(5001).
+% start server now at the corresponding port!
+:- server(5000).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF:  Env/mess_server.pl

@@ -113,8 +113,12 @@ replace_char_string(S, E1, E2, S2) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % call_to_exec/3
-call_to_exec(unix, Command, sh('-c',Command2)) :-
-	string_concat(Command,' ; exit',Command2).
+call_to_exec(unix, (Command,LArgs), CommandExec) :- 
+	CommandExec =.. [Command|LArgs].
+call_to_exec(unix(shell), Command, sh('-c',Command2)) :-
+	string_concat(Command,' ; exit', Command2).
+call_to_exec(term(Title), Command, xterm('-T',Title,'-e',Command)).
+call_to_exec(term, Command, xterm('-e',Command)).
 
 % Killing a thread means signal it with an "abort" event
 thread_kill(ThreadId) :- 

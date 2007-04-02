@@ -95,10 +95,9 @@ pathfind(State,Goal,Type,Lim,Soln,Stats) :-
 		pathfind_f_function(State,Goal,Type,0,_,0,_,F),
 		pathfind_search_adv([State#0#F#[]#[State]#0],Goal,Type,Lim,S,Stats), reverse(S,Soln).
 
-pathfind_search_adv([State#D#_#Soln#_#T|L], State, _, _, Soln,[D,T,N]):- %length(L,N).
-		write('total cost '),writeln(D), 
-		write('alpha* stack size '),length(L,N),writeln(N),
-		write('termination value '),writeln(T),writeln('').
+pathfind_search_adv([State#D#_#Soln#_#T|L], State, _, _, Soln,
+			[[totalcost,D],[stacksize,T],[termvalue,N]]):- length(L,N).
+%pathfind_search_adv([State#D#_#Soln#_#T|L], State, _, _, Soln,[D,T,N]):- length(L,N).
 pathfind_search_adv([B|R],Goal,Type,Lim,S,Stats) :-
 		pathfind_expand_adv(B,Goal,Type,Lim,Children),
 		pathfind_insert_all_adv(Children,R,Open),

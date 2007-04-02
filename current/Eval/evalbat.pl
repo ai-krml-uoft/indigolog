@@ -348,24 +348,25 @@ update_cache(_).
 % Assumes that after sensing F, F may change but it will remain known
 % We may probably want to add some "forgeting" mechanism.. either by a 
 %      state condition or special actions
-holds(kwhether(F),[])     :- !, initially(F,_).
-holds(kwhether(F),[Act|_]):- (senses(Act,F) ; Act=e(F,_)), !.
-holds(kwhether(F),[_|H])  :- holds(kwhether(F),H).
+holds(kwhether(F),[]) :- !, initially(F,_).
+holds(kwhether(F),[Act|_]) :- (senses(Act,F) ; Act=e(F,_)), !.
+holds(kwhether(F),[_|H]) :- holds(kwhether(F),H).
 
 % know(F): Fluent F evaluates to something
-holds(know(F),H)     :- !, holds(F=_,H).
+holds(know(F),H) :- !, holds(F=_,H).
 
 % holds(P,H): P holds in H
-holds(and(P1,P2),H)	:- !, holds(P1,H), holds(P2,H).
-holds(or(P1,P2),H)	:- !, (holds(P1,H) ; holds(P2,H)).
+holds(and(P1,P2),H) :- !, holds(P1,H), holds(P2,H).
+holds(or(P1,P2),H) :- !, (holds(P1,H) ; holds(P2,H)).
 holds(neg(P),H)	:- !, checkgr(P), \+ holds(P,H). /* Negation by failure */
-holds(some(V,P),H)	:- !, subv(V,_,P,P1), holds(P1,H).
+holds(some(V,P),H) :- !, subv(V,_,P,P1), holds(P1,H).
 holds(some(V,D,P),H) :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
-holds(all(V,D,P),H)	:- !, holds(neg(some(V,D,neg(P))), H).
+holds(all(V,D,P),H) :- !, holds(neg(some(V,D,neg(P))), H).
 holds(impl(P1,P2),H) :- !, holds(or(neg(P1),P2),H).
-holds(P,H)			:- proc(P,P1), !, holds(P1,H).
-holds(P,H)			:- rel_fluent(P), !, subf(P,true,H).
-holds(P,H)			:- subf(P,P1,H), call(P1).
+holds(P,H) :- proc(P,P1), !, holds(P1,H).
+holds(P,H) :- \+ \+ rel_fluent(P), !, subf(P,true,H).
+holds(P=v(Value),H) :- \+ \+ fun_fluent(P), ground(Value), !, subf(P,Value,H).
+holds(P,H) :- subf(P,P1,H), call(P1).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
 subf(P1,P2,_)  :- (var(P1) ; number(P1)), !, P2 = P1.
@@ -373,7 +374,7 @@ subf(textual(P1),P1,_) :- !.
 subf(P1,P2,H)  :- atom(P1), !, subf2(P1,P2,H).
 subf(P1,P2,H)  :- P1=..[F|L1], subfl(L1,L2,H), P3=..[F|L2], subf2(P3,P2,H).
 
-subf2(P3,P2,H) :- prim_fluent(P3), has_value(P3,P2,H).
+subf2(P3,P2,H) :- \+ \+ prim_fluent(P3), has_value(P3,P2,H).
 subf2(P2,P2,_) :- \+ prim_fluent(P2).
 
 subfl([],[],_).
