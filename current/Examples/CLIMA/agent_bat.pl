@@ -109,6 +109,10 @@ cache(locRobot(me)).
 cache(isPit(_)).
 %cache(isGold(_)).
 
+% roll always if possible; forced rolling if larger than 3.
+roll_parameters(0,0,0).	   % roll-forward every single action
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  0 - DEFINITIONS OF DOMAINS/SORTS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -194,8 +198,8 @@ causes_val(A, F, V, C) :- causes(A, F, V, C).
 
 % playingGame: are we still playing in the simulation?
 rel_fluent(playingGame).
-causes_true(bye, playingGame, true).
-causes_false(nothing, playingGame, true).
+causes_true(nothing, playingGame, true).
+causes_false(bye, playingGame, true).
 
 rel_fluent(inDungeon).
 causes_true(simStart(_, _), inDungeon, true).
@@ -231,7 +235,11 @@ causes(told(A, Data), locRobot(A), L,  sense_location(Data, L)).
 
 % locRobotBefore: previous position of robot me before moving
 fun_fluent(locRobotBefore).
-causes(A, locRobotBefore, V, and(member(A,[up,down,right,left]),V=locRobot(me))).
+causes(up,   locRobotBefore, V, V=locRobot(me)).
+causes(down, locRobotBefore, V, V=locRobot(me)).
+causes(left, locRobotBefore, V, V=locRobot(me)).
+causes(right,locRobotBefore, V, V=locRobot(me)).
+causes(setState(goingTo(_),_), locRobotBefore, V, locRobot(me)=V).
 
 % locExpected: location the agent is expected to be (after moving)
 fun_fluent(locExpected).
@@ -301,7 +309,7 @@ def_fluent(maxNoGold, 3, true).
 % fullLoaded: the agent is carrying the maximum number of gold pieces
 fun_fluent(fullLoaded).
 def_fluent(fullLoaded, false, noGold < maxNoGold).
-def_fluent(fullLoaded, true, neg(noGold < maxNoGold)).
+def_fluent(fullLoaded, true, noGold=maxNoGold).
 
 
 
@@ -361,13 +369,13 @@ def_fluent(lastActionFailed, V,
 def_fluent(lastActionFailed, V, 
 	and(actionRequested,
 	and(lastAction=pick,
-		or(and(isGold(locRobot(me)), V=true),
-	   	   and(neg(isGold(locRobot(me))), V=false))))).
+		or(and(isGold(locRobot(me))=true, V=true),
+	   	   and(neg(isGold(locRobot(me))=true), V=false))))).
 def_fluent(lastActionFailed, V, 
 	and(actionRequested,
 	and(lastAction=drop,
-	or(and(and(neg(locRobot(me)=locDepot),neg(isGold(locRobot(me)))), V=true),
-	   and(or(locRobot(me)=locDepot,isGold(locRobot(me))), V=false))))).
+	or(and(and(neg(locRobot(me)=locDepot),neg(isGold(locRobot(me))=true)), V=true),
+	   and(or(locRobot(me)=locDepot,isGold(locRobot(me))=true), V=false))))).
 
 
 
@@ -500,7 +508,7 @@ sense_agent(Data, Loc, T) :-
 initially(locRobot(me),loc(0,0)).
 initially(hasGold,false).
 initially(noGold,0).
-initially(inDungeon, true).
+initially(inDungeon, false).
 initially(playingGame, true).
 initially(gridSizeX, 99).
 initially(gridSizeY, 99).
@@ -550,10 +558,18 @@ setupSimulation(X,Y) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % THIS IS THE MAIN EXECUTOR
-proc(main,  	[while(and(neg(inDungeon),playingGame), 
-					[?(writeln('Waiting simulation to start')), wait]), 
-		if(playingGame,[?(setupSimulation(gridSizeX, gridSizeY)), mainControl(2)],
-				say('Game over.......'))]
+proc(main,  	[gexec2(playingGame,
+			[while(true, 
+				[say('Waiting simulation to start'), 
+				 while(neg(inDungeon), wait), 
+				 ?(setupSimulation(gridSizeX, gridSizeY)), 
+				 say('Simulation started - Starting main controller'),
+				 exogint(gexec2(inDungeon, mainControl(2)), true),
+				 say('Simulation ended...')
+				])
+			]),
+		say('BYE messages recevied. Tournament finished...')
+		]		
 ).
 
 
@@ -568,49 +584,52 @@ proc(main,  	[while(and(neg(inDungeon),playingGame),
 %	7. Otherwise, move random if possible
 %	8. Otherwise, just do a skip action the turn
 proc(mainControl(2),
-   prioritized_interrupts(
-         [interrupt(neg(actionRequested), 
-			if(neg(broadcasted), broadcast(lastSensor), wait)),
-	  interrupt(and(locRobot(me)=locDepot,hasGold=true), drop),
+	prioritized_interrupts(
+	[interrupt(and(neg(actionRequested),broadcasted), wait),
+	  interrupt(neg(actionRequested), broadcast(lastSensor)),	% Broadcast last sensor
+	  interrupt(and(locRobot(me)=locDepot,hasGold=true), 
+			[drop, pi(time, setState(getOutDepot,time))]),
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
 	  interrupt([(dir,direction), loc], 	% Gold around us?
 			and(neg(fullLoaded), 
 			and(apply(dir, [locRobot(me), loc]), 
-			and(isGold(loc)=true, report('Spotted gold around! Moving there..')))), 
-			 pi(time,[setState(pickCloseGold,time), dir])
+			and(isGold(loc)=true, report('Spotted gold around! Moving there...')))), 
+				pi(time,[setState(pickCloseGold,time), dir])
 		),
-	  interrupt(and(hasGold=true,report('We have gold! Planning to go to depot...')), 
+	  interrupt(and(hasGold=true, report('We have gold! Planning to go to depot...')), 
 			goByPlanning(opt, locDepot)),	% do we have gold? go back to depot?
-	  interrupt(and(locRobot(me)=locDepot, report('Getting out of depot quickly...')),
+	  interrupt(time, and(locRobot(me)=locDepot, report('Getting out of depot quickly...')),
 			safeRandomMove),	 	% Get out of depot quick!
 	  interrupt(locWithGold, 	% plan to go to a particular gold
+			and(report('Looking for gold close around'),
 			and(destinationGold(locWithGold,10),
-				report(['Going for gold at location: ',locWithGold])),
+			    report(['Going for gold at location: ',locWithGold]))),
 			 goByPlanning(opt, locWithGold)
 		),
 	  interrupt((dir,direction), 
+			and(report('Looking for best adjacent'),
 			and(bestAdjacent(dir), 
-				report(['Moving to the best cell maximazing exploration: ',dir])),
+				report(['Moving to the best cell maximazing exploration: ',dir]))),
 			 pi(result,try_movement(dir,result))),
-	  interrupt(neg(broadcasted), [broadcast(lastSensor)]),	% Broadcast last sensor
-	  interrupt(and(playingGame, report('Random movement.....')), safeRandomMove),
+	  interrupt(and(playingGame, report('Random movement...')), safeRandomMove),
 	  interrupt(and(playingGame, report('Cannot do anything, thus we skip...')), skip)
-         ])  % END OF INTERRUPTS
+	])  % END OF INTERRUPTS
 ).
 
 
 
+% Plan a path to go to Destination using Method=opt/safe
 proc(goByPlanning(Method, Destination),
 	 pi([plan,myLocation,precPlan,planQual,time],
 		[?(and(myLocation=locRobot(me),
 		   and(pathfind(myLocation,Destination,Method,plan,planQual),
 			report(textual(plan))))),
                 setState(goingTo(Destination),time),	% set the agent state to goingTo(Destination)
-		gexec(locRobot=Destination,
-			insist_movement(plan), 	% Plan to execute
-			or(neg(robotState=[goingTo(Destination),time]),	% Condition to fail
+		goal(locRobot(me)=Destination,	% success condition
+			insist_movement(plan), 	% procedural plan to execute
+			or(neg(robotState=[goingTo(Destination),time]),	% condition to fail
 				neg(or(locRobot(me)=locRobotBefore,locRobot(me)=locExpected))),
-			say(['Aborting plan to destination :',time])	% Program to recover from failure
+			say(['Aborting plan to destination :',time])	% plan to recover from failure
 			)
 		]
 	)
@@ -702,15 +721,7 @@ proc(search_pref(P,C), wndet(search([P,?(C)]),search(P))).
 %  6 - EXTRA AUXILIARLY PROGRAMS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-
-report(Message):-
-	is_list(Message),
-	maplist(any_to_string,Message,LS),
-	any_to_string(' ', Space),
-	join_string(LS, Space, M2), % Include space between each element
-	writeln(M2).
-report(Message):- writeln(Message).
+report(M) :- report_message(M).
 
 
 
@@ -856,17 +867,21 @@ pathfind_f_function(loc(I,J), loc(I2,J2), safe(N), Cost, UpdCost, Assump, UpdAss
 	abs(DiffI,AbsDiffI), 
 	abs(DiffJ,AbsDiffJ),
 	now(H),
-	(holds(isPit(loc(I,J))=false,H)-> UpdAssump=Assump, Demote=0 ; UpdAssump is Assump+1, Demote is N),
+	(holds(isPit(loc(I,J))=false,H)-> 
+		UpdAssump=Assump, 
+		Demote=0 
+	; 
+		UpdAssump is Assump+1, 
+		Demote is N
+	),
 	UpdCost is Cost+0.99+Demote,
 	Estimation is AbsDiffI+AbsDiffJ.
 
 pathfind(L1, L2, safe, Plan, Stats) :- 
-	write('Doing safe pathfind from location *'), 
-	write(L1), write('* to location *'), write(L2), writeln('*'),
+	report(['Doing safe pathfind from location *',L1,'* to location *', L2,'*']),
 	pathfind(L1, L2, safe(0), 1, Plan, Stats).
 pathfind(L1, L2, opt, Plan, Stats)  :- 
-	write('Doing opt pathfind from location *'), 
-	write(L1), write('* to location *'), write(L2), writeln('*'),
+	report(['Doing opt pathfind from location *',L1,'* to location *',L2,'*']),
 	pathfind(L1, L2, safe(0), inf, Plan, Stats).
 
 % Use pathfind(L1, L2, safe, Plan, Stats) to force going through safe locations only.

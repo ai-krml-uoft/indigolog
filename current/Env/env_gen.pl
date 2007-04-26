@@ -227,13 +227,18 @@ handle_stream(env_manager) :-
         report_message(system(3),'Handling data on env_manager'),
         receive_data_socket(env_manager, [_, Data]),
 	((Data = [terminate] ; Data = [system, end_of_file]) -> 
-             report_message(system(2), 'Termination requested!'),
+             report_message(system(2), ['Termination requested. Reason: ', Data]),
              order_device_termination 
         ;
          Data = [execute, N, Type, Action] ->
 	     change_action_state(Action, N, orderExecution, null, []),
 	     report_message(system(3), ['About to execute *',(Action,N),'*']), 
-             (execute(Action, Type, N, S) -> true ; S=failed),
+             (execute(Action, Type, N, S) -> 
+		report_message(system(3),['Action *',(Action,N),'* executed with outcome: ',S])
+	     ; 
+		report_message(error,['Action *',(Action,N),'* could not execute (assumed failed)']),
+		S=failed
+	     ),
 %	     change_action_state(Action, N, finalExecution,S,[]),
              % Report the sensing if it was not "null" (null=not available yet)
              % If it was null, then the user should make sure that the

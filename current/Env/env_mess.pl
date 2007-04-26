@@ -218,9 +218,8 @@ mess_disconnect :-
 
 % Agent registration
 mess_authenticate(AgentUser, Result) :-
-	mess_send(register(AgentUser)).
-,	!,
-	(select([comm_mess], 5, [comm_mess]) ->
+	mess_send(register(AgentUser)),	!,
+	(select([comm_mess], 10, [comm_mess]) ->
 		mess_receive(Result)
 	;	
 		Result=timeout

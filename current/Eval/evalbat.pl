@@ -75,8 +75,9 @@
 %       check if the DB CAN roll forward
 % -- must_roll(+H1) 
 %       check if the DB MUST roll forward
-% -- roll_db(+H1,-H2) 
+% -- roll_db(+Mode, +H1,-H2) 
 %       perform roll forward with current history H1 and new history H2
+%	if Mode==must, then rolling forward cannot be interrupted
 % -- handle_sensing(+A, +H, +S, -H2) 
 %           H2 is H plus action A with sensing result S
 % -- debug(+A, +H, -S)
@@ -109,7 +110,7 @@
 %           have value V at history H1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%  A basic action theory (BAT) is described with:
+%  A basic action theory is described with:
 %
 % -- fun_fluent(fluent)     : for each functional fluent (non-ground)
 % -- rel_fluent(fluent)     : for each relational fluent (non-ground)
@@ -429,40 +430,26 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %
 %  Rolling forward means advancing the predicate currently(-,-) and
 %  discarding the corresponding tail of the history.
-%  There are 3 parameters specified by roll_parameters(L,N,M).
-%     L: the history has to be longer than this, or dont bother
-%     M: if the history is longer than this, forced roll
-%     N: the length of the tail of the history to be preserved
+%  There are 3 parameters specified by roll_parameters(LC,LM,LP):
+%
+%     LC: if history length is greater than this, we can roll
+%     LM: if the history is longer than this, we must roll
+%     LP: length of the tail of the history to be preserved
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
+%:- multifile roll_parameters/3.
 
-
-%roll_parameters(20,40,5). % keep histories of size 20
+% The domain axiomatization must provide one roll_parameters/3:
+%
+%roll_parameters(20,40,5).		% keep histories of size 20
 %roll_parameters(0,0,3).
-roll_parameters(0,0,0).	   % roll-forward every single action
+%roll_parameters(0,0,0).   		% roll-forward every single action
+%roll_parameters(_,_,_) :- fail.	% never roll forward
 
-%roll_parameters(_,_,_):- fail.	% never roll forward
 
-can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, L1>N.
-must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, L1>N.
-
-% H1 is the current history (H1 = H2 + H3)
-% H2 will be the new history
-% H3 is the tail of H1 that is going to be dropped
-roll_db(H1,H2) :- 
-	roll_parameters(_,_,N), 	
-	split(N,H1,H2,H3), 
-	preserve(H3),
-	update_cache(H3).	    % Update the cache wrt the preserved history H3
-
-roll_db_safe(H1,H2) :- 
-	roll_parameters(_,_,N), 	
-	split(N,H1,H22,H3),
-	report_message(system(4),['(BAT) Trying to progress subhistory: ',H3]),
-	report_message(system(4),['(BAT) ...and staying with subhistory: ',H22]),  
-	preserve_safe(H3,H33),
-	report_message(system(4),['(BAT) Progressed subhistory: ',H33]),
-	split(_,H1,H2,H33).
+% can we roll? must we roll?
+can_roll(H) :- roll_parameters(LC,_,LP), length(H,L1), L1 > LC, L1 > LP.
+must_roll(H) :- roll_parameters(_,LM,LP), length(H,L1), L1 > LM, L1 > LP.
 
 
 % split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N.
@@ -474,45 +461,41 @@ split(N,[A|H],[A|H1],H2) :- ground(N), N > 0, N1 is N-1, split(N1,H,H1,H2).
 split(N,H,H1,H2) :- \+ ground(N), append(H1,H2,H), length(H1,N).
 
 
-% preserve(+H) : rolls forward the initial database from [] to H
-%	this preserve/1 cannot be stopped in the middle
-preserve([]).
-preserve([A|H]) :- 
-	preserve(H), 
-	roll_action(A), 
-	move_temp_to_currently,
-	update_cache([A]).
+% roll_db(+Mode,+H1,-H2): roll forward current history H1; H2 is the new history
+roll_db(Mode,H1,H2) :- 
+	roll_parameters(_,_,N), 	
+	split(N,H1,H22,H3),	% H3 is what we would like to be rolled forward
+	report_message('BAT',system(4),['Trying to progress sub-history: ',H3]),
+	report_message('BAT',system(4),['Trying to keep sub-history: ',H22]),  
+	preserve(Mode,H3,H33),	% H33 is what has been actually rolled forward
+	report_message('BAT',system(4),['Actual progressed sub-history: ',H33]),
+	split(_,H1,H2,H33),
+	report_message('BAT',system(4),['Actual new history: ',H2]).
 
 
-
-% preserve_safe(+H,-H2) : rolls forward the initial database from [] to H if possible
+% preserve(+H,-H2) : rolls forward the initial database from [] to H if possible
 %		          or to H2 if an exogenous event happens in the middle
-%	this preserve_safe/2 can be stopped in the middle
-preserve_safe(H,H3) :- reverse(H,H2), preserve_safe2(H2,[],H3).
-preserve_safe2([],H2,H2).
-preserve_safe2([A|H],H2,H3):- 
-	catch(roll_action_safe(A), exog_action, 
-				(retractall(watch_for_exog), Status=aborted) ),
+%	this preserve/2 can be stopped in the middle
+preserve(Mode,H,H3) :- reverse(H,H2), preserve(Mode,H2,[],H3).
+preserve(_Mode, [],H2,H2).
+preserve(Mode, [A|H],H2,H3):- 
+	(Mode==must ->
+		roll_action(A),		% must rolling; no interruption is possible
+		Status=ok
+	;
+		exog_interruptable(roll_action(A), true, Status)
+	),
 	(Status==aborted ->
-		report_message(system(4),'(BAT) Progression aborted...'),
+		report_message('BAT',system(0),'Progression aborted...'),
 		retractall(temp(_,_)),	% clean-up whatever it was computed
 		H3 = H2
 	;	
-	%	report_message(system(4),
-	%		['(BAT) Action *',A,'* progressed, moving temp/2 to currently/2']),
-		move_temp_to_currently,
+	%	report_message('BAT',system(5),
+	%		['Action *',A,'* progressed successfully: moving temp/2 to currently/2']),
+		move_temp_to_currently,		% this section cannot be interrupted
 		update_cache([A]),
-		preserve_safe2(H,[A|H2],H3)
+		preserve(Mode, H,[A|H2],H3)
 	).
-
-
-% roll_action_safe(+A): roll currently/2 database with respect to action A into temp/2
-roll_action_safe(A) :-
-	assert(watch_for_exog),		% Assert flag watch_for_exog
-	(exists_pending_exog_event ->  abort_work_duetoexog ; true),
-	roll_action(A),
-	retractall(watch_for_exog).	% Retract flag watch_for_exog
-
 
 % roll_action(+A): roll currently/2 database with respect to action A into temp/2
 roll_action(A) :-
@@ -521,7 +504,6 @@ roll_action(A) :-
 	(\+ temp(F, V) -> assert(temp(F, V)) ; true),
 	fail.
 roll_action(_).
-
 
 
 % move all temp/2 into currently/2

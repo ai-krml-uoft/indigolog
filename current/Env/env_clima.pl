@@ -88,6 +88,8 @@ name_dev(clima06).
 % Set verbose debug level
 :- set_debug_level(5).
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % A - INITIALIZATION AND FINALIZATION OF INTERFACES
 %     initializeInterfaces/1 and finalizeInterfaces/1
@@ -222,18 +224,23 @@ handle_xml_message(XMLMess) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Execute Action in game simulator
 execute(Action, _, N, Sensing) :- 
-	retract(actionStatus(Deadline, IdAction, pending)), 
+	(retract(actionStatus(Deadline, IdAction, pending)) ->
+		true
+	;
+		report_message(warning,['Action *',(Action,N),'* is being sent without any previous request pending']),
+		IdAction=0
+		
+	), 
  	\+ tooLate(Deadline),
-        report_message(action, ['Executing non-sensing action: *',
-					(Action,N, IdAction),'*']), 
+        report_message(action, ['Executing non-sensing action: *',(Action,N,IdAction),'*']), 
 	(clima_execute(comm_sim, Action, IdAction, ok) ->
-		Sensing=ok
+		Sensing=ok,
+		report_message(system(4), ['The action *',(Action,N,IdAction),'* was sent to game server'])
 	;
 		Sensing=failed, 
-	report_message(system(3), ['The following action failed to execute: *',
-					(Action,N, IdAction),'*'])
+		report_message(system(4), ['The following action failed to execute: *',	(Action,N,IdAction),'*'])
 	),
-	assert(actionStatus(Deadline, IdAction, Sensing)).
+	asserta(actionStatus(Deadline, IdAction, Sensing)).
 
 % Currently, it is never too late to send an action to the game server.
 tooLate(_) :- fail.

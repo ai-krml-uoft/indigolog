@@ -70,7 +70,8 @@
 % -- exog_action_occurred(LExoAction) 
 %	to report a list of exog. actions LExogAction to the top-level
 %
-% -- exists_pending_exog  
+% -- exists_pending_exog/0
+% -- exists_pending_exog(Event)  
 %       there are exogenous events pending to be dealt
 % -- set_option(+O, +V)  
 %       set option O to value V. Current options are:
@@ -121,8 +122,8 @@
 %       check if the DB CAN roll forward
 % -- must_roll(+H1) 
 %       check if the DB MUST roll forward
-% -- roll_DB(+H1) 
-%       check if the DB MUST roll forward
+% -- roll_db(+Mode, +H1, -H2) 
+%       roll forward H1 with mode Mode; H2 is the new system history
 % -- initializeDB/0
 %       initialize projector
 % -- finalizeDB/0
@@ -149,7 +150,7 @@
 % -- turn_on_gc             : turns on the automatic garbage collector
 % -- turn_off_gc            : turns off the automatic garbage collector
 % -- garbage_collect        : perform garbage collection (now)
-% -- report_message(+T, +M) : report message M of type T
+% -- report_message('MC', +T, +M) : report message M of type T
 % -- set_debug_level(+N)    : set debug level to N
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic sensing/2,   	% There may be no sensing action
@@ -157,7 +158,7 @@
 	now/1,            	% Used to store the actual history
 	rolled_now/1,          	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
-	watch_for_exog/0,     	% A step is being calculated
+	watch_for_exog/1,     	% We should be watchfull of exogenous actions
 	pause_step/0.     	% Pause the step being calculated
 	
 % Predicates that they have definitions here but they can defined elsewhere
@@ -193,21 +194,28 @@ set_option(wait_step, N) :- wait_step(N).
 
 wait_step(S) :- 
 	S==0,
-	report_message(system(0), '** Wait-at-action disabled'),
+	report_message('MC', system(0), '** Wait-at-action disabled'),
 	retractall(wait_at_action(_)).
 wait_step(S) :- 
 	number(S),
-	report_message(system(0), ['** Wait-at-action enable to ',S, ' seconds.']), 
+	report_message('MC', system(0), ['** Wait-at-action enable to ',S, ' seconds.']), 
 	retractall(wait_at_action(_)), 
 	assert(wait_at_action(S)).
 wait_step(_) :- 
-	report_message(warning, 'Wait-at-action cannot be set!').
+	report_message('MC', warning, 'Wait-at-action cannot be set!').
 
 
 set_option('debug_level : set debug level to V.').
 set_option(debug_level, N) 	:- 
 	set_debug_level(N),
-	report_message(system(0), ['** System debug level set to ',N]).
+	report_message('MC', system(0), ['** System debug level set to ',N]).
+
+
+set_option('report_output : set ouput for reports to file F (F may be user).').
+set_option(report_output, NameOutput) 	:- 
+	(NameOutput=user -> true ; open(NameOutput, write, Fd, [buffer(false)])),
+	report_message('MC', system(0), ['** Now telling at file: ',NameOutput]),
+	change_report_tell(Fd).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -221,32 +229,34 @@ set_option(debug_level, N) 	:-
 %      defyining a 3-phase main cycle
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :- 
-	report_message(system(0),'Starting ENVIRONMENT MANAGER...'),
-	initializeEM,    	  	% Initialization of environment
-	report_message(system(0),'ENVIRONMENT MANAGER was started successfully.'),
-	report_message(system(0),'Starting PROJECTOR...'),
+	reset_indigolog_dbs,		% Reset the DB wrt the controller
+	report_message('MC', system(0),'Starting PROJECTOR...'),
 	initializeDB,             	% Initialization of projector
-	report_message(system(0),'PROJECTOR was started successfully.'),
-	reset_indigolog_dbs, !.      	% Reset the DB wrt the controller
+	report_message('MC', system(0),'PROJECTOR was started successfully.'),
+	report_message('MC', system(0),'Starting ENVIRONMENT MANAGER...'),
+	initializeEM,    	  	% Initialization of environment
+	report_message('MC', system(0),'ENVIRONMENT MANAGER was started successfully.'), !.
+
 
 fin  :- 
-	report_message(system(0),'Finalizing PROJECTOR...'),
-	finalizeDB,               	% Finalization of projector
-	report_message(system(0),'PROJECTOR was finalized successfully.'),
-	report_message(system(0),'Finalizing ENVIRONMENT MANAGER...'),
+	report_message('MC', system(0),'Finalizing ENVIRONMENT MANAGER...'),
 	finalizeEM,      		% Finalization of environment
-	report_message(system(0),'ENVIRONMENT MANAGER was finalized successfully.').
+	report_message('MC', system(0),'ENVIRONMENT MANAGER was finalized successfully.'),
+	report_message('MC', system(0),'Finalizing PROJECTOR...'),
+	finalizeDB,               	% Finalization of projector
+	report_message('MC', system(0),'PROJECTOR was finalized successfully.').
+
 
 
 % Clean all exogenous actions and set the initial now/1 situation 
 reset_indigolog_dbs :- 
-	retractall(watch_for_exog),
+	retractall(watch_for_exog(_)),
 	retractall(indi_exog(_)), 
 	retractall(rolled_now(_)),
 	retractall(now(_)),
 	update_now([]),
 	assert(rolled_now([])),
-	assert((indi_exog(_) :- fail)),
+	%assert((indi_exog(_) :- fail)),
 	fail.
 reset_indigolog_dbs.
 
@@ -258,34 +268,44 @@ indigolog :- indigolog(none).
 indigolog(_) :-		% Used to require a program, now we start proc. main always (March 06)
 	init,  !, 
 	(proc(main, E) ->		% obtain main agent program
-		report_message(system(0),'Starting to execute the main program'),
+		report_message('MC', system(0),'Starting to execute the main program'),
 		catch(indigo(E,[]),Exc,
-			(report_message(system(0),
+			(report_message('MC', system(0),
 				['Main program interrupted due to exception: ',Exc]),
-			 report_message(system(0),['Break? (yes/no) ',Exc]),
+			 report_message('MC', system(0),['Break? (yes/no) ',Exc]),
 			 read(Answer),
 			 (Answer=yes -> break ; true)) ), !
 	;
-		report_message(system(0),'No main program to execute')
+		report_message('MC', system(0),'No main program to execute')
 	),
-	report_message(system(0),'Program execution finished. Closing modules...'),
+	report_message('MC', system(0),'Program execution finished. Closing modules...'),
 	fin, !,
-	report_message(system(0),'Everything finished - HALTING TOP-LEVEL CONTROLLER').
+	report_message('MC', system(0),'Everything finished - HALTING TOP-LEVEL CONTROLLER').
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
 %%
 indigo(E,H) :- 
-	handle_rolling(H,H2), !,		% Must roll forward?
-	handle_exog(H2,H3),   !, 		% Handle pending exog. events
+	report_message('MC', system(3),'Handling exogenous actions...'),
+	handle_exog(H,H2),   !, 		% Handle pending exog. events
+	report_message('MC', system(3),'Handling rolling...'),
+	handle_rolling(H2,H3), !,		% Handle rolling forward the database
 	prepare_for_step,			% Prepare for step
+	report_message('MC', system(1),'Starting to compute the next single-step...'),
 	mayEvolve(E,H3,E4,H4,S), !,		% Compute next configuration evolution
 	wrap_up_step,				% Finish step
-	(S=trans -> indigo2(H3,E4,H4) ;
-	 S=system -> indigo2(H3,E4,H4) ;
-	 S=final -> report_message(program,  'Success.') ;
-	 S=exog  -> (report_message(program, 'Restarting step.'), indigo(E,H3)) ; 
-	 S=failed-> report_message(program,  'Program fails.') 
+	report_message('MC', system(3),['Step result: ',S,' - Continuing main cycle...']),
+	((S=trans, \+ exists_pending_exog_event) -> !, indigo2(H3,E4,H4) ;
+	 (S=trans, exists_pending_exog_event) -> % there were exog events during mayEvolve/5
+			(handle_exog(H3, H3New), % absorb those exog actions and reconstruct history
+		     	 append(HNActions, H3, H4), 
+			 append(HNActions, H3New, H4New), !, 
+		     	 indigo2(H3New,E4,H4New)) ;
+	 S=system -> !, indigo2(H3,E4,H4) ;
+	 S=final -> report_message('MC', program,  'Program success!') ;
+	 S=exog  -> (report_message('MC', program, 'Exogenous action ocurred - Restarting.'), !,
+	             indigo(E,H3)) ; 
+	 S=failed-> report_message('MC', program,  'Program fails!') 
 	).
 
 %%
@@ -302,35 +322,36 @@ indigo2(H,E,[wait|H])   :- !,
 	doWaitForExog(H1,H2),
 	indigo(E,H2).
 indigo2(_,E,[debug_exec|H]) :- !, 
-	report_message(system(0), 'Request for DEBUGGING'),
+	report_message('MC', system(0), 'Request for DEBUGGING'),
 	debug(debug, H, null),  !,
 	delete(H,debug,H2),
 	indigo(E,H2).
 indigo2(_,_,[halt_exec|H]) :- !, 
-	report_message(system(0), 'Request for TERMINATION of the program'),
+	report_message('MC', system(0), 'Request for TERMINATION of the program'),
 	indigo([], H).
 indigo2(_,_,[abort_exec|H]) :- !, 
-	report_message(system(0), 'Request for ABORTION of the program'),
+	report_message('MC', system(0), 'Request for ABORTION of the program'),
 	indigo([?(false)], H).
 indigo2(_,E,[break_exec|H]) :- !, 
-	report_message(system(0), 'Request for PAUSE of the program'),
+	report_message('MC', system(0), 'Request for PAUSE of the program'),
 	writeln(E),
 	break,		% BREAK POINT (CTRL+D to continue execution)
 	delete(H,pause,H2),
 	indigo(E,H2).
 indigo2(_,_,[reset_exec|_]) :- !, 
-	report_message(system(0), 'Request for RESETING agent execution'),
+	report_message('MC', system(0), 'Request for RESETING agent execution'),
 	finalizeDB,
 	initializeDB,
 	proc(main, E),		% obtain main agent program
 	indigo(E,[]).		% restart main with empty history
 indigo2(H,E,[stop_interrupts|H]) :- !, 
 	indigo(E,[stop_interrupts|H]).
-indigo2(H,E,H)          :- 
-	indigo(E,H).	% The case of Trans for tests
-indigo2(H,E,[A|H]) :- 
-	indixeq(A, H, H1), !, 
-	indigo(E, H1).  % DOMAIN ACTION
+indigo2(H,E,H) :- !, % The case of Trans for tests, no action execution, continue
+	indigo(E,H).	
+indigo2(H,E,[A|H]) :- % The case of Trans for domain actions, execute action, then continue 	
+	indixeq(A, H, H2), !, 
+	indigo(E, H2).  
+
 
 % This are special actions that if they are in the current history
 % they are interpreted by the interpreter in a particular way
@@ -351,15 +372,12 @@ has_system_action(H,A) :-
 % Wait continously until an exogenous action occurrs
 doWaitForExog(H1,H2):- 	type_prolog(swi), !,	% block and wait for exception
 	repeat,
-        report_message(system(1), 'Waiting for exogenous action to happen...'), 
-	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
-                 (exists_pending_exog_event -> abort_work_duetoexog ; true),
-                  thread_get_message(_)		% just to block the thread somehow..
-                ), exog_action, retractall(watch_for_exog)),
-        handle_exog(H1,H2),
+        report_message('MC', system(1), 'Waiting for exogenous action to happen...'), 
+	exog_interruptable(thread_get_message(_), true, _Status), % just to block the thread somehow...
+        handle_exog(H1,H2),	% at this point, there must have been an exog action
 	H1\=H2.
 doWaitForExog(H1,H2):- 		% busy waiting (bad, expensive)
-        report_message(system(2), 'Waiting for exogenous action to happen...'), 
+        report_message('MC', system(1), 'Waiting for exogenous action to happen...'), 
         repeat, 
         handle_exog(H1,H2),
         (H2=H1 -> fail ; true).
@@ -368,7 +386,7 @@ doWaitForExog(H1,H2):- 		% busy waiting (bad, expensive)
 % Predicates to prepare everthing for the computation of the next
 % single step. Up to now, we just disable the GC to speed up the execution
 prepare_for_step :- turn_off_gc.              	% Before computing a step
-wrap_up_step     :- retractall(watch_for_exog), % After computing a step
+wrap_up_step     :- retractall(watch_for_exog(_)), % After computing a step
 		    turn_on_gc, 
 		    garbage_collect.
 
@@ -389,17 +407,16 @@ wrap_up_step     :- retractall(watch_for_exog), % After computing a step
 % * any vanilla Prolog 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
-% If the step is a system-action, then just propagate it
+% If the step is a system-action, then just move it to the front of the history
 mayEvolve(E,H,E,[A|H2],system):- 
 	has_system_action(H,A), !,
 	delete(H,A,H2).
 
-mayEvolve(E1,H1,E2,H2,S):- 
-	type_prolog(T) -> mayEvolve(E1,H1,E2,H2,S,T) ; 
-        		  mayEvolve(E1,H1,E2,H2,S,van).
-abort_work_duetoexog :-  
-	type_prolog(T) -> abort_work_duetoexog(T) ; abort_work_duetoexog(van).
+mayEvolve(E1,H1,E2,H2,S):- type_prolog(T), !, mayEvolve(E1,H1,E2,H2,S,T).
+mayEvolve(E1,H1,E2,H2,S):- mayEvolve(E1,H1,E2,H2,S,van).
+
+abort_work_duetoexog :- type_prolog(T), !, abort_work_duetoexog(T).
+abort_work_duetoexog :- abort_work_duetoexog(van).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -408,18 +425,30 @@ abort_work_duetoexog :-
 % Notice that if a catch/3 is left via an throw/1 call, all current
 % computations and bindings are lost (e.g., the bindings on E1,H1,S,E2,H2)
 %
-mayEvolve(E1,H1,E2,H2,S,T):- (T=ecl ; T=swi),
-	catch(  (assert(watch_for_exog),	% Assert flag watch_for_exog
-                 (exists_pending_exog_event -> abort_work_duetoexog ; true),
-                 (final(E1,H1,T)       -> S=final ;
-                  trans(E1,H1,E2,H2,T) -> S=trans ;
-                                          S=failed),
-                 retract(watch_for_exog)	% Retract flag watch_for_exog
-                ), exog_action, (retractall(watch_for_exog), S=exog) ).
+%mayEvolve(E1,H1,E2,H2,FinalStatus,T):- (T=ecl ; T=swi),
+%	exog_interruptable(mayEvolve(E1,H1,E2,H2,StepStatus,van), true, Status),
+%	(Status = ok -> FinalStatus = StepStatus ; FinalStatus=exog).
+
+mayEvolve(E1,H1,E2,H2,Status,swi):- mayEvolve(E1,H1,E2,H2,Status,van).
+mayEvolve(E1,H1,E2,H2,Status,ecl):- mayEvolve(E1,H1,E2,H2,Status,van).
+
+% Execute Goal but abort if an exogenous action occurrs. Status=ok or Status=aborted
+% This predicate relies on:
+%	- watch_for_exog/1: flag used to state that we are watching for exog actions
+%	- exists_pending_exog_event/0: check if there is any exog action pending
+%	- abort_work_duetoexog/0: actually abort whatever guarded task is being carried on
+exog_interruptable(Goal, GoalAbortCond, Status) :-
+	catch( (assert(watch_for_exog(GoalAbortCond)),		% Assert flag watch_for_exog
+		(exists_pending_exog_event ->  abort_work_duetoexog ; true),
+		Goal,
+		retract(watch_for_exog(GoalAbortCond)),		% Retract flag watch_for_exog
+		Status=ok
+		), exog_action, (retract(watch_for_exog(GoalAbortCond)), Status=aborted) ).
+
 
 % Abort mechanism for ECLIPSE: just throw exception
 abort_work_duetoexog(ecl) :- 
-	report_message(system(4), 'Informing main cycle of exog action!'),
+	report_message('MC', system(5), 'Informing main cycle of exog action!'),
 	throw(exog_action).  
 
 % Abort mechanism for SWI: throw exception to main thread only
@@ -429,8 +458,8 @@ abort_work_duetoexog(ecl) :-
 %		from the DB and that mayEvolve/6 is already finished. In that
 %		case the event should not be raised
 abort_work_duetoexog(swi) :- 
-	report_message(system(4), 'Informing main cycle of exog action!'),
-	thread_signal(main, (watch_for_exog -> throw(exog_action) ; true)).
+	report_message('MC', system(5), 'Informing main cycle of exog action!'),
+	thread_signal(main, throw(exog_action)).
 
 
 
@@ -449,9 +478,9 @@ FEB 2007: THIS HAS NOT BEEN THE CASE FOR LONG TIME, MAY BE FIXED ;-)
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 % (2) - for "vanilla" Prolog
 %
-mayEvolve(E1,H1,E2,H2,S,van):- 
-	final(E1,H1)       -> S=final ;
-	trans(E1,H1,E2,H2) -> S=trans ;  S=failed.
+mayEvolve(E1,H1,_E2,_H2,final,van):- final(E1,H1), !.
+mayEvolve(E1,H1,E2,H2,trans,van):- trans(E1,H1,E2,H2), !.
+mayEvolve(_E1,_H1,_E2,_H2,failed,van).
 
 abort_work_duetoexog(van) :- true.  % No way of aborting a step in the vanilla version
 
@@ -499,15 +528,15 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
         update_now(H2).
 indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         type_action(Act, sensing), !,
-        report_message(system(2), ['Sending sensing Action *',Act,'* for execution']),
+        report_message('MC', system(3), ['(MC) Sending sensing Action *',Act,'* for execution']),
         execute_action(Act, H, sensing, IdAct, S), !,
 	(S=failed -> 
-		report_message(error, 
+		report_message('MC', error, 
 			['Action *', Act, '* FAILED to execute at history: ',H]),
 		H2 = [abort_exec,failed(Act)|H],	% Request abortion of program
 	        update_now(H2)
 	;
-                report_message(action,  
+                report_message('MC', action,  
                 	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing 
 			outcome: ', S]),
 	        wait_between_actions,
@@ -516,14 +545,14 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         type_action(Act, nonsensing), !, 
-        report_message(system(2), ['Sending nonsensing action *',Act,'* for execution']),
+        report_message('MC', system(3), ['Sending nonsensing action *',Act,'* for execution']),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S=failed -> 
-		report_message(error, ['Action *', Act, '* could not be executed at: ',H]),
+		report_message('MC', error, ['Action *', Act, '* could not be executed at: ',H]),
 		H2 = [abort_exec,failed(Act)|H],
 	        update_now(H2)
 	;
-                report_message(action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
+                report_message('MC', action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
 		wait_between_actions,
                 H2 = [Act|H],
 		update_now(H2)
@@ -532,16 +561,16 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
 % Simulated pause between execution of actions if requested by user
 wait_between_actions :-
         wait_at_action(Sec), !,   % Wait Sec numbers of seconds
-        report_message(system(2),['Waiting at step ',Sec,' seconds']), 
+        report_message('MC', system(4),['Waiting at step ',Sec,' seconds']), 
         sleep(Sec). 
 wait_between_actions.
 
-% Updates the current history to H
-update_now(H):- 
-        retract(now(_)) -> assert(now(H)) ; assert(now(H)).
+% Updates the current history and the history already rolled to H
+update_now(H):- retractall(now(_)), assert(now(H)).
+update_rolled_now(H):-  retractall(rolled_now(_)), assert(rolled_now(H)).
 
 action_failed(Action, H) :-
-	report_message(error,
+	report_message('MC', error,
 		['Action *',Action,'* could not be executed at history: ',H]),
 	halt.
 
@@ -577,6 +606,7 @@ store_exog([A|L]) :- assertz(indi_exog(A)), store_exog(L).
 
 % Is there any pending exogenous event?
 exists_pending_exog_event :- indi_exog(_).
+exists_pending_exog_event(E) :- indi_exog(E).
 
 
 
@@ -585,10 +615,11 @@ exists_pending_exog_event :- indi_exog(_).
 % 
 % First we add each exogenous event to the clause indi_exog/1 and
 % in the end, if we are performing an evolution step, we abort the step.
-exog_action_occurred([]) :-  watch_for_exog -> abort_work_duetoexog ; true.
+exog_action_occurred([]) :-  watch_for_exog(Goal), Goal, !, abort_work_duetoexog. 
+exog_action_occurred([]).
 exog_action_occurred([ExoAction|LExoAction]) :-
         assert(indi_exog(ExoAction)),   
-        report_message(exogaction, ['Exog. Action *',ExoAction,'* occurred']),
+        report_message('MC', exogaction, ['Exog. Action *',ExoAction,'* occurred']),
 	exog_action_occurred(LExoAction).
 
 
@@ -606,24 +637,25 @@ exog_action_occurred([ExoAction|LExoAction]) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 handle_rolling(H1,H2) :- 
 	\+ has_system_action(H1,_),	% roll-forward only if no system action is in H1
-	 must_roll(H1), !, roll(H1, H2).
+	 must_roll(H1), !, roll(must, H1, H2).
 handle_rolling(H1,H1).
 
 pause_or_roll(H1,H2) :- 
 	\+ has_system_action(H1,_),	% roll-forward only if no system action is in H1
-	can_roll(H1), !, roll(H1, H2).
+	can_roll(H1), !, roll(can, H1, H2).
 pause_or_roll(H1,H1).
 
-roll(H1, H2) :-
-        report_message(system(2),'Rolling down the river.......'), 
-	roll_db_safe(H1, H2), 
-        report_message(system(2), 'done progressing the database!'), 
-        report_message(system(3), ['New History after roll-forward: ', H2]), 
-	update_now(H2), 			% Update the current history	
-	retract(rolled_now(HO)),		% Update the rollednow/1 predicate
-	append(H1,HO,HN),			% rolled_now(H): H is the full system history
-	assert(rolled_now(HN)),
-	save_exog.	% Collect all exogenous actions
+roll(Mode, H1, H2) :-
+	report_message('MC', system(4),['Rolling down the river with mode: *',Mode,'*']), 
+	roll_db(Mode, H1, H2), 
+	report_message('MC', system(4), '......... done progressing the database!'), 
+	report_message('MC', system(5), ['New History after roll-forward: ', H2]), 
+	update_now(H2), 			% Update the current system history now/1
+	append(H2,HRolled,H1),			% HRolled is what has been cut/rolled from H1
+	rolled_now(HOldRolled),			
+	append(HRolled,HOldRolled,HNnewRolled),	
+	update_rolled_now(HNnewRolled),		% Update rolled_now/1
+	save_exog.				% Collect all exogenous actions
 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -635,11 +667,11 @@ pasthist(H):- now(ActualH), before(H,ActualH).
 
 % Deal with an unknown configuration (P,H)
 error(M):- 
-        report_message(error, M), 
-        report_message(error,'Execution will be aborted!'), abort.
+        report_message('MC', error, M), 
+        report_message('MC', error,'Execution will be aborted!'), abort.
 
 warn(M):- 
-        report_message(warning, M).
+        report_message('MC', warning, M).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Interpreters/indigolog.pl

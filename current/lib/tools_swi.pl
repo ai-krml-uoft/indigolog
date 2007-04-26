@@ -48,10 +48,13 @@
 	   send_data_socket/2,
 	   receive_list_data_socket/2,
 	   receive_data_socket/2,
+	   report_message/3,
 	   report_message/2,
+	   report_message/1,
            get_argument/2,
 	   get_list_arguments/1,
-           set_debug_level/1
+           set_debug_level/1,
+           change_report_tell/1
           ]). % +SocketId
 
 :- style_check(-discontiguous).     % Clauses may be not together

@@ -115,7 +115,7 @@
     /*    rconc(E1,E2) : Real concurrency     		     	    	 */
     /*    rpi(X,D)     : Real nondeterministic choice of argument from D */
     /*    gexec(P,E)   : Guarded execution of program E wrt condition P  */
-    /*    gexec(PSucc,E,PFail,ERec): full guarded execution		 */
+    /*    goal(PSucc,E,PFail,ERec): full guarded execution		 */
     /*    abort(P)     : Abort process identified with P                 */
     /*    ??(P)        : Like ?(P) but it leaves a test(P) mark in H     */
     /*    wait         : Meta action to wait until an exogenous event    */
@@ -142,6 +142,7 @@ trans(rconc(E1,E2),H,rconc(E11,E22),H1) :-
             ( (trans(E2,H,E22,H1), E11=E1) ; (trans(E1,H,E11,H1), E22=E2) ) ).
 final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
 
+
 % Execute program E as long as condition P holds; finish E if neg(P) holds
 final(gexec(_,E), H) :- final(E,H).
 trans(gexec(P,E), H, gexec2(P,E1), H1) :- 	% P needs to be a simple fluent
@@ -151,28 +152,16 @@ final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
 trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
 
-
-% gexec(PSucc,E,PFail,ERec): full guarded execution
+% goal(PSucc,E,PFail,ERec): full guarded execution
 %	PSucc 	: finalize successfully if PSucc holds
 %	E	: the program to be executed
 %	PFail	: Terminate the program E and execute recovery procedure ERec
-final(gexec(PSucc,E,_,_), H) :- isTrue(PSucc,H) ; final(E,H).
-trans(gexec(PSucc,_,PFail,ERec), H, E2, H2) :-
+final(goal(PSucc,E,_,_), H) :- isTrue(PSucc,H) ; final(E,H).
+trans(goal(PSucc,_,PFail,ERec), H, E2, H2) :-
 	isTrue(neg(PSucc),H),
 	isTrue(PFail,H),
 	trans(ERec,H, E2, H2).
-trans(gexec(PSucc,E,PFail,ERec), H, gexec(PSucc,E2,PFail,ERec), H2) :-
-	isTrue(neg(PSucc),H),
-	isTrue(neg(PFail),H),
-	trans(E,H,E2,H2).
-
-
-
-
-% goal(PSucc,E,PFail)
-final(goal(PSucc,E,_),H) :- isTrue(PSucc,H) ; final(E,H).
-trans(goal(_,_,PFail),H,?(false),H) :- isTrue(PFail,H).
-trans(goal(PSucc,E,PFail),H,goal(PSucc,E2,PFail),H2) :- 
+trans(goal(PSucc,E,PFail,ERec), H, goal(PSucc,E2,PFail,ERec), H2) :-
 	isTrue(neg(PSucc),H),
 	isTrue(neg(PFail),H),
 	trans(E,H,E2,H2).
@@ -216,6 +205,17 @@ trans(ttime(E,Sec),H,time(E2,Sec),H2) :- trans(time(E,Sec),H,E2,H2).
 final(ttime(E,Sec),H) :- final(time(E,Sec),H).
 
 
+% Perform a transition on E, aborting though if an exogenous action happens
+% meanwhile and Cond holds in H
+% requires exog_interruptable/3 from main cycle
+trans(exogint(E,Cond),H,exogint(E2,Cond),H2) :- 
+	exog_interruptable(trans(E,H,E2,H2), isTrue(Cond,H), Status),
+	(Status=ok -> 
+		true 
+	; 
+		report_message('TF', system(0),'Computation of trans/4 aborted due to exog events'),
+		E2=E, H2=H
+	).
 
 
     /* (B) CONGOLOG CONSTRUCTS                                           */

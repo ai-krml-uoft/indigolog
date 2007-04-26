@@ -158,7 +158,7 @@ close_socket(X) :-
 
 
 % start server now at the corresponding port!
-:- server(5000).
+:- server(5001).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

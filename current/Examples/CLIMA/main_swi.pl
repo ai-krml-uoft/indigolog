@@ -108,7 +108,8 @@
 :- dynamic clima_agentID/2, teammember/1.
 
 % This is the address of the CLIMA GAME server environment
-clima_location(localhost, 12300).
+clima_location(teahp, 12300).
+%clima_location(localhost, 12300).
 %clima_location('agentslave.in.tu-clausthal.de', 12300).
 clima_agentID(participant1,1).	% default
 
@@ -121,7 +122,7 @@ set_agentID(AgentId,PassId) :-
 
 
 % This is the address and information for the MESSENGER environment
-mess_location(tea, 5000).
+mess_location(localhost, 5001).
 agentID(Id) :- clima_agentID(Id,_).
 teammember(participant1).	% Default team-members
 teammember(participant2).
@@ -149,7 +150,7 @@ server_host(localhost).
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
         member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
-        %member((Env,Type), [(clima07([]), swi),(messenger([]), swi)]),
+        %member((Env,Type), [(clima07([debug(5)]), swi),(messenger([]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -215,6 +216,16 @@ main(AgentId, PassId) :-
 :- set_option(debug_level,1).
 :- set_option(wait_step,0).
 :- set_option(debug_level,warn_off).
+
+
+
+run_firefox :-
+        (    fork(child),
+             exec(xterm)
+        ;    true
+        ).
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
