@@ -70,8 +70,8 @@
 % -- exog_action_occurred(LExoAction) 
 %	to report a list of exog. actions LExogAction to the top-level
 %
-% -- exists_pending_exog/0
-% -- exists_pending_exog(Event)  
+% -- exists_pending_exog_event/0
+% -- exists_pending_exog_event(Event)  
 %       there are exogenous events pending to be dealt
 % -- set_option(+O, +V)  
 %       set option O to value V. Current options are:
@@ -104,6 +104,7 @@
 %		Id is the identification for the action from the EM
 % -- exog_occurs(-L)
 %	return a list L of exog. actions that have occurred (sync)
+%	front items are the oldest exog events (new events are on the tail of L)
 % -- initializeEM/0 
 %	environment initialization
 % -- finalizeEM/0  
@@ -154,7 +155,7 @@
 % -- set_debug_level(+N)    : set debug level to N
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic sensing/2,   	% There may be no sensing action
-	indi_exog/1,		% Stores exogenous events not managed yet
+	indi_exog/1,		% Stores exogenous events not managed yet (newer exog go first)
 	now/1,            	% Used to store the actual history
 	rolled_now/1,          	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
@@ -584,7 +585,7 @@ action_failed(Action, H) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 handle_exog(H1, H2) :- 
 	save_exog,				% Collect on-demand exogenous actions
-	exists_pending_exog_event,		% Any indi_exog/1 in the database?
+	exists_pending_exog_event, !,		% Any indi_exog/1 in the database?
 		% 1 - Collect all exog actions in the DB
 	findall(A, retract(indi_exog(A)), LExogActions),
 		% 2 - Get the SYSTEM exogenous actions (e.g., debug)
@@ -599,10 +600,11 @@ handle_exog(H1, H1). 	% No exogenous actions, keep same history
 
 
 % Collect on-demand exogenous actions: reported  by exog_occurs/1 
-save_exog :- exog_occurs(L) -> store_exog(L) ; true.
+save_exog :- exog_occurs(L), !, store_exog(L).
+save_exog.
 
 store_exog([]).  
-store_exog([A|L]) :- assertz(indi_exog(A)), store_exog(L).
+store_exog([A|L]) :- asserta(indi_exog(A)), store_exog(L).
 
 % Is there any pending exogenous event?
 exists_pending_exog_event :- indi_exog(_).
@@ -618,7 +620,7 @@ exists_pending_exog_event(E) :- indi_exog(E).
 exog_action_occurred([]) :-  watch_for_exog(Goal), Goal, !, abort_work_duetoexog. 
 exog_action_occurred([]).
 exog_action_occurred([ExoAction|LExoAction]) :-
-        assert(indi_exog(ExoAction)),   
+        asserta(indi_exog(ExoAction)),   
         report_message('MC', exogaction, ['Exog. Action *',ExoAction,'* occurred']),
 	exog_action_occurred(LExoAction).
 

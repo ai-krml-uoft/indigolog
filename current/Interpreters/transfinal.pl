@@ -208,12 +208,13 @@ final(ttime(E,Sec),H) :- final(time(E,Sec),H).
 % Perform a transition on E, aborting though if an exogenous action happens
 % meanwhile and Cond holds in H
 % requires exog_interruptable/3 from main cycle
+final(exogint(E,_Cond),H) :- final(E,H).
 trans(exogint(E,Cond),H,exogint(E2,Cond),H2) :- 
 	exog_interruptable(trans(E,H,E2,H2), isTrue(Cond,H), Status),
 	(Status=ok -> 
 		true 
 	; 
-		report_message('TF', system(0),'Computation of trans/4 aborted due to exog events'),
+		report_message('TF', system(3),'Computation of trans/4 aborted due to exog events'),
 		E2=E, H2=H
 	).
 

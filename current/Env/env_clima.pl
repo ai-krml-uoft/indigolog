@@ -389,15 +389,14 @@ unfold_clima_message(XMLMess, sim-start, NTimeStamp, Data) :-
 	member(depotx=DX, LAttr), any_to_number(DX, NDX),
 	member(depoty=DY, LAttr), any_to_number(DY, NDY).
 unfold_clima_message(XMLMess, sim-end, NTimeStamp, Data) :-
-	permutation(Data, [id(Id), score(NScore), result(Result)]), !,
+	permutation(Data, [score(NScore), result(Result)]), !,
 	(T= 'sim-end' ; T = sim-end),
 	clima_message(XMLMess, T, TimeStamp, LElements), 
 	any_to_number(TimeStamp, NTimeStamp),
 	(member([sim-result, LAttr, []], LElements) ; 
 			member(['sim-result', LAttr, []], LElements)),
 	member(score=Score, LAttr), any_to_number(Score, NScore),
-	member(result=Result, LAttr),
-	member(id=Id, LAttr).
+	member(result=Result, LAttr).
 unfold_clima_message(XMLMess, bye, TimeStamp, []) :-
 	(T= 'bye' ; T = bye),
 	clima_message(XMLMess, T, TimeStamp, []).

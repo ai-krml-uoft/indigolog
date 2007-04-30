@@ -9,6 +9,10 @@
 %  TESTED : SWI Prolog 5.0.10 www.swi-prolog.org
 %
 % An environment to communicate among multiple agents
+%
+% To compile it to an executable, run pl -q, consult file [mess_server] and run:
+%
+% 	qsave_program(mess,[toplevel(start),stand_alone(true),class(runtime)]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %                             November 15, 2002
@@ -45,54 +49,56 @@
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 % 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- include('../lib/systemvar'). % Global include code and Prolog init
-%:- use_module(library(streampool)). % required bu alreaedy in systemvar
+:- set_prolog_flag(backquoted_string, true).
+
 
 % define how many agent connections will be allowed
 max_no_agents(10).
 
-
 server(Port) :-
-	report_message(system(0), ['Starting MESSENGER server at port ', Port]),
-	close_socket(Port),
+	report(['Starting MESSENGER server at port:',Port]),
 	retractall(agent(_,_,_,_)),
 	%	
         tcp_socket(Socket),
-        tcp_bind(Socket, Port),
+        catch(tcp_bind(Socket, Port),_,fail),
 	max_no_agents(NoAgents),	% how many agents can connect?
         tcp_listen(Socket, NoAgents),
         tcp_open_socket(Socket, In, _Out),
         add_stream_to_pool(In, accept_new_agent(Socket)),
         stream_pool_main_loop.
 
+
+
 accept_new_agent(Socket) :-
         tcp_accept(Socket, Slave, PeerIP),
         tcp_open_socket(Slave, In, Out),
-	report_message(system(0), ['Adding a new agent from IP: ', PeerIP]),
+	report(['Adding a new agent from IP: ', PeerIP]),
 	assert(agent(noname,In,Out,PeerIP)),	% register connection of agent
         add_stream_to_pool(In, handle_client(In)).
 
-
+%%
+%% handle_client/2 : handles data in socket In
+%%
 handle_client(In) :-
 	agent(Agent,In,_,_),
 	catch(at_end_of_stream(In),E,
-		(report_message(system(3), 
-			['Cannot check if stream is EOF: ',(Agent,In),'--> ',E]),
+		(report(['Cannot check if stream is EOF: ',(Agent,In),'--> ',E]),
 		fail)),
-	report_message(system(1), ['End of file on ',(Agent,In)]),
+	report(['End of file on ',(Agent,In)]),
 	handle_message(In, unregister).
 
 handle_client(In) :-
 	agent(Agent,In,_,_),
-	catch(read_term(In, Message, []),E,
-		report_message(system(3), ['Cannot read from ',(Agent,In),'---> ',E])),
-	report_message(system(3), ['Message from ',(Agent,In),' : ',Message]),
+	catch(read_term(In, Message, [double_quotes(string)]),E,
+			report(['Cannot read from ',(Agent,In),'---> ',E])),
+	report(['Message from ',(Agent,In),' : ',Message]),
         handle_message(In, Message).
+handle_client(_).
 
 
+%%
+%% handle_message/2 : handles one message
+%%
 handle_message(In, unregister) :-
 	unregister_agent(In).
 
@@ -103,7 +109,7 @@ handle_message(In, register(Agent)) :-
 	retract(agent(_,In,Out,PeerIP)),
 	assert(agent(Agent,In,Out,PeerIP)),
 	tell(server,Agent,ok),
-	report_message(system(2), ['Agent ',Agent,' registered']).
+	report(['Agent ',Agent,' registered']).
 
 handle_message(In, tell(AgentRcv,Message)) :-
 	agent(AgentSrc,In,_,_),
@@ -122,8 +128,7 @@ handle_message(In,_) :-
 	
 
 handle_message(In,Mess) :- 
-	write('******* Message cannot be handled: '), 
-	write(In), write('-'), writeln(Mess), nl.
+	report(['******* Message cannot be handled: ',In, ' - ',Mess]).
 
 
 
@@ -134,7 +139,7 @@ unregister_agent(In) :-
         delete_stream_from_pool(In),
 	close_socket(In),
         close_socket(Out),
-	report_message(system(2), ['Agent ',Agent,' unregistered']).
+	report(['Agent ',Agent,' unregistered']).
 
 
 tell(AgentSrc, AgentRcv, Message) :-
@@ -152,13 +157,35 @@ tell_all(AgentSrc,[AgentRcv|LAgents],Message) :-
 
 
 % Tries to close socket X but catches the exception if not possible
-close_socket(X) :-
-	catch(close(X),E,report_message(warning,['Cannot close socket ',X,'--> ',E])).
+close_socket(X) :- catch(close(X),E,report([E])).
+
+
+% report(L): print out list of terms in L
+report([]) :- nl.
+report([M|L]) :- write(M), report(L).
+
+
+
+
+
 
 
 
 % start server now at the corresponding port!
-:- server(5001).
+%:- server(5001).
+
+% run the server reading the port number from the 1st argument on the command line
+start :- run_server_arg.
+run_server_arg :- 
+	current_prolog_flag(argv, [_, Port|_]),
+	catch(atom_number(Port,PortN),_,fail), !,
+	server(PortN).
+run_server_arg :- 
+	report(['First argument has to be the port number to listen to (e.g., ./mess 5001)']),
+	halt.
+	
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

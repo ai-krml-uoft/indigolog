@@ -558,19 +558,26 @@ setupSimulation(X,Y) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % THIS IS THE MAIN EXECUTOR
-proc(main,  	[gexec2(playingGame,
-			[while(true, 
-				[say('Waiting simulation to start'), 
-				 while(neg(inDungeon), wait), 
-				 ?(setupSimulation(gridSizeX, gridSizeY)), 
-				 say('Simulation started - Starting main controller'),
-				 exogint(gexec2(inDungeon, mainControl(2)), true),
-				 say('Simulation ended...')
-				])
-			]),
-		say('BYE messages recevied. Tournament finished...')
-		]		
+proc(main,
+  	[gexec2(playingGame,
+		[while(true, 
+			[say('Waiting simulation to start'), 
+			 while(neg(inDungeon), wait), 	% wait to enter the simulation: sim-start
+			 ?(setupSimulation(gridSizeX, gridSizeY)), 
+			 say('Simulation started - Starting main controller'),
+			 exogint(gexec2(inDungeon, mainControl(2)), abortCondition(locRobot(me))),
+			 say('Simulation ended...')
+			])
+		]),
+	say('BYE messages recevied. Tournament finished...')
+	]		
 ).
+
+abortCondition(Loc) :- 
+	exists_pending_exog_event(requestAction(_,Data)),
+	sense_location(Data,Loc2),
+	Loc\=Loc2.
+
 
 
 % Controller for the CLIMA agent:
@@ -591,9 +598,10 @@ proc(mainControl(2),
 			[drop, pi(time, setState(getOutDepot,time))]),
 	  interrupt(and(isGold(locRobot(me))=true,neg(fullLoaded)), pick), % gold here?
 	  interrupt([(dir,direction), loc], 	% Gold around us?
+			and(report(['Checking for gold around us: ',dir]), 
 			and(neg(fullLoaded), 
 			and(apply(dir, [locRobot(me), loc]), 
-			and(isGold(loc)=true, report('Spotted gold around! Moving there...')))), 
+			and(isGold(loc)=true, report('Spotted gold around! Moving there...'))))), 
 				pi(time,[setState(pickCloseGold,time), dir])
 		),
 	  interrupt(and(hasGold=true, report('We have gold! Planning to go to depot...')), 
@@ -601,9 +609,10 @@ proc(mainControl(2),
 	  interrupt(time, and(locRobot(me)=locDepot, report('Getting out of depot quickly...')),
 			safeRandomMove),	 	% Get out of depot quick!
 	  interrupt(locWithGold, 	% plan to go to a particular gold
-			and(report('Looking for gold close around'),
-			and(destinationGold(locWithGold,10),
-			    report(['Going for gold at location: ',locWithGold]))),
+			and(report('Looking for a close gold somewhere'),
+			and(some(h,and(now(h),h=[])),		% fast only when h=[]
+			and(destinationGold(locWithGold,20),
+			    report(['Going for gold at location: ',locWithGold])))),
 			 goByPlanning(opt, locWithGold)
 		),
 	  interrupt((dir,direction), 
@@ -669,12 +678,11 @@ proc(try_movement(A,Result),
 % Abort when AbortCond with Result=aborted 
 % Fail with Result=failed if A has been tried N times already; execute PFailProg
 proc(try_action(N,A,AbortCond,SuccCond,PFailProg,Result),
-	[A,
-	?(true), 	% Here there should be a condition to wait for evaluation exec of A
+	[?(true), 	% Here there should be a condition to wait for evaluation exec of A
 	if(AbortCond,[say('Abort condition applied.. aborting'),?(Result=aborted)],
 		if(SuccCond, ?(Result=ok),
 			if(N=1,[?(Result=failed),say('Gave up on action!'),PFailProg],
-				pi(m,[?(m is N-1), 	
+				pi(m,[A, ?(m is N-1), 	
 				try_action(m,A,AbortCond,SuccCond,PFailProg,Result)])
 			)
 		)
