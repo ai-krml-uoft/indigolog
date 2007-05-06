@@ -160,7 +160,8 @@
 	rolled_now/1,          	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
 	watch_for_exog/1,     	% We should be watchfull of exogenous actions
-	pause_step/0.     	% Pause the step being calculated
+	pause_step/0,     	% Pause the step being calculated
+	exception_thrown/0.
 	
 % Predicates that they have definitions here but they can defined elsewhere
 :- multifile(set_option/1),	
@@ -270,18 +271,28 @@ indigolog(_) :-		% Used to require a program, now we start proc. main always (Ma
 	init,  !, 
 	(proc(main, E) ->		% obtain main agent program
 		report_message('MC', system(0),'Starting to execute the main program'),
-		catch(indigo(E,[]),Exc,
-			(report_message('MC', system(0),
-				['Main program interrupted due to exception: ',Exc]),
-			 report_message('MC', system(0),['Break? (yes/no) ',Exc]),
-			 read(Answer),
-			 (Answer=yes -> break ; true)) ), !
+		catch(indigo(E,[]),Exc, recover_from_exception(E,Exc)), !
 	;
 		report_message('MC', system(0),'No main program to execute')
 	),
 	report_message('MC', system(0),'Program execution finished. Closing modules...'),
 	fin, !,
 	report_message('MC', system(0),'Everything finished - HALTING TOP-LEVEL CONTROLLER').
+
+% recover_from_exception(_, Exc) :-
+% 	report_message('MC', system(0), ['Main program interrupted due to exception: ',Exc]),
+% 	statistics, !,
+% 	report_message('MC', system(0),['Break? (yes/no) ',Exc]),
+% 	read(Answer),
+% 	(Answer=yes -> break ; true).
+
+recover_from_exception(E, Exc) :-
+	report_message('MC', error,['Main program interrupted due to exception: ', Exc]), !,
+	(Exc = '$aborted' ->
+		true
+	;
+		catch(indigo(E,[]),Exc,recover_from_exception(E,Exc))
+	).
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
@@ -387,8 +398,8 @@ doWaitForExog(H1,H2):- 		% busy waiting (bad, expensive)
 % Predicates to prepare everthing for the computation of the next
 % single step. Up to now, we just disable the GC to speed up the execution
 prepare_for_step :- turn_off_gc.              	% Before computing a step
-wrap_up_step     :- retractall(watch_for_exog(_)), % After computing a step
-		    turn_on_gc, 
+wrap_up_step     :- turn_on_gc, 
+			%retractall(watch_for_exog(_)), % After computing a step
 		    garbage_collect.
 
 
@@ -442,15 +453,24 @@ exog_interruptable(Goal, GoalAbortCond, Status) :-
 	catch( (assert(watch_for_exog(GoalAbortCond)),		% Assert flag watch_for_exog
 		(exists_pending_exog_event ->  abort_work_duetoexog ; true),
 		Goal,
-		retract(watch_for_exog(GoalAbortCond)),		% Retract flag watch_for_exog
-		Status=ok
-		), exog_action, (retract(watch_for_exog(GoalAbortCond)), Status=aborted) ).
+		with_mutex(mutex_watch_for_exog, 
+			(retract(watch_for_exog(GoalAbortCond)),	% Retract flag watch_for_exog
+			 Status=ok)),
+		(exception_thrown -> 
+			report_message('MC', warning, 'Exception delayed (amazing)'),
+			catch((repeat,fail),exog_action,throw(exog_action)) 
+		; 
+			true
+		)), exog_action, 
+			(retract(watch_for_exog(GoalAbortCond)), 
+			 retractall(exception_thrown),
+			 Status=aborted) ).
 
 
 % Abort mechanism for ECLIPSE: just throw exception
 abort_work_duetoexog(ecl) :- 
-	report_message('MC', system(5), 'Informing main cycle of exog action!'),
-	throw(exog_action).  
+	throw(exog_action),
+	report_message('MC', system(5), 'Informing main cycle of exog action!').
 
 % Abort mechanism for SWI: throw exception to main thread only
 % 	OBS: abort_work_duetoexog(swi) is running in the env. manager thread
@@ -459,8 +479,8 @@ abort_work_duetoexog(ecl) :-
 %		from the DB and that mayEvolve/6 is already finished. In that
 %		case the event should not be raised
 abort_work_duetoexog(swi) :- 
-	report_message('MC', system(5), 'Informing main cycle of exog action!'),
-	thread_signal(main, throw(exog_action)).
+	thread_signal(main, throw(exog_action)),
+	report_message('MC', system(5), 'Informing main cycle of exog action!').
 
 
 
@@ -617,12 +637,20 @@ exists_pending_exog_event(E) :- indi_exog(E).
 % 
 % First we add each exogenous event to the clause indi_exog/1 and
 % in the end, if we are performing an evolution step, we abort the step.
-exog_action_occurred([]) :-  watch_for_exog(Goal), Goal, !, abort_work_duetoexog. 
+exog_action_occurred([]) :-  with_mutex(mutex_watch_for_exog, may_abort_work).
 exog_action_occurred([]).
 exog_action_occurred([ExoAction|LExoAction]) :-
         asserta(indi_exog(ExoAction)),   
         report_message('MC', exogaction, ['Exog. Action *',ExoAction,'* occurred']),
 	exog_action_occurred(LExoAction).
+
+% may call abort_work_duetoexog if applies
+may_abort_work :-
+	watch_for_exog(Goal), 
+	Goal, !, 
+	assert(exception_thrown),
+	abort_work_duetoexog.
+may_abort_work.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

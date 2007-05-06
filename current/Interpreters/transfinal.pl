@@ -237,8 +237,8 @@ trans(pconc(E1,E2),H,E,H1) :-    % bpconc(E1,E2,H) is for when E1 blocked at H
 
 % bpconc(E1,E2,H) does not reconsider process E1 as long as the history
 % remains being H (at H, E1 is already known to be blocked)
-trans(bpconc(E1,E2,H),H,E,H1) :-
-    !, trans(E2,H,E3,H1),  % blocked history H
+trans(bpconc(E1,E2,H),H,E,H1) :- !,
+    trans(E2,H,E3,H1),  % blocked history H
     (H1=H -> E=bpconc(E1,E3,H) ; E=pconc(E1,E3)).
 trans(bpconc(E1,E2,_),H,E,H1) :- trans(pconc(E1,E2),H,E,H1).
 
@@ -282,7 +282,8 @@ trans(prioritized_interrupts(L),H,E1,H1) :-
     trans(E,H,E1,H1).
 
 trans(prioritized_interrupts_simple(L),H,E1,H1) :- 
-    expand_interrupts([interrupt(haveExecuted(halt),halt_exec)|L],E), !,
+%    expand_interrupts([interrupt(haveExecuted(halt),halt_exec)|L],E), !,
+    expand_interrupts(L,E), !,
     trans(E,H,E1,H1).
 
 expand_interrupts([],stop_interrupts).
@@ -305,9 +306,9 @@ final(star(_),_).
 final(star(_,_),_).
 final([E|L],H)       :- final(E,H), final(L,H).
 final(ndet(E1,E2),H) :- final(E1,H) ; final(E2,H).
-final(if(P,E1,E2),H) :- ground(P), (isTrue(P,H) -> final(E1,H) ; final(E2,H)).
-final(if(P,E1,_),H)  :- \+ ground(P), isTrue(P,H), final(E1,H).
-final(if(P,_,E2),H)  :- \+ ground(P), isTrue(neg(P),H), final(E2,H).
+final(if(P,E1,E2),H) :- ground(P), !, (isTrue(P,H) -> final(E1,H) ; final(E2,H)).
+final(if(P,E1,_),H)  :- isTrue(P,H), final(E1,H).
+final(if(P,_,E2),H)  :- isTrue(neg(P),H), final(E2,H).
 final(while(P,E),H)  :- isTrue(neg(P),H) ; final(E,H).
 
 final(pi([],E),H)    :- !, final(E,H).

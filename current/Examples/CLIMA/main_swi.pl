@@ -113,12 +113,12 @@
 
 
 % This is the address of the CLIMA GAME server environment
-%clima_location('tea.dyndns.org', 12300).
-clima_location(teahp, 12300).
+clima_location('tea.dyndns.org', 12300).
+%clima_location(teahp, 12300).
 %clima_location(localhost, 12300).
-%clima_location('agentslave.in.tu-clausthal.de', 12300).
-clima_agentID(participant1,1).	% default
+%clima_location('agentmaster.in.tu-clausthal.de', 12300).
 
+clima_agentID(participant1,1).	% default
 
 % set the agent ID and PASSWORD and the corresponding teammates
 set_agentID(AgentId,PassId) :-
@@ -127,8 +127,9 @@ set_agentID(AgentId,PassId) :-
 
 
 % This is the address and information for the MESSENGER environment
-%mess_location('tea.dyndns.org', 12340).
-mess_location(teahp, 12340).
+mess_location('tea.dyndns.org', 12340).
+%mess_location('eon.cs.toronto.edu', 12340).
+%mess_location('teahp, 12340).
 %mess_location(localhost, 12340).
 agentID(Id) :- clima_agentID(Id,_).
 teammember(participant1).	% Default team-members
@@ -156,7 +157,12 @@ server_host(localhost).
 % Define what environment managers the application will use
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(clima07([quiet]), swi),(messenger([quiet]), swi)]),
+	(clima_agentID(boss,_) ->	
+	        member((Env,Type), [(messenger([quiet,debug(0)]), swi)])
+	;
+        	member((Env,Type), 
+			[(clima07([debug(3)]), swi),(messenger([quiet,debug(0)]), swi)])
+	),
         %member((Env,Type), [(clima07([debug(5)]), swi),(messenger([]), swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
@@ -189,26 +195,38 @@ translateExogAction(CodeAction, Action) :-
 % MAIN PREDICATE - evaluate this to run demo
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% participant team
-main1:- set_participant_team, main(participant1,1).
-main2:- set_participant_team, main(participant2,2).
-main3:- set_participant_team, main(participant3,3).
-main4:- set_participant_team, main(participant4,4).
-main5:- set_participant_team, main(participant5,5).
-main6:- set_participant_team, main(participant6,6).
-set_participant_team :- 
-	set_team([participant1,participant2,participant3,participant4,participant5,participant6]).
-
-
 % golog team
-golog1 :- set_golog_team, main('GOLOGteam1',va5Liove).
-golog2 :- set_golog_team, main('GOLOGteam2','Aerai6Pa').
-golog3 :- set_golog_team, main('GOLOGteam3','Efool1lu').
-golog4 :- set_golog_team, main('GOLOGteam4',cahk6Oi7).
-golog5 :- set_golog_team, main('GOLOGteam5',iuY1soj5).
-golog6 :- set_golog_team, main('GOLOGteam6',deiZak5f).
+golog1 :- set_golog_team, login(1,UserName, Pass), main(UserName,Pass).
+golog2 :- set_golog_team, login(2,UserName, Pass), main(UserName,Pass).
+golog3 :- set_golog_team, login(3,UserName, Pass), main(UserName,Pass).
+golog4 :- set_golog_team, login(4,UserName, Pass), main(UserName,Pass).
+golog5 :- set_golog_team, login(5,UserName, Pass), main(UserName,Pass).
+golog6 :- set_golog_team, login(6,UserName, Pass), main(UserName,Pass).
+boss :- set_golog_team, login(7,UserName, Pass), main(UserName,Pass).
+
+
+
+% for the test server
+%login(1,'GOLOGteam1',va5Liove).
+%login(2,'GOLOGteam2','Aerai6Pa').
+%login(3,'GOLOGteam3','Efool1lu').
+%login(4,'GOLOGteam4',cahk6Oi7).
+%login(5,'GOLOGteam5',iuY1soj5).
+%login(6,'GOLOGteam6',deiZak5f).
+
+% for the contest server
+login(1,'GOLOGteam1',lH9fsomB).
+login(2,'GOLOGteam2',gEvak2OS).
+login(3,'GOLOGteam3',nv1w2hTh).
+login(4,'GOLOGteam4','4qRgWlgr').
+login(5,'GOLOGteam5',j6J2iyYI).
+login(6,'GOLOGteam6',z54IqyLb).
+login(7,boss,null).
+
 set_golog_team :- 
-	set_team(['GOLOGteam1','GOLOGteam2','GOLOGteam3','GOLOGteam4','GOLOGteam5','GOLOGteam6']).
+	set_team(['GOLOGteam1','GOLOGteam2','GOLOGteam3','GOLOGteam4','GOLOGteam5','GOLOGteam6',boss]).
+
+
 
 
 % set an agent player and go!
@@ -226,7 +244,6 @@ main(AgentId, PassId) :-
 :- set_option(debug_level,warn_off).
 
 
-
 run_firefox :-
         (    fork(child),
              exec(xterm)
@@ -240,18 +257,3 @@ run_firefox :-
 % EOF: CLIMA/main_swi.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-/*
-
-requestAction(1177840673414, [step(87), posX(26), posY(26), items(1), deadline(1177840677414), id('88'), cells([cell(cur, [agent(ally)]), cell(n, [obstacle]), cell(nw, [obstacle]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])])
-
-
-
-
-and(report('Checking for gold around us...'), and(neg(fullLoaded), and(apply(dir, [locRobot(me), loc]), and(isGold(loc)=true, report('Spotted gold around! Moving there...')))))
-
-
-
-
-
-
-*/

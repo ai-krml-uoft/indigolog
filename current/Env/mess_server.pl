@@ -105,16 +105,18 @@ handle_message(In, unregister) :-
 handle_message(In, end_of_file) :-
 	unregister_agent(In).
 
-handle_message(In, register(Agent)) :-
+handle_message(In, register(SAgent)) :-
 	retract(agent(_,In,Out,PeerIP)),
+	string_to_atom(SAgent,Agent),
 	assert(agent(Agent,In,Out,PeerIP)),
 	tell(server,Agent,ok),
 	report(['Agent ',Agent,' registered']).
 
-handle_message(In, tell(AgentRcv,Message)) :-
-	agent(AgentSrc,In,_,_),
+handle_message(In, tell(STo,Message)) :-
+	agent(AgentSrc,In, _, _),
 	AgentSrc\=noname,
-	tell(AgentSrc, AgentRcv, Message).
+	string_to_atom(STo,To),
+	tell_all(AgentSrc, [To], Message).
 
 handle_message(In, broadcast(Message)) :-
 	agent(AgentSrc,In,_,_),
@@ -128,7 +130,7 @@ handle_message(In,_) :-
 	
 
 handle_message(In,Mess) :- 
-	report(['******* Message cannot be handled: ',In, ' - ',Mess]).
+	report(['*************************** Message cannot be handled: ',In, ' - ',Mess]).
 
 
 
@@ -151,7 +153,7 @@ tell(AgentSrc, AgentRcv, Message) :-
 
 tell_all(_,[],_).
 tell_all(AgentSrc,[AgentRcv|LAgents],Message) :-
-	tell(AgentSrc, AgentRcv, Message),
+	catch(tell(AgentSrc, AgentRcv, Message),E,writeln(E)),
 	tell_all(AgentSrc,LAgents,Message).
 
 

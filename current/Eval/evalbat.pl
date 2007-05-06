@@ -220,12 +220,14 @@
 %% :- use_module(library(quintus)).
 
 :- dynamic 
-   currently/2,	% Used to store the actual initial fluent values
-   simulator/2,	% There may be no simulator
-   senses/2,
-   senses/5,	% There may be no sensing action
-   forget/2,	% There may be no action that "forgets" a fluent
-   has_valc/3.	% used for caching some values
+	currently/2,	% Used to store the actual initial fluent values
+	simulator/2,	% There may be no simulator
+	senses/2,
+	senses/5,	% There may be no sensing action
+	forget/2,	% There may be no action that "forgets" a fluent
+	has_valc/3,	% used for caching some values
+	rolling/0.
+  
 
 :- index(currently(1, 1)).
 
@@ -315,6 +317,7 @@ inconsistent(_):- fail.
 
 % A primitive fluent is either a relational or a functional fluent
 prim_fluent(P):- rel_fluent(P) ; fun_fluent(P).
+def_fluent(F) :- def_fluent(F,_,_).
 
 % Check if A has "the form" of a primitive action, though, its arguments
 % may need to be evaluated yet
@@ -401,15 +404,16 @@ has_valo(F,V,H)  :- has_val(F,V,H).  % F is a fluent with NO cache
 
 
 % has_val/3: the usual way of reasoning using regression and sensing
-has_val(F,V,[])		:- currently(F,V).
-has_val(F,V,[A|H])	:- sets_val(A,F,V,H).
-has_val(F,V,[A|H])	:- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
+has_val(F,V,[])	:- currently(F,V).
+has_val(F,V,H) :- def_fluent(F), !, def_fluent(F,V,P), holds(P,H).
+has_val(F,V,[A|H]) :- sets_val(A,F,V,H).
+has_val(F,V,[A|H]) :- has_value(F,V,H), \+ sets_val(A,F,_,H).
+%has_val(F,V,[A|H]) :- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
 
-sets_val(e(F,V),F,V,_)	:- prim_fluent(F), !.  % Fluent V is explicitly set by e(_,_)
-sets_val(e(A,V),F,V,_)	:- senses(A,F).	% Action A sets F directly
+sets_val(e(F,V),F,V,_) :- prim_fluent(F), !.  % Fluent V is explicitly set by e(_,_)
+sets_val(e(A,V),F,V,_) :- senses(A,F).	% Action A sets F directly
 sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H).  % A sets F indirectly
-sets_val(A,F,V,H)	:- causes_val(A,F,V,P), holds(P,H).    % Non-sensing reasoning
-sets_val(A,F,V,H)	:- def_fluent(F,V,P), holds(P,[A|H]).  % A definition fluent
+sets_val(A,F,V,H) :- causes_val(A,F,V,P), holds(P,H).    % Non-sensing reasoning
 
 
 
@@ -469,8 +473,9 @@ roll_db(Mode,H1,H2) :-
 	split(N,H1,H22,H3),	% H3 is what we would like to be rolled forward
 	report_message('BAT',system(4),['Trying to progress sub-history: ',H3]),
 	report_message('BAT',system(4),['Trying to keep sub-history: ',H22]),  
+	%assert(rolling),
 	preserve(Mode,H3,H33),	% H33 is what has been actually rolled forward
-	%assert(preserved(Mode,H3,H33)),
+	%retract(rolling),
 	report_message('BAT',system(4),['Actual progressed sub-history: ',H33]),
 	split(_,H1,H2,H33),
 	report_message('BAT',system(4),['Actual new history: ',H2]).
@@ -493,8 +498,8 @@ preserve(Mode, [A|H],H2,H3):-
 		retractall(temp(_,_)),	% clean-up whatever it was computed
 		H3 = H2
 	;	
-	%	report_message('BAT',system(5),
-	%		['Action *',A,'* progressed successfully: moving temp/2 to currently/2']),
+		report_message('BAT',system(5),
+			['Action *',A,'* progressed successfully: moving temp/2 to currently/2']),
 		move_temp_to_currently,		% this section cannot be interrupted
 		update_cache([A]),
 		preserve(Mode, H,[A|H2],H3)
@@ -504,6 +509,7 @@ preserve(Mode, [A|H],H2,H3):-
 roll_action(A) :-
 	sets_val(A, F, V, []),
 	prim_fluent(F),
+%	writeln(F),
 	(\+ temp(F, V) -> assert(temp(F, V)) ; true),
 	fail.
 roll_action(_).
@@ -590,9 +596,5 @@ errorRecoveryProc:-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Eval/evalbat.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-tea(preserve(must, [told(`GOLOGteam2`, [step(6), posX(2), posY(2), items(1), deadline(1177716382552), id('7'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [gold]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(6), posX(11), posY(24), items(0), deadline(1177716382558), id('7'), cells([cell(cur, [agent(ally)]), cell(nw, [obstacle]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [obstacle])])]), told(`GOLOGteam3`, [step(6), posX(28), posY(21), items(0), deadline(1177716382554), id('7'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716378549, [step(6), posX(6), posY(17), items(0), deadline(1177716382549), id('7'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])])], [requestAction(1177716383165, [step(7), posX(6), posY(17), items(0), deadline(1177716387165), id('8'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(7), posX(28), posY(20), items(0), deadline(1177716387170), id('8'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(7), posX(11), posY(24), items(0), deadline(1177716387171), id('8'), cells([cell(cur, [agent(ally)]), cell(n, [obstacle]), cell(nw, [obstacle]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [obstacle])])]), told(`GOLOGteam2`, [step(7), posX(2), posY(2), items(1), deadline(1177716387172), id('8'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716387847, [step(8), posX(6), posY(17), items(0), deadline(1177716391847), id('9'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(8), posX(10), posY(24), items(0), deadline(1177716391855), id('9'), cells([cell(cur, [agent(ally)]), cell(n, [obstacle]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [obstacle])])]), told(`GOLOGteam3`, [step(8), posX(28), posY(19), items(0), deadline(1177716391858), id('9'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(8), posX(2), posY(1), items(1), deadline(1177716391849), id('9'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716392527, [step(9), posX(6), posY(17), items(0), deadline(1177716396527), id('10'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(9), posX(28), posY(18), items(0), deadline(1177716396533), id('10'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(9), posX(10), posY(25), items(0), deadline(1177716396536), id('10'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(9), posX(1), posY(1), items(1), deadline(1177716396530), id('10'), cells([cell(cur, [agent(ally)]), cell(nw, [depot]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716397271, [step(10), posX(6), posY(17), items(0), deadline(1177716401271), id('11'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(10), posX(28), posY(17), items(0), deadline(1177716401275), id('11'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(10), posX(10), posY(26), items(0), deadline(1177716401279), id('11'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(10), posX(0), posY(1), items(1), deadline(1177716401273), id('11'), cells([cell(cur, [agent(ally)]), cell(n, [depot]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716401876, [step(11), posX(6), posY(17), items(0), deadline(1177716405876), id('12'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(11), posX(28), posY(16), items(0), deadline(1177716405881), id('12'), cells([cell(cur, [agent(ally)]), cell(n, [gold]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(11), posX(10), posY(27), items(0), deadline(1177716405884), id('12'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(11), posX(0), posY(0), items(1), deadline(1177716405888), id('12'), cells([cell(cur, [agent(ally), depot]), cell(se, [empty]), cell(e, [empty])])]), requestAction(1177716406578, [step(12), posX(6), posY(17), items(0), deadline(1177716410578), id('13'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(12), posX(10), posY(28), items(0), deadline(1177716410588), id('13'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(12), posX(28), posY(15), items(0), deadline(1177716410585), id('13'), cells([cell(cur, [agent(ally), gold]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(12), posX(0), posY(0), items(0), deadline(1177716410582), id('13'), cells([cell(cur, [agent(ally), depot]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty])])]), requestAction(1177716411204, [step(13), posX(6), posY(17), items(0), deadline(1177716415204), id('14'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(13), posX(10), posY(29), items(0), deadline(1177716415199), id('14'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(e, [empty])])]), told(`GOLOGteam2`, [step(13), posX(0), posY(1), items(0), deadline(1177716415195), id('14'), cells([cell(cur, [agent(ally)]), cell(n, [depot]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716415920, [step(14), posX(6), posY(17), items(0), deadline(1177716419920), id('15'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(14), posX(0), posY(2), items(0), deadline(1177716419932), id('15'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(s, [empty]), cell(se, [gold]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(14), posX(9), posY(29), items(0), deadline(1177716419929), id('15'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(13), posX(28), posY(15), items(1), deadline(1177716415197), id('14'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(14), posX(28), posY(14), items(1), deadline(1177716419926), id('15'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716420532, [step(15), posX(6), posY(17), items(0), deadline(1177716424532), id('16'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(w, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(15), posX(9), posY(29), items(0), deadline(1177716424537), id('16'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(15), posX(0), posY(3), items(0), deadline(1177716424533), id('16'), cells([cell(n, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [gold]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(15), posX(28), posY(14), items(1), deadline(1177716424540), id('16'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), requestAction(1177716425134, [step(16), posX(6), posY(17), items(0), deadline(1177716429134), id('17'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [obstacle]), cell(sw, [obstacle]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam2`, [step(16), posX(1), posY(3), items(0), deadline(1177716429136), id('17'), cells([cell(cur, [agent(ally), gold]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam3`, [step(16), posX(28), posY(13), items(1), deadline(1177716429142), id('17'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])]), told(`GOLOGteam4`, [step(16), posX(9), posY(28), items(0), deadline(1177716429212), id('17'), cells([cell(cur, [agent(ally)]), cell(n, [empty]), cell(nw, [empty]), cell(w, [empty]), cell(sw, [empty]), cell(s, [empty]), cell(se, [empty]), cell(e, [empty]), cell(ne, [empty])])])],s)).
 
 

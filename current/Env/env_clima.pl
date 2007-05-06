@@ -135,7 +135,9 @@ connectToGameSimulator :-
 	clima_authenticate(comm_sim, AgentUser, AgentPass, R), !,
 	(R = ok -> 
 	        report_message(system(2), 'Communication with CLIMA SIMULATOR established'),
-		assert(listen_to(socket, comm_sim, comm_sim)) 
+		assert(listen_to(socket, comm_sim, comm_sim)),
+		sleep(1),
+		report_exog_event(connected(climaServer), _)
 	; 
 		report_message(error, ['Cannot authenticate to game server: ',R])
 	).
@@ -172,7 +174,8 @@ handle_stream(comm_sim) :-
 		repeat,
 		report_message(system(2), ['Reconnecting to game server...']),
 		disconnectFromGameSimulator,
-		(connectToGameSimulator -> true ; (sleep(2), fail))
+		sleep(5),
+		(connectToGameSimulator -> true ; fail)
 	).
 
 	
@@ -183,8 +186,6 @@ handle_stream(comm_sim) :-
 	clima_receive_XML(comm_sim, XMLMess), !, 
 	report_message(system(3), ['Message from game server: ', XMLMess]),
 	handle_xml_message(XMLMess).
-
-
 
 
 
@@ -200,6 +201,7 @@ handle_xml_message(XMLMess) :-
 	member(deadline(Deadline), BodyXMLMess),
 	asserta(actionStatus(Deadline, IdAction, pending)), % Observe we assert on the top!
 	report_exog_event(requestAction(TimeStamp, BodyXMLMess), _).
+	%drop_at_depot(BodyXMLMess).
 handle_xml_message(XMLMess) :-
 	unfold_clima_message(XMLMess, bye, _, _), !,
 	assert(bye_message_received),
@@ -210,9 +212,18 @@ handle_xml_message(XMLMess) :-
 handle_xml_message(XMLMess) :- 
 	report_message(warning, ['Message unknown from game simulator: ', XMLMess]).
 
+:- dynamic justDropped/0.
+
+drop_at_depot(Data) :-
+	member(cells(LCells), Data), 
+	member(cell(cur, LCellProp), LCells),
+	member(depot,LCellProp), !,
+	execute(drop, _, 0, _),
+	assert(justDropped).
+drop_at_depot(_).
 
 
-% element(message, [timestamp=1143204742686, type=sim-end], ['', element(sim-result, [id=21, result=draw, score=0],[]), ''])
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -223,6 +234,7 @@ handle_xml_message(XMLMess) :-
 % execute(Action, Type, Sensing) : execute Action of Type and return Sensing
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Execute Action in game simulator
+%execute(drop, _, _, ok) :- retract(justDropped), !.
 execute(Action, _, N, Sensing) :- 
 	(retract(actionStatus(Deadline, IdAction, pending)) ->
 		true
@@ -231,7 +243,7 @@ execute(Action, _, N, Sensing) :-
 		IdAction=0
 		
 	), 
- 	\+ tooLate(Deadline),
+ 	%\+ tooLate(Deadline),
         report_message(action, ['Executing non-sensing action: *',(Action,N,IdAction),'*']), 
 	(clima_execute(comm_sim, Action, IdAction, ok) ->
 		Sensing=ok,
