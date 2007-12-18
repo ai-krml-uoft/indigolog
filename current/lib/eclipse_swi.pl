@@ -77,15 +77,13 @@
            argv/2,
            argc/1,
 	   min/2,                  % Minimum of a list
-	   max/2,                  % Maximum of a list
-	   timeout/3		
+	   max/2                   % Maximum of a list
           ]). 
 
 
 % This utility will replace every call to read/2, write/2, etc. by their
 % corresponding ECLIPSE versions eclipse_read/2, eclipse_write/2, etc.
 :- module_transparent init_eclipse_lib/0.
-
 init_eclipse_lib :- 
         context_module(M),
         assert(M:goal_expansion(read(A1,A2),  eclipse_read(A1,A2))),
@@ -100,7 +98,7 @@ init_eclipse_lib :-
 
 % NOTE: Library streampool is required to help providing support for 
 % sigio(stream) capabilities in exec/3 and accept/3 predicates.
-:- use_module(library(streampool)).
+:- use_module(streampool).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -160,11 +158,11 @@ socket(internet, stream, SocketId) :-
 % Associates an address with a given socket stream.
 % OBS: This bind/2 needs to be given an available fix address!
 bind(SocketId, _/Port) :-
-	socket_info(SocketId, S, _, _), 	
-        tcp_bind(S, Port),
-	tcp_open_socket(S, R, _),  % No Write Stream here
-	%
 	retract(socket_info(SocketId, S, _, _)), 
+        % (number(Port) -> true ; get_free_port(Port)),  % Not yet done
+        tcp_bind(S, Port),
+	%
+	tcp_open_socket(S, R, _),  % No Write Stream here
 	assert(socket_info(SocketId, S, R, null)).
 
 
@@ -174,52 +172,42 @@ listen(SocketId, N) :-
        socket_info(SocketId, S, _, _),
        tcp_listen(S, N).
 
-
-
 % accept/3: Accepts a connection for a stream socket and creates a new socket
 % which can be used for I/O.
-accept(SocketId, From, NewSock) :-        % Handle the case for NewSock=sigio(_)
+accept(SocketId, From, NewSock) :-        % Handle the case for sigio(S)
         \+ var(NewSock), NewSock = sigio(SocketId2), !,  
         accept(SocketId, From, SocketId2),
-        socket_info(SocketId2, S, R, W),
-        register_stream_sigio(R, R2),  % Register SocketId2 for IO signal
         retract(socket_info(SocketId2, S, R, W)),
+        register_stream_sigio(R, R2),  % Register SocketId2 for IO signal
         assert(socket_info(SocketId2, S, R2, W)).
 
 
 % Handle the general case when the socket is just new (Read & Write Streams=null)
 accept(SocketId, Host/unknown, NewSocketId2) :-  
-       socket_info(SocketId, S, null, null), !,
-       (ground(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
+       retract(socket_info(SocketId, S, null, null)), !,
+       (atom(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
        %
        tcp_open_socket(S, R, _),  
-       retract(socket_info(SocketId, S, null, null)), 
        assert(socket_info(SocketId, S, R, null)),
        %
-%       tcp_accept(R, S2, Host),	% OLD SWI-PROLOG (5.6.28)
-       tcp_accept(S, S2, Host),		% NEW SWI-PROLOG (>5.6.32)
+       tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (ground(NewSocketId2) -> 
+       (atom(NewSocketId2) -> 
 	       true
-       ;                              	% Write socket has no alias
-	       S2 =.. [_, NewSocketId2] % because S2= 'socket'(NewSocketId2)
+       ;                              % Write socket has no alias
+	       S2 =.. [_, NewSocketId2]  % because S2= 'socket'(NewSocketId2)
        ),  
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
 
 % Handle the general case when the socket is just new
 accept(SocketId, Host/unknown, NewSocketId2) :-
-       socket_info(SocketId, S, R, _), 
+       socket_info(SocketId, _, R, _), 
        R\=null,             % SocketId must have been binded already
        %
-%       tcp_accept(R, S2, Host),	% OLD SWI-PROLOG (5.6.28)
-       tcp_accept(S, S2, Host),		% NEW SWI-PROLOG (>5.6.32)
+       tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (ground(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
+       (atom(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
-
-
-
-
 
 
 % Connects a socket with the given address.
@@ -245,7 +233,7 @@ get_socket_stream(SocketId, write, Stream) :-
 
 % get_real_streams(StreamList, Type, StreamList2)
 %     StreamList2 is StreamList with all Socket streams replaced
-%     correspondingly by their streams Type (works in 2-ways)
+%     correspondingly by their stream's Type (works in 2-ways)
 get_real_streams([], _, []).
 get_real_streams([S|StreamList], Type, [RS|RealStreamList]) :-
         get_socket_stream(S, Type, RS), !,  % S is a socket!
@@ -268,11 +256,11 @@ eclipse_write(S, T) :-
 eclipse_close(S) :-
         is_socket(S) -> close_socket(S) ; close(S).
 close_socket(SocketId) :-
-        retractall(socket_info(SocketId, S, R, W)),
+        retract(socket_info(SocketId, S, R, W)),
  %       unregister_stream_sigio(R, R2),  % UnRegister SocketId2 for IO signal
         (R == null -> true ; close(R)),
         (W == null -> true ; close(W)),
-        tcp_close_socket(S).
+        catch(tcp_close_socket(S),_,true).
 
 eclipse_flush(S) :-
         get_real_streams([S], write, [RS]),
@@ -566,7 +554,7 @@ replace_element_list([E|R],CE1,CE2,[E|RR]):-
 % without waiting for the child to terminate.
 %
 % By specifying the Streams argument it is possible to connect to the
-% process standard streams. The form of
+% process' standard streams. The form of
 % Streams is [Stdin, Stdout, Stderr]. Stderr is ignored in the current
 % implementation. 
 % If some of these streams are specified and
@@ -593,7 +581,7 @@ replace_element_list([E|R],CE1,CE2,[E|RR]):-
 %        A child process Command is forked in a new process group, its 
 %        standard streams are connected to Streams and its process ID is Pid.
 %     (NOTE: currently, equivalent to exec/3)
-%
+%  
 %
 % -- system(+ShellCommand)
 % -- sh(+ShellCommand)
@@ -656,14 +644,15 @@ exec(Command, [ServerOut, ServerIn, _], Pid) :-
                              register_stream_name(ServerIn2, ServerIn)),
         fork(Pid),
         (   Pid == child,
+	    % detach_IO % may this work to detach the child ?
             (ServerOut == null -> true ; (close(ServerOut), 
 					  dup(CGIIn, 0),     % stdin
 					  close(CGIIn))),
             (ServerIn  == null -> true ; (close(ServerIn),
 				          dup(CGIOut, 1),    % stdout
 					  close(CGIOut))),
-	    detach_IO, % may this work to detach the child ?
-	    exec(Command)		
+%           exec('/bin/sh '('-c', Command))
+            exec(Command)
         ;   
 	    (ServerOut == null -> true ; close(CGIIn)), 
 	    (ServerIn  == null -> true ; close(CGIOut))
@@ -760,9 +749,6 @@ copy_pipe(In, Out) :-
 % -- argv(+N, ?Argument)
 %         Succeeds if the Nth argument given on the command line when 
 %         invoking ECLiPSe is the string Argument.
-%
-% -- timeout(+Goal,+Sec,+TimeOutGoal): 
-%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on timeout
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -806,69 +792,18 @@ max([X], X).
 max([X|L], Y) :- min(L, ML), (X > ML -> Y=X, Y=ML).
 
 
+
 % shuffle(+List, -ShuffledList) : Shuffle a list, ie randomize the element order
-shuffle(L1,L2) :- length(L1,LL1), shuffle2(L1,LL1,L2).
-shuffle2([],_,[]):- !.
-shuffle2(L,LL,[Element|L2]) :-
-	Idx is random(LL),
-	nth0(Idx,L,Element),
-	select(Element,L,L3),
-	LL3 is LL-1,
-	shuffle2(L3,LL3,L2).
-	
-%get a random element from 
-get_random_element(E,L)  :-  
-	L\=[],
-	length(L,LL), 
-	Idx is random(LL),
-        nth0(Idx,L,E).
-
-
-
-%%      timeout(+TimeLimit, :Goal, +TimeOutGoal) is det.
-%
-%	Goal is executed as if called via call(Goal), but only for a maximum of
-%	TimeLimit seconds. If the goal is still executing after TimeLimit, time-out
-%	occurs, the execution of the goal is terminated (via exit_block/1) and
-%	TimeOutGoal is executed. If the value of TimeLimit is 0 or less, no timeout is
-%	applied to the Goal. 
-%	Note that, if Goal is nondeterministic, execution flow may leave the scope of
-%	timeout/3 on success and re-enter on failure. In this case, all time spent
-%	outside within Goal will also be counted towards the TimeLimit.  
-%	(different from Eclipse)
-%
-%       @tbd    Theoretically, alarm may fire before entering
-%               call_cleanup/2, leaking an alarm handle. This is a
-%               common schema for which I do not have a good solution.
-%       @throws =time_limit_exceeded=
-timeout(Goal, Sec, TimeOutGoal) :-
-        Sec > 0, !,
-        alarm(Sec, throw(time_limit_exceeded(Id)), Id),
-	catch(once((Goal,!,delete_alarm(Id))),
-			time_limit_exceeded(IdEx),once(recover(Id,IdEx,TimeOutGoal))).
-timeout(_Time, Goal) :- call(Goal).
-
-recover(Id, Id, TimeOutGoal) :- !,
-	delete_alarm(Id), !,
-	call(TimeOutGoal).
-recover(Id, IdEx, _TimeOutGoal) :-	% Id\=IdExec
-	delete_alarm(Id), !,
-	throw(time_limit_exceeded(IdEx)).
-
-% delete alarm with Id no matter what
-%delete_alarm(Id) :- catch(remove_alarm(Id),error(_Signal, context(remove_alarm/1, _)),true).
-delete_alarm(Id) :- 
-	catch(remove_alarm(Id),
-		error(domain_error(alarm, _), context(divide(get_timer, 1), _)),true).
-
-
-% timeout(+Goal,+Sec,+TimeOutGoal): 
-%	Run the goal Goal for a maximum of TimeLimit seconds. Run TimeOutGoal on
-%timeout
-%timeout(Goal, Sec, TimeOutGoal) :-
-%	catch(call_with_time_limit(Sec, Goal),time_limit_exceeded, TimeOutGoal).
-
-
+shuffle([],[]).
+shuffle(D,DR) :- get_random_element(W,D), 
+		 delete(D,W,D2), 
+                 shuffle(D2,DR2), DR=[W|DR2].
+%get a random element from domain
+get_random_element(W,D)  :- 
+	length(D,L), 
+	L>0,
+	I is random(L),
+        nth0(I,D,W).
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: lib/eclipse_swi.pl

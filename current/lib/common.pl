@@ -273,7 +273,7 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 % -- proc_kill(+Pid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Process Pid exists if its listed by <ps -f pid>
+% Process Pid exists if it's listed by <ps -f pid>
 proc_exists(Pid):- 
         concat_atom(['ps -f ',Pid], Command),
         call_to_exec(unix, Command, Command2), % Select right command for exec
@@ -284,7 +284,7 @@ proc_exists(Pid):-
         ;
              close(streamout),fail).
 
-% Process Pid is finished if its listed with status Z with <ps -f pid>
+% Process Pid is finished if it's listed with status Z with <ps -f pid>
 % (SWI does not provide that)
 proc_term(Pid):- 
         concat_atom(['ps -f ',Pid], Command),
@@ -298,7 +298,7 @@ proc_term(Pid):-
         ;
              close(streamout), fail).
 
-% Kill process PID by sending signal 9 (MOST PROLOGS PROVIDE THIS)
+% Kill process PID by sending signal 9 (MOST PROLOG'S PROVIDE THIS)
 %proc_kill(Pid):- 
 %        concat_atom(['kill -9 ',Pid], Com),
 %        system(Com).
@@ -371,28 +371,17 @@ decode_data(_, Data, [unknown, Data]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 5 - TOOL FOR REPORTING MESSAGES
 %
-% -- report_message(+M)       
-%       Report messsage M
 % -- report_message(+T, +M)       
 %       Report messsage M of type T
 % -- set_debug_level(+N) : set the debug level to N (nothing >N is shown)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic 
 	debug_level/1,
-	warn_off/0,
-	report_tell/1.
+	warn_off/0.
 
 % Set warn on/off for warnings
 set_debug_level(warn_off) :- warn_off -> true ; assert(warn_off).
 set_debug_level(warn_on)  :- retractall(warn_off).
-
-% change the place where report_message/2 will print out
-change_report_tell(user) :- !,
-	retractall(report_tell(_)).
-change_report_tell(Stream) :-
-	retractall(report_tell(_)),
-	assert(report_tell(Stream)).
-
 
 % Set te debug level to be below N (the higher the N, the more debug messages)
 set_debug_level(N) :- 
@@ -400,15 +389,6 @@ set_debug_level(N) :-
 	assert(debug_level(N)),
         report_message(system(0), ['Debug level set to ',N]).
 
-
-
-% FROM NOW ON THE IMPLEMENTATION OF report_message/2
-report_message(M) :- report_message(null,M).
-report_message(Module, T, Mess) :- 
-	is_list(Mess) -> 
-		report_message(T,[Module,'='|Mess])
-	; 
-		report_message(T,[Module,'=',Mess]).
 report_message(T, L) :- 
 	is_list(L), !, 
 	maplist(any_to_string,L,LS),
@@ -420,57 +400,30 @@ report_message(system(N), _)    :-   % Do not print this debug message
         debug_level(N2), N2<N, !.
 report_message(system(N), T)    :- !,
         N2 is N-1,
-        tab_report(N2),
-        write_report('DEBUG '),  
-	write_report(N), 
-	write_report(': '), 
-	writeln_report(T).
+        tab(N2),
+        write('DEBUG '),  write(N), write(': '), writeln(T).
 
 report_message(warning, T)    :- !,
-	(warn_off -> true ; write_report('!!! WARNING: '), 
-	writeln_report(T)).
-
-report_message(null, T)    :- !, writeln_report(T).
+	(warn_off -> true ; write('!!! WARNING: '), writeln(T)).
 
 report_message(error, T)    :- !,
-        write_report('!!!!! ERROR -----------> '),  writeln_report(T).
+        write('!!! ERROR ----> '),  writeln(T).
 
 report_message(program, T)    :- !,
-        write_report('  ***** PROGRAM:: '),  writeln_report(T).
+        write('  ***** PROGRAM:: '),  writeln(T).
 
 report_message(action, T)    :- !,
-	nl_report,
-        write_report('>>>>>>>>>>>>>>> ACTION EVENT:: '),  
-	write_report(T), 
-	writeln_report(' <<<<<<<<<<<<<<<<').
+        write('>>>>>>>>>>>> ACTION EVENT:: '),  writeln(T).
 
 report_message(sensing, T)    :- !,
-        nl_report,
-	write_report('<<<<<<<<<<<< SENSING EVENT:: '),  
-	writeln_report(T).
+        write('--------------> SENSING EVENT:: '),  writeln(T).
 
 report_message(exogaction, T) :- !,
-	nl_report,
-        write_report('===========> EXOGENOUS EVENT:: '), 
-	writeln_report(T).
+	nl,
+        write('=========> EXOGENOUS EVENT:: '), writeln(T).
 
 report_message(_, T) :-
-        write_report('  **** OTHER EVENT:: '),  
-	writeln_report(T).
-
-
-write_report(X) :-
-	(report_tell(Stream) -> true ; telling(Stream)),
-	write(Stream,X).
-writeln_report(X) :-
-	(report_tell(Stream) -> true ; telling(Stream)),
-	writeln(Stream,X).
-nl_report :-
-	(report_tell(Stream) -> true ; telling(Stream)),
-	nl(Stream).
-tab_report(N) :-
-	(report_tell(Stream) -> true ; telling(Stream)),
-	tab(Stream,N).
+        write('  **** OTHER EVENT:: '),  writeln(T).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

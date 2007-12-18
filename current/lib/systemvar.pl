@@ -49,7 +49,7 @@
 %
 % -- main_dir(Dir) : main directory of the whole code
 % -- type_prolog(T) : current prolog engine is T (swi/ecl/sics/van)
-%
+% -- executable_path(A, P) : P is the executable path for software A
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -104,6 +104,14 @@ type_prolog(vanilla).
 	set_backquoted_string
 ;
 	true.
+
+
+
+% Defines the path of executables used to define device managers
+executable_path(swi, '/usr/bin/pl').
+executable_path(eclipse, '/usr/bin/eclipse-pl').
+executable_path(tcltk, '/usr/bin/wish').
+executable_path(xterm, '/usr/bin/xterm').
 
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

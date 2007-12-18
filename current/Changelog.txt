@@ -1,0 +1,21 @@
+===========================================================================
+December 19, 2007
+===========================================================================
+
+- Added predicate executable_path(A,P) in lib/system_var.pl which indicates
+the path to different softwares (e.g. swi, xterm). It is used in
+Env/dev_managers.pl to define device managers.
+
+
+
+
+
+
+
+
+
+
+
+===========================================================================
+EOF: Changelog.txt
+===========================================================================

@@ -66,18 +66,15 @@
 % SYSTEM TOOLS (used by the top-level cycle)::
 %
 % -- initializeDB/0
-%           initialize the whole projector
-% -- initializeDB(F)/1
-%           initializes a particular fluent F
+%           initialize the projector
 % -- finalizeDB/0
 %           finalize the projector
 % -- can_roll(+H1) 
 %       check if the DB CAN roll forward
 % -- must_roll(+H1) 
 %       check if the DB MUST roll forward
-% -- roll_db(+Mode, +H1,-H2) 
+% -- roll_db(+H1,-H2) 
 %       perform roll forward with current history H1 and new history H2
-%	if Mode==must, then rolling forward cannot be interrupted
 % -- handle_sensing(+A, +H, +S, -H2) 
 %           H2 is H plus action A with sensing result S
 % -- debug(+A, +H, -S)
@@ -110,7 +107,7 @@
 %           have value V at history H1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-%  A basic action theory is described with:
+%  A basic action theory (BAT) is described with:
 %
 % -- fun_fluent(fluent)     : for each functional fluent (non-ground)
 % -- rel_fluent(fluent)     : for each relational fluent (non-ground)
@@ -151,12 +148,6 @@
 %          e.g., initially(painted(C), false):- domain(C,country), C\=3.
 %                initially(painted(3), true).
 %                initially(color(3), blue).
-%
-% -- def_fluent(fluent,value,cond)
-%          when cond holds in the current situation, fluent takes value 
-%
-%            e.g., def_fluent(isHot, true, temp>=30).
-%                  def_fluent(isHot, false, temp<30).
 %
 % -- causes_val(action,fluent,value,cond)
 %          when cond holds, doing act causes functional fluent to have value
@@ -220,21 +211,16 @@
 %% :- use_module(library(quintus)).
 
 :- dynamic 
-	currently/2,	% Used to store the actual initial fluent values
-	simulator/2,	% There may be no simulator
-	senses/2,
-	senses/5,	% There may be no sensing action
-	forget/2,	% There may be no action that "forgets" a fluent
-	has_valc/3,	% used for caching some values
-	rolling/0.
-  
-
-:- index(currently(1, 1)).
+   currently/2,	% Used to store the actual initial fluent values
+   simulator/2,	% There may be no simulator
+   senses/2,
+   senses/5,	% There may be no sensing action
+   forget/2,	% There may be no action that "forgets" a fluent
+   has_valc/3.	% used for caching some values
 
 % Predicates that they have definitions here but they can defined elsewhere
 :- multifile(prim_action/1).
 :- multifile(causes_val/4).
-%:- multifile(def_fluent/3).
 %:- multifile(causes_true/3).
 %:- multifile(causes_false/3).
 %:- multifile(exog_action/1).
@@ -245,13 +231,13 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    /* Move initially(-,-) to currently(-,-) and clear exog actions  */
-initializeDB :- initializeDB(_). 
-initializeDB(F):- 	% Resets fluent F to the values of initially/2
-	retractall(currently(F,_)), 
+initializeDB:- 
+	retractall(currently(_,_)), 
 	initially(F,V),
 	assert(currently(F,V)),
+	clean_cache,	
 	fail.
-initializeDB(F) :- clean_cache(F).
+initializeDB.
 
   /* Clean all the currently(-.-) predicates */
 %finalizeDB:-  retractall(currently(_,_)), clean_cache.
@@ -265,9 +251,8 @@ eval(P,H,true):- holds(P,H).
 handle_sensing(A,H,Sr,[e(A,Sr)|H]). 
 
 
-% clean_cache: remove all has_valc/3 or the ones for one fluent
-clean_cache :- clean_cache(_).
-clean_cache(F) :- retractall(has_valc(F,_,_)).
+% clean_cache: remove all has_valc/3
+clean_cache :- retractall(has_valc(_,_,_)).
 
 % Set F to value V at H, return H1 (add e(F,V) to history H)
 assume(F,V,H,[e(F,V)|H]).
@@ -287,13 +272,7 @@ domain(V, D)  :- getdomain(D, L), member(V, L).
 rdomain(V, D) :- getdomain(D, L), shuffle(L,L2), !, member(V, L2).
 
 % L is the list-domain associated to name D
-getdomain(D, L) :- 
-	is_list(D) -> 
-		L=D 
-	; 
-		P =.. [D,L2], 
-		call(P),
-		(is_list(L2) -> L=L2 ; L=[L2]).
+getdomain(D, L) :- is_list(D) -> L=D ; (P =.. [D,L], call(P)).
 
 % Computes the arguments of an action or a fluent P
 % Action/Fluent P1 is action/fluent P with all arguments evaluated 
@@ -317,7 +296,6 @@ inconsistent(_):- fail.
 
 % A primitive fluent is either a relational or a functional fluent
 prim_fluent(P):- rel_fluent(P) ; fun_fluent(P).
-def_fluent(F) :- def_fluent(F,_,_).
 
 % Check if A has "the form" of a primitive action, though, its arguments
 % may need to be evaluated yet
@@ -354,33 +332,31 @@ update_cache(_).
 % Assumes that after sensing F, F may change but it will remain known
 % We may probably want to add some "forgeting" mechanism.. either by a 
 %      state condition or special actions
-holds(kwhether(F),[]) :- !, initially(F,_).
-holds(kwhether(F),[Act|_]) :- (senses(Act,F) ; Act=e(F,_)), !.
-holds(kwhether(F),[_|H]) :- holds(kwhether(F),H).
+holds(kwhether(F),[])     :- !, initially(F,_).
+holds(kwhether(F),[Act|_]):- (senses(Act,F) ; Act=e(F,_)), !.
+holds(kwhether(F),[_|H])  :- holds(kwhether(F),H).
 
 % know(F): Fluent F evaluates to something
-holds(know(F),H) :- !, holds(F=_,H).
+holds(know(F),H)     :- !, holds(F=_,H).
 
 % holds(P,H): P holds in H
-holds(and(P1,P2),H) :- !, holds(P1,H), holds(P2,H).
-holds(or(P1,P2),H) :- !, (holds(P1,H) ; holds(P2,H)).
+holds(and(P1,P2),H)	:- !, holds(P1,H), holds(P2,H).
+holds(or(P1,P2),H)	:- !, (holds(P1,H) ; holds(P2,H)).
 holds(neg(P),H)	:- !, checkgr(P), \+ holds(P,H). /* Negation by failure */
-holds(some(V,P),H) :- !, subv(V,_,P,P1), holds(P1,H).
+holds(some(V,P),H)	:- !, subv(V,_,P,P1), holds(P1,H).
 holds(some(V,D,P),H) :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
-holds(all(V,D,P),H) :- !, holds(neg(some(V,D,neg(P))), H).
+holds(all(V,D,P),H)	:- !, holds(neg(some(V,D,neg(P))), H).
 holds(impl(P1,P2),H) :- !, holds(or(neg(P1),P2),H).
-holds(P,H) :- proc(P,P1), !, holds(P1,H).
-holds(P,H) :- \+ \+ rel_fluent(P), !, subf(P,true,H).
-holds(P=v(Value),H) :- \+ \+ fun_fluent(P), ground(Value), !, subf(P,Value,H).
-holds(P,H) :- subf(P,P1,H), call(P1).
+holds(P,H)			:- proc(P,P1), !, holds(P1,H).
+holds(P,H)			:- rel_fluent(P), !, subf(P,true,H).
+holds(P,H)			:- subf(P,P1,H), call(P1).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
 subf(P1,P2,_)  :- (var(P1) ; number(P1)), !, P2 = P1.
-subf(textual(P1),P1,_) :- !.
 subf(P1,P2,H)  :- atom(P1), !, subf2(P1,P2,H).
 subf(P1,P2,H)  :- P1=..[F|L1], subfl(L1,L2,H), P3=..[F|L2], subf2(P3,P2,H).
 
-subf2(P3,P2,H) :- \+ \+ prim_fluent(P3), has_value(P3,P2,H).
+subf2(P3,P2,H) :- prim_fluent(P3), has_value(P3,P2,H).
 subf2(P2,P2,_) :- \+ prim_fluent(P2).
 
 subfl([],[],_).
@@ -404,19 +380,14 @@ has_valo(F,V,H)  :- has_val(F,V,H).  % F is a fluent with NO cache
 
 
 % has_val/3: the usual way of reasoning using regression and sensing
-has_val(F,V,[])	:- currently(F,V).
-has_val(F,V,H) :- def_fluent(F), !, def_fluent(F,V,P), holds(P,H).
-has_val(F,V,[A|H]) :- sets_val(A,F,V,H).
-has_val(F,V,[A|H]) :- has_value(F,V,H), \+ sets_val(A,F,_,H).
-%has_val(F,V,[A|H]) :- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
+has_val(F,V,[])		:- currently(F,V).
+has_val(F,V,[A|H])	:- sets_val(A,F,V,H).
+has_val(F,V,[A|H])	:- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
 
-sets_val(e(F,V),F,V,_) :- prim_fluent(F), !.  % Fluent V is explicitly set by e(_,_)
-sets_val(e(A,V),F,V,_) :- senses(A,F).	% Action A sets F directly
-sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H).  % A sets F indirectly
-sets_val(A,F,V,H) :- causes_val(A,F,V,P), holds(P,H).    % Non-sensing reasoning
-
-
-
+sets_val(e(F,V),F,V,_)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_,_)
+sets_val(e(A,V),F,V,_)	:- senses(A,F).	% Action A sets F directly
+sets_val(e(A,V),F,V2,H)	:- !, senses(A,V,F,V2,P), holds(P,H). % A sets F indirectly
+sets_val(A,F,V,H)	:- causes_val(A,F,V,P), holds(P,H).   % Non-sensing reasoning
 
 % So far, one forgets the value of F when it is sensed (may be improved)
 forget(Act, _, F) :- forget(Act, F).
@@ -436,104 +407,52 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %
 %  Rolling forward means advancing the predicate currently(-,-) and
 %  discarding the corresponding tail of the history.
-%  There are 3 parameters specified by roll_parameters(LC,LM,LP):
-%
-%     LC: if history length is greater than this, we can roll
-%     LM: if the history is longer than this, we must roll
-%     LP: length of the tail of the history to be preserved
+%  There are 3 parameters specified by roll_parameters(L,N,M).
+%     L: the history has to be longer than this, or dont bother
+%     M: if the history is longer than this, forced roll
+%     N: the length of the tail of the history to be preserved
+%		(set N=0 to never roll forward)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
-%:- multifile roll_parameters/3.
 
-% The domain axiomatization must provide one roll_parameters/3:
-%
-%roll_parameters(20,40,5).		% keep histories of size 20
-%roll_parameters(0,0,3).
-%roll_parameters(0,0,0).   		% roll-forward every single action
-%roll_parameters(_,_,_) :- fail.	% never roll forward
+%roll_parameters(1,1,0).  % Never roll forward
+roll_parameters(20,40,5).
 
+can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, N>0.
+must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, N>0.
 
-% can we roll? must we roll?
-can_roll(H) :- roll_parameters(LC,_,LP), length(H,L1), L1 > LC, L1 > LP.
-must_roll(H) :- roll_parameters(_,LM,LP), length(H,L1), L1 > LM, L1 > LP.
-
-
-% split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N.
-% H1 will be the new history that remains, with length N
-% H2 is the remaining past history that ought to be dropped from H
-split(0,H,[],H) :- !.
-split(_,[],[],[]) :- !.
-split(N,[A|H],[A|H1],H2) :- ground(N), N > 0, N1 is N-1, split(N1,H,H1,H2).
-split(N,H,H1,H2) :- \+ ground(N), append(H1,H2,H), length(H1,N).
-
-
-% roll_db(+Mode,+H1,-H2): roll forward current history H1; H2 is the new history
-roll_db(Mode,H1,H2) :- 
+% H1 is the current history (H1 = H2 + H3)
+% H2 will be the new history
+% H3 is the tail of H1 that is going to be dropped
+roll_db(H1,H2) :- 
 	roll_parameters(_,_,N), 	
-	split(N,H1,H22,H3),	% H3 is what we would like to be rolled forward
-	report_message('BAT',system(4),['Trying to progress sub-history: ',H3]),
-	report_message('BAT',system(4),['Trying to keep sub-history: ',H22]),  
-	%assert(rolling),
-	preserve(Mode,H3,H33),	% H33 is what has been actually rolled forward
-	%retract(rolling),
-	report_message('BAT',system(4),['Actual progressed sub-history: ',H33]),
-	split(_,H1,H2,H33),
-	report_message('BAT',system(4),['Actual new history: ',H2]).
+	split(N,H1,H2,H3), 
+	preserve(H3),
+	update_cache(H3).	    % Update the cache wrt the preserved history H3
 
+	/* split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N. */
+split(0,H,[],H).
+split(N,[A|H],[A|H1],H2) :- N > 0, N1 is N-1, split(N1,H,H1,H2).
 
-% preserve(+H,-H2) : rolls forward the initial database from [] to H if possible
-%		          or to H2 if an exogenous event happens in the middle
-%	this preserve/2 can be stopped in the middle
-preserve(Mode,H,H3) :- reverse(H,H2), preserve(Mode,H2,[],H3).
-preserve(_Mode, [],H2,H2).
-preserve(Mode, [A|H],H2,H3):- 
-	(Mode==must ->
-		roll_action(A),		% must rolling; no interruption is possible
-		Status=ok
-	;
-		exog_interruptable(roll_action(A), true, Status)
-	),
-	(Status==aborted ->
-		report_message('BAT',system(0),'Progression aborted...'),
-		retractall(temp(_,_)),	% clean-up whatever it was computed
-		H3 = H2
-	;	
-		report_message('BAT',system(5),
-			['Action *',A,'* progressed successfully: moving temp/2 to currently/2']),
-		move_temp_to_currently,		% this section cannot be interrupted
-		update_cache([A]),
-		preserve(Mode, H,[A|H2],H3)
-	).
+% preserve(H) : rolls forward the initial database from [] to H
+preserve([]).
+preserve([A|H]) :- 
+	preserve(H), 
+	roll_action(A), 
+	update_cache([A]).
 
-% roll_action(+A): roll currently/2 database with respect to action A into temp/2
+% roll_action(A): roll currently/2 database with respect to action A
 roll_action(A) :-
 	sets_val(A, F, V, []),
 	prim_fluent(F),
-%	writeln(F),
 	(\+ temp(F, V) -> assert(temp(F, V)) ; true),
 	fail.
-roll_action(_).
-
-
-% move all temp/2 into currently/2
-move_temp_to_currently :-
+roll_action(_) :-
 	retract(temp(F,V)),
-%	writeln(F),
 	retractall(currently(F,_)),	% There should be just one currently/2 for F!
 	assert(currently(F,V)),
 	fail.
-move_temp_to_currently.
-
-
-
-
-
-
-
-
-
-
-
+roll_action(_).
 
 
 
@@ -596,5 +515,3 @@ errorRecoveryProc:-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Eval/evalbat.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-

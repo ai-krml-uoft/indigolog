@@ -48,13 +48,10 @@
 	   send_data_socket/2,
 	   receive_list_data_socket/2,
 	   receive_data_socket/2,
-	   report_message/3,
 	   report_message/2,
-	   report_message/1,
            get_argument/2,
 	   get_list_arguments/1,
-           set_debug_level/1,
-           change_report_tell/1
+           set_debug_level/1
           ]). % +SocketId
 
 :- style_check(-discontiguous).     % Clauses may be not together
@@ -116,25 +113,17 @@ replace_char_string(S, E1, E2, S2) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % call_to_exec/3
-call_to_exec(unix, (Command,LArgs), CommandExec) :- 
-	CommandExec =.. [Command|LArgs].
-call_to_exec(unix(shell), Command, sh('-c',Command2)) :-
-	string_concat(Command,' ; exit', Command2).
-call_to_exec(term(Title), Command, xterm('-T',Title,'-e',Command)).
-call_to_exec(term, Command, xterm('-e',Command)).
+call_to_exec(unix, Command, sh('-c',Command2)) :-
+	string_concat(Command,' ; exit',Command2).
 
 % Killing a thread means signal it with an "abort" event
-thread_kill(ThreadId) :- 
-	thread_signal(ThreadId, throw(abort)),
-	wait(ThreadId, _).
+thread_kill(ThreadId) :- thread_signal(ThreadId, throw(abort)),
+                         wait(ThreadId, _).
 thread_wait(ThreadId, Status) :- 
         current_thread(ThreadId, _) -> thread_join(ThreadId, Status) ; true.
 
-proc_kill(Pid)    :- 
-	catch(kill(Pid, 9),error(system_error, context(divide(kill, _), _)),true).
-proc_wait(Pid, S) :- 
-	repeat, 
-	catch(wait(Pid, S),error(system_error, context(divide(wait, _), _)),true).
+proc_kill(Pid)    :- kill(Pid, 9).
+proc_wait(Pid, S) :- repeat, wait(Pid, S).
 file_exists(File) :- exists_file(File).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

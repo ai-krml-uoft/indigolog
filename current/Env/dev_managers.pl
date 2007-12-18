@@ -47,6 +47,11 @@
 % 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
+%
+% The following definition are required:
+%
+% -- executable_path(A, P) : P is the executable path for software A
+%
 % The following definition of constants are provided:
 %
 % -- device_manager(+S, +P, -C, [+Host, +Port]) : 
@@ -54,6 +59,7 @@
 %         manager listeling at address Host/Port
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 
@@ -65,15 +71,19 @@
 device_manager(simulator, eclipse, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_sim.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'eclipse -g 10M host=', Host, ' port=', Port, 
+        executable_path(xterm, Exterm),
+        executable_path(eclipse, Eeclipse),
+        concat_atom([Exterm, ' -e ', 
+                     Eeclipse, ' -g 10M host=', Host, ' port=', Port, 
                      ' -b ', File, ' -e ', ' start'], Command).
 
 device_manager(simulator, swi, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_sim.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'pl ', ' -t ', ' start', ' -f ', File,
+        executable_path(xterm, Exterm),
+        executable_path(swi, Eswi),
+        concat_atom([Exterm, ' -e ', 
+                     Eswi, ' -t ', ' start', ' -f ', File,
 		     ' host=', Host, ' port=', Port,' debug=1'], Command).
 		     
 		     
@@ -85,9 +95,13 @@ device_manager(simulator, swi, Command, [Host, Port]):-
 device_manager(rcx, eclipse, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_rcx.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'eclipse -g 10M host=', Host, ' port=', Port, 
+        executable_path(xterm, Exterm),
+        executable_path(eclipse, Eeclipse),
+        concat_atom([Exterm, ' -e ', 
+                     Eeclipse, ' -g 10M host=', Host, ' port=', Port, 
                      ' -b ', File, ' -e ', ' start'], Command).
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -104,8 +118,10 @@ device_manager(internet, eclipse, Command, [Host, Port]):-
 device_manager(internet, swi, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_int_swi.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'pl ', ' -t ', ' start', ' -f ', File,
+        executable_path(xterm, Exterm),
+        executable_path(swi, Eswi),
+        concat_atom([Exterm, ' -e ', 
+                     Eswi, ' -t ', ' start', ' -f ', File,
 		     ' host=', Host, ' port=', Port,' debug=1'], Command).
 
 		     
@@ -163,8 +179,10 @@ device_manager(virtual_wumpus, swi, Command, [Host, Port]):-
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'pl ', ' -t ', ' start', ' -f ', File,
+        executable_path(xterm, Exterm),
+        executable_path(swi, Eswi),
+        concat_atom([Exterm, ' -e ', 
+                     Eswi, ' -t ', ' start', ' -f ', File,
 		     ' host=', Host, ' port=', Port,' debug=1',
                      ' ipwumpus=', IPW, ' portwumpus=', PORTW,
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
@@ -179,7 +197,8 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
-        concat_atom(['pl ', ' -t ', ' start', ' -f ', File,
+        executable_path(swi, Eswi),
+        concat_atom([Eswi, ' -t ', ' start', ' -f ', File,
 		     ' host=', Host, ' port=', Port,' debug=1',
                      ' ipwumpus=', IPW, ' portwumpus=', PORTW, 
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
@@ -212,15 +231,17 @@ device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
        	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPCLIMA,ArgPortCLIMA,
 				ArgAgentLog,ArgAgentPass],
 		% Now build the final pair of (Command, LArgs)
+    executable_path(swi, Eswi),
+    executable_path(xterm, Exterm),
 	(member(quiet, LOptions) ->
-        	append(LPrologArgs,['>/dev/null 2>/dev/null'],LPrologArgs2),
-		join_atom(['pl '|LPrologArgs2], ' ',Arg),
+        	append(LPrologArgs,[' >/dev/null 2>/dev/null'],LPrologArgs2),
+		join_atom([Eswi|LPrologArgs2], ' ',Arg),
 		LArgs=['-c', Arg],
 		Command=sh
 	;
-        	join_atom(['pl '|LPrologArgs], ' ',Arg),
+        	join_atom([Eswi|LPrologArgs], ' ',Arg),
 		LArgs=['-e', Arg],
-		Command=xterm
+		Command=Exterm
 	).
 
 
@@ -251,15 +272,17 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 	concat_atom(['agentLogin=', AgentName], ArgAgent),
        	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPMESS,ArgPortMESS,ArgAgent],
 		% Now build the final pair of (Command, LArgs)
+    executable_path(swi, Eswi),
+    executable_path(xterm, Exterm),
 	(member(quiet, LOptions) ->
-        	append(LPrologArgs,['>/dev/null 2>/dev/null'],LPrologArgs2),
-		join_atom(['pl '|LPrologArgs2], ' ',Arg),
+        	append(LPrologArgs,[' >/dev/null 2>/dev/null'],LPrologArgs2),
+		join_atom([Eswi|LPrologArgs2], ' ',Arg),
 		LArgs=['-c', Arg],
 		Command=sh
 	;
-        	join_atom(['pl '|LPrologArgs], ' ',Arg),
+        	join_atom([Eswi|LPrologArgs], ' ',Arg),
 		LArgs=['-e',Arg],
-		Command=xterm
+		Command=Exterm
 	).
 
 
