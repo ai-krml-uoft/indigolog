@@ -10,10 +10,11 @@
 
 To run the IndiGolog architecture, you need to do the following:
 
-1. Make sure that either SWI Prolog or ECLIPSE Prolog is installed.  SWI
-   Prolog should run with the 'pl' executable and ECLIPSE Prolog should run
-   with the 'eclipse' executable. If your Prolog interpreters have other
-   executables, please create symbolic links called 'pl' or 'eclipse'.
+1. Change the file lib/systemvar.pl to set your particular paths to
+ some executables that may be used, such as SWI Prolog, ECLIPSE Prolog,
+ xterm, etc. For example, SWI Prolog executable is assumed to be '/usr/bin/pl' 
+ but it can be changed by modifying the executable_path/2 predicate in
+ lib/systemvar.pl file.
 
 2. TCP/IP is used for most applications (though not the Elevator-Vanilla).
    For SWI Prolog, make sure it is compiled with TCP/IP support. (This means

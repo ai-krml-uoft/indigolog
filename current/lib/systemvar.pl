@@ -52,7 +52,6 @@
 % -- executable_path(A, P) : P is the executable path for software A
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%% AUTOMATIC LOAD OF REQUIRED LIBRARIES %%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -68,22 +67,19 @@ main_dir(Path):- getenv('PATH_INDIGOLOG',Pwd),
                  (string(Pwd) -> atom_string(APwd, Pwd) ; APwd=Pwd),
                  concat_atom([APwd, '/'], Path).
 
-% Type of Prolog being used
-%:- dynamic library_directory/1.
-%type_prolog(swi) :- library_directory(_), !.  
-%type_prolog(ecl) :- \+ type_prolog(swi).
 
-% REALIZE WHICH PROLOG ARE WE RUNNING
-type_prolog(ecl) :- iso:current_prolog_flag(eclipse_info_suffix,_), !.
-type_prolog(swi) :- 
-	iso:current_prolog_flag(executable,_), 
-	\+ type_prolog(ecl), !.
-type_prolog(sic) :- 
-	iso:current_prolog_flag(language,sicstus), 
-	\+ type_prolog(ecl),
-	\+ type_prolog(swi).
-type_prolog(vanilla).
-
+% REALIZE WHICH PROLOG WE ARE RUNNING
+% [Code suggested by Viktor Engelmann <Viktor.Engelmann@rwth-aachen.de>]
+:- dynamic type_prolog/1.
+guess_prolog :- iso:current_prolog_flag(eclipse_info_suffix,_), !,
+		assert(type_prolog(ecl)).
+guess_prolog :- iso:current_prolog_flag(executable,_), !,
+		assert(type_prolog(swi)).
+guess_prolog :- iso:current_prolog_flag(language,sicstus), !, 
+		assert(type_prolog(sic)).
+guess_prolog :- assert(type_prolog(vanilla)).
+:- type_prolog(_) -> true ; guess_prolog.
+	
 
 % This is the initialization needed for each type of Prolog used
 :- type_prolog(ecl) ->        % INITIALIZATION FOR ECLIPSE PROLOG
