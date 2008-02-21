@@ -137,11 +137,25 @@ final(rndet(E1,E2),H):- final(E1,H) ; final(E2,H).
 
 % Simulate random choice in a concurrent execution of E1 and E2
 trans(rconc(E1,E2),H,rconc(E11,E22),H1) :- 
-    random(1, 10, R), % flip a coin!
-    (R>5 -> ( (trans(E1,H,E11,H1), E22=E2) ; (trans(E2,H,E22,H1), E11=E1) ) ;
-            ( (trans(E2,H,E22,H1), E11=E1) ; (trans(E1,H,E11,H1), E22=E2) ) ).
+    (random(1, 3, 1) -> 	% flip a coin!
+    	( (trans(E1,H,E11,H1), E22=E2) ; (trans(E2,H,E22,H1), E11=E1) ) 
+    	;
+        ( (trans(E2,H,E22,H1), E11=E1) ; (trans(E1,H,E11,H1), E22=E2) ) 
+    ).
+trans(rconc(L),H,rconc([E1|LRest]),H1) :-
+	length(L,LL),
+	random(0,LL, R),
+	nth0(R,L,E),
+	trans(E,H,E1,H1),
+	select(E,L,LRest).	 
 final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
+final(rconc([]),_).
+final(rconc([E|L]),H) :- final(E,H), final(rconc(L),H).
 
+trans(itconc([E|L]),H,itconc(L2),H1) :-
+	trans(E,H,E1,H1),
+	append(L,[E1],L2).
+final(itconc(L),H) :- final(rconc(L),H).
 
 % Execute program E as long as condition P holds; finish E if neg(P) holds
 final(gexec(_,E), H) :- final(E,H).

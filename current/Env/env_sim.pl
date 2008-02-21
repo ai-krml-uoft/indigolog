@@ -259,7 +259,7 @@ restartable_builtin(cd(_)).
 restartable_builtin(close(_)).
 restartable_builtin(connect(_,_)).
 restartable_builtin(select_stream(_,_,_)).
-restartable_builtin(select(_,_,_)).
+restartable_builtin(stream_select(_,_,_)).
 restartable_builtin(wait(_,_)).
 
 

@@ -198,7 +198,7 @@ main_cycle :-
         findall(Stream, listen_to(socket, _, Stream), LStreams2),
         append(LStreams1, LStreams2, LStreams),
         report_message(system(3),['Waiting the following streams: '|LStreams]),
-        select(LStreams, block, ReadyStreams),   % Wait for input (block)
+        stream_select(LStreams, block, ReadyStreams),   % Wait for input (block)
            % Handle all the streams that have data
         report_message(system(3),['Streams ready: '|ReadyStreams]),
         handle_streams(ReadyStreams),    

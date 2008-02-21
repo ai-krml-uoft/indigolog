@@ -88,7 +88,7 @@ init_eclipse_lib :-
         context_module(M),
         assert(M:goal_expansion(read(A1,A2),  eclipse_read(A1,A2))),
         assert(M:goal_expansion(write(A1,A2), eclipse_write(A1,A2))),
-        assert(M:goal_expansion(select(A1,A2,A3), eclipse_select(A1,A2,A3))),
+        assert(M:goal_expansion(stream_select(A1,A2,A3), eclipse_select(A1,A2,A3))),
         assert(M:goal_expansion(read_term(S,T,O), eclipse_read_term(S,T,O))),
         assert(M:goal_expansion(write_term(S,T,O), eclipse_write_term(S,T,O))),
         assert(M:goal_expansion(close(A1), eclipse_close(A1))),
@@ -277,9 +277,11 @@ eclipse_read_term(S, T, O) :-
         get_real_streams([S], read, [RS]),
         read_term(RS, T, [double_quotes(string)|O]).
 
-%  -- select(+StreamList, +Timeout, ?ReadyStreams)
+%  -- stream_select(+StreamList, +Timeout, ?ReadyStreams)
 %       Returns streams from StreamList which are ready for I/O, blocking 
 %       at most Timeout seconds.
+stream_select(StreamList, TimeOut, ReadyList) :- 
+	eclipse_select(StreamList, TimeOut, ReadyList).
 eclipse_select(StreamList, TimeOut, ReadyList) :- 
         get_real_streams(StreamList, read, RealStreamList),
         select_stream(RealStreamList, TimeOut, ReadyListStreams),

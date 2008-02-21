@@ -1,17 +1,26 @@
 ===========================================================================
+December 21, 2008
+===========================================================================
+
+- Added two other construct for concurrency: 
+	(suggested by Andrea & Stefano, from Rome)
+	
+		* rconc(L) : generalizes rconc(E1,E2) to list of programs L
+		* itconc(L): concurrency by iterating on programs in list L
+		
+- Resolved clash between built-in list select/3 and eclipse compatibility
+select/3 predicate for waiting for data on streams. 
+The eclipse version has been renamed to stream_select/3.
+		
+
+
+===========================================================================
 December 19, 2007
 ===========================================================================
 
 - Added predicate executable_path(A,P) in lib/system_var.pl which indicates
 the path to different softwares (e.g. swi, xterm). It is used in
 Env/dev_managers.pl to define device managers.
-
-
-
-
-
-
-
 
 
 

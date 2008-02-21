@@ -25,7 +25,7 @@
 %  -- string_to_list/2
 %  -- emptyString/1 : return the empty string
 %  -- system/1
-%  -- select/3
+%  -- stream_select/3
 %  -- argc/1
 %  -- argv/2
 %  -- maplist/3
@@ -343,7 +343,7 @@ send_data_socket(Socket, Data) :-
 
 % Receive a list of [Env, Data] where Env is the id of the sender 
 receive_list_data_socket(Socket, []) :- 
-        select([Socket], 0, []), !.      % Wait almost nothing
+        stream_select([Socket], 0, []), !.      % Wait almost nothing
 receive_list_data_socket(Socket, [Data|L]) :- 
         receive_data_socket(Socket, Data),
         (Data = [_, [_, end_of_file]] -> 

@@ -276,7 +276,7 @@ em_one_cycle(HowMuchToWait) :-
 	setof(Socket, X^Y^env_data(X, Y, Socket), ListSockets),
 	% Check which of these streams have data waiting, i.e., the "ready" ones
 	report_message(system(5), ['(EM) Blocking on environments:: '|ListSockets]),
-	select(ListSockets, HowMuchToWait, ListSocketsReady),   !, % BLOCK or wait?
+	stream_select(ListSockets, HowMuchToWait, ListSocketsReady),   !, % BLOCK or wait?
 	% Get back the name of the environments of these "ready" streams
 	setof(Env, S^X^(member(S, ListSocketsReady),
 			env_data(Env, X, S)), ListEnvR),
