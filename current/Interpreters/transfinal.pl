@@ -112,7 +112,9 @@
     /* (A) EXTENDED CONSTRUCTS                                           */
     /*    wndet(E1,E2) : Weak nondeterministic choice of program         */
     /*    rndet(E1,E2) : Real nondeterministic choice of program	 */
-    /*    rconc(E1,E2) : Real concurrency     		     	    	 */
+    /*    rconc(E1,E2) : Real concurrency on 2 programs   	    	 */
+    /*    rconc(L) 	   : Real concurrency on a list of programs L 	 */
+    /*    itconc(L)	   : Real interative concurrency on list of programs L 	 */
     /*    rpi(X,D)     : Real nondeterministic choice of argument from D */
     /*    gexec(P,E)   : Guarded execution of program E wrt condition P  */
     /*    goal(PSucc,E,PFail,ERec): full guarded execution		 */
