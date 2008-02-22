@@ -154,10 +154,13 @@ final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
 final(rconc([]),_).
 final(rconc([E|L]),H) :- final(E,H), final(rconc(L),H).
 
-trans(itconc([E|L]),H,itconc(L2),H1) :-
+trans(itconc(L),H,itconc(L2),H1) :-
+	select(E,L,LRest),
 	trans(E,H,E1,H1),
-	append(L,[E1],L2).
+	append(LRest,[E1],L2).
 final(itconc(L),H) :- final(rconc(L),H).
+
+
 
 % Execute program E as long as condition P holds; finish E if neg(P) holds
 final(gexec(_,E), H) :- final(E,H).
