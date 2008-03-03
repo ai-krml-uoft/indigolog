@@ -5,7 +5,7 @@
 %
 %  AUTHOR : Sebastian Sardina 
 %           based on the definitions for ConGolog by 
-%		Giuseppe De Giaccomo, Yves Lesperance, and Hector Levesque
+%			Giuseppe De Giaccomo, Yves Lesperance, and Hector Levesque
 %  EMAIL  : ssardina@cs.toronto.edu
 %  WWW    : www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
 %  TYPE   : system independent code
@@ -22,6 +22,8 @@
 %
 %  This file provides:
 %
+% -- mfinal(E,H)		 : meta-version of final/2
+% -- mtrans(E,H,E2,H2)	 : meta-version of trans/4
 % -- trans(P,H,P2,H2)    : configuration (P,H) can perform a single step
 %                          to configuration (P2,H2)
 % -- final(P,H)          : configuration (P,H) is terminating
@@ -100,6 +102,24 @@
 % -- call_with_time_limit(+Sec, +Goal): True if Goal completes within Time. 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% mfinal/2 and mtrans/4: meta-versions of final/2 and trans/4
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+mfinal(E,H) :- final(E,H).
+mtrans(E,H,E2,H2) :-
+	trans(E,H,E3,H3),
+	(H3 = [atomic(EA)|H2] ->
+		append(EA,E3,E2)
+	;
+		E2=E3,
+		H2=H3
+	).
+
+
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                            TRANS and FINAL                           
@@ -109,22 +129,22 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    /* (A) EXTENDED CONSTRUCTS                                           */
-    /*    wndet(E1,E2) : Weak nondeterministic choice of program         */
-    /*    rndet(E1,E2) : Real nondeterministic choice of program	 */
-    /*    rconc(E1,E2) : Real concurrency on 2 programs   	    	 */
-    /*    rconc(L) 	   : Real concurrency on a list of programs L 	 */
-    /*    itconc(L)	   : Real interative concurrency on list of programs L 	 */
-    /*    rpi(X,D)     : Real nondeterministic choice of argument from D */
-    /*    gexec(P,E)   : Guarded execution of program E wrt condition P  */
-    /*    goal(PSucc,E,PFail,ERec): full guarded execution		 */
-    /*    abort(P)     : Abort process identified with P                 */
-    /*    ??(P)        : Like ?(P) but it leaves a test(P) mark in H     */
-    /*    wait         : Meta action to wait until an exogenous event    */
-    /*    commit       : Meta action to commit to the plan found so far  */
-    /*    abort        : Meta action to, suddenly,  abort execution      */
-    /*	  time(P,Sec)  : Make first step on P in less than Sec seconds	 */
-    /*	  ttime(P,Sec) : Make every step on P in less than Sec seconds 	 */
+    /* (A) EXTENDED CONSTRUCTS                                           	*/
+    /*    wndet(E1,E2) : Weak nondeterministic choice of program         	*/
+    /*    rndet(E1,E2) : Real nondeterministic choice of program	 		*/
+    /*    rconc(E1,E2) : Real concurrency on 2 programs   	    	 		*/
+    /*    rconc(L) 	   : Real concurrency on a list of programs L 	 		*/
+    /*    itconc(L)	   : Real iterative concurrency on list of programs L 	*/
+    /*    rpi(X,D)     : Real nondeterministic choice of argument from D 	*/
+    /*    gexec(P,E)   : Guarded execution of program E wrt condition P  	*/
+    /*    goal(PSucc,E,PFail,ERec): full guarded execution		 			*/
+    /*    abort(P)     : Abort process identified with P                 	*/
+    /*    ??(P)        : Like ?(P) but it leaves a test(P) mark in H     	*/
+    /*    wait         : Meta action to wait until an exogenous event    	*/
+    /*    commit       : Meta action to commit to the plan found so far  	*/
+    /*    abort        : Meta action to, suddenly,  abort execution      	*/
+    /*	  time(P,Sec)  : Make first step on P in less than Sec seconds	 	*/
+    /*	  ttime(P,Sec) : Make every step on P in less than Sec seconds 	 	*/
 % Try to execute program E1 first. If impossible, then try program E2 instead
 trans(wndet(E1,E2),H,E,H1) :- trans(E1,H,E,H1) -> true ; trans(E2,H,E,H1).
 final(wndet(E1,E2),H)      :- final(E1,H), final(E2,H).
@@ -160,6 +180,11 @@ trans(itconc(L),H,itconc(L2),H1) :-
 	append(LRest,[E1],L2).
 final(itconc(L),H) :- final(rconc(L),H).
 
+
+% Execute E atomically (i.e., as a transaction)
+trans(atomic(E),H,[],[atomic(E2)|H2]) :-
+	trans(E,H,E2,H2).
+final(atomic(E),H) :- final(E,H).
 
 
 % Execute program E as long as condition P holds; finish E if neg(P) holds

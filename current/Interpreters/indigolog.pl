@@ -336,7 +336,6 @@ system_action(abort_exec).	% Action to force sudden nonclean termination
 system_action(start_exec).	% Action to start execution
 system_action(break_exec).	% Action to break the agent execution to top-level Prolog
 system_action(reset_exec).	% Reset agent execution from scratch
-
 	
 % Wait continously until an exogenous action occurrs
 doWaitForExog(H1,H2):- 	
@@ -435,19 +434,18 @@ abortStep(van) :- true.  % No way of aborting a step in the vanilla version
 
 % ECLIPSE: execute trans/4 (final/2) and, then, grounds
 % all remaining free variables using the provided fix_term/2
-final(E,H,ecl)      :- final(E,H), 
+final(E,H,ecl)      :- mfinal(E,H), 
                        (fix_term((E,H)) -> true ; true).
-trans(E,H,E1,H1,ecl):- trans(E,H,E1,H1), 
+trans(E,H,E1,H1,ecl):- mtrans(E,H,E1,H1), 
                        (fix_term((E1,H1)) -> true ; true).
 
 % SWI: final/3 and trans/5 just reduce to final/2 and trans/4
-final(E,H,swi)      :- final(E,H).
-trans(E,H,E1,H1,swi):- trans(E,H,E1,H1).
+final(E,H,swi)      :- mfinal(E,H).
+trans(E,H,E1,H1,swi):- mtrans(E,H,E1,H1).
 
 % vanilla Prolog: final/3 and trans/5 just reduce to final/2 and trans/4
-final(E,H,van)      :- final(E,H).
-trans(E,H,E1,H1,van):- trans(E,H,E1,H1).
-
+final(E,H,van)      :- mfinal(E,H).
+trans(E,H,E1,H1,van):- mtrans(E,H,E1,H1).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
