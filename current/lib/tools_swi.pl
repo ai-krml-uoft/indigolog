@@ -56,6 +56,8 @@
 
 :- style_check(-discontiguous).     % Clauses may be not together
 :- set_prolog_flag(backquoted_string, true).
+
+:- use_module(library(socket)).		% Load socket library
 :- use_module(eclipse_swi).         % Load compatibility library with ECLIPSE
 :- init_eclipse_lib.
 
