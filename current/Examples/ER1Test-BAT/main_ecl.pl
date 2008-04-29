@@ -1,5 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
+%	ALERT!! ECLIPSE IS NOT SUPPORTED ANYMORE AS AN INDIGOLOG INTERPRETER!
+%
 % FILE: Elevator/main_ecl.pl
 %
 %  AUTHOR : Sebastian Sardina (2003)
@@ -171,7 +173,7 @@ main:- 	retractall(controller(_)),
 
 :- set_option(debug_level,2).
 :- set_option(wait_step,3).
-:- set_option(type_manager,eventafter).
+:- set_option(type_em,signal).
 
 
 

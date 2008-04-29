@@ -240,6 +240,9 @@ finish_env_cycle(thread) :-
 	thread_join(em_thread,_),
 	report_message(system(3),'(EM) Environment cycle (thread) finished').  
 
+
+
+
 % B.2. SIGNAL IMPLEMENTATION (interrputs with ECLIPSE)
 %
 %
