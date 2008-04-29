@@ -27,6 +27,8 @@
            % OTHER TOOLS
            turn_on_gc/0,
            turn_off_gc/0,
+           catch_fail/2,
+           catch_succ/2,
            set_backquoted_string/0,
            reset_backquoted_string/0,
            %
@@ -137,6 +139,8 @@ file_exists(File) :- exists_file(File).
 %       Turn on/off garbage collection
 % -- set_backquoted_string/0
 %       Set the backquoted_string flag to true (transparent predicate)
+% -- catch_fail/2 
+% -- catch_succ/2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -149,6 +153,21 @@ turn_off_gc :- set_prolog_flag(gc, false).
 set_backquoted_string :- set_prolog_flag(backquoted_string, true). 
 :- module_transparent reset_backquoted_string/0.
 reset_backquoted_string :- set_prolog_flag(backquoted_string, false). 
+
+
+
+% Perform a call catching it if there is an exception
+% If so, print message and then either fail or succeed
+catch_fail(Call, Message) :-
+	catch(Call,E,
+		(report_message(error,[Message, ' ---> ', E]),
+	     fail)
+	    ).
+catch_succ(Call, Message) :-
+	catch(Call,E,
+		(report_message(warning,[Message, ' ---> ', E]),
+	     true)
+	    ).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

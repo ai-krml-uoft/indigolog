@@ -61,6 +61,36 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
+%% build_call(Platform,Host,Port,File,Options,Type,Command)
+%% 		Command is the command line to execute File using Prolog
+%%		Platform (swi, eclispe); connecting to the EM at Port:host
+%%		and passing the extra Options.
+%%		The Type may be xterm (display terminal) or silent (background) 
+build_call(Platform,ManagerHost,ManagerPort,File,Options,xterm,Command) :-
+	build_call2(Platform,ManagerHost,ManagerPort,File,Options,Command2),
+    executable_path(xterm, Exterm),
+	concat_atom([Exterm, ' -e ', Command2], Command).
+
+build_call(Platform,ManagerHost,ManagerPort,File,Options,silent,Command) :-
+	build_call2(Platform,ManagerHost,ManagerPort,File,Options,Command2),
+%	concat_atom([Command2, ' 1>/dev/null 2>/dev/null'], Command).
+	concat_atom([Command2, ' 1>debug.txt 2>debug.txt'], Command).
+
+
+build_call2(eclipse,ManagerHost,ManagerPort,File,Options,Command) :-
+        executable_path(eclipse, Eeclipse),
+        concat_atom([Eeclipse, ' -g 10M host=', ManagerHost, 
+                     ' port=', ManagerPort, 
+                     ' -b ', File, ' -e ', ' start ', Options], Command).
+build_call2(swi,ManagerHost,ManagerPort,File,Options,Command) :-
+        executable_path(swi, Eswi),
+        concat_atom([Eswi, ' -t ', ' start', 
+                    ' -f ', File,
+		 		    ' host=', ManagerHost, 
+		 		    ' port=', ManagerPort,' debug=1 ', Options], Command).
+
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -68,25 +98,13 @@
 % SIMULATOR DEVICE 
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(simulator, eclipse, Command, [Host, Port]):- 
+device_manager(simulator, Platform, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_sim.pl'], File),
-        executable_path(xterm, Exterm),
-        executable_path(eclipse, Eeclipse),
-        concat_atom([Exterm, ' -e ', 
-                     Eeclipse, ' -g 10M host=', Host, ' port=', Port, 
-                     ' -b ', File, ' -e ', ' start'], Command).
+		build_call(Platform,Host,Port,File,'',xterm,Command).
+		     
 
-device_manager(simulator, swi, Command, [Host, Port]):- 
-        main_dir(Dir),
-        concat_atom([Dir,'Env/env_sim.pl'], File),
-        executable_path(xterm, Exterm),
-        executable_path(swi, Eswi),
-        concat_atom([Exterm, ' -e ', 
-                     Eswi, ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=1'], Command).
-		     
-		     
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % RCX LEGO MINDSTORM DEVICE 
@@ -95,36 +113,20 @@ device_manager(simulator, swi, Command, [Host, Port]):-
 device_manager(rcx, eclipse, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_rcx.pl'], File),
-        executable_path(xterm, Exterm),
-        executable_path(eclipse, Eeclipse),
-        concat_atom([Exterm, ' -e ', 
-                     Eeclipse, ' -g 10M host=', Host, ' port=', Port, 
-                     ' -b ', File, ' -e ', ' start'], Command).
-
-
+		build_call(eclipse,Host,Port,File,'',xterm,Command).
+      
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % INTERNET/SYSTEM DEVICE 
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(internet, eclipse, Command, [Host, Port]):- 
+device_manager(internet, Platform, Command, [Host, Port]):- 
         main_dir(Dir),
         concat_atom([Dir,'Env/env_int.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'eclipse -g 10M host=', Host, ' port=', Port, 
-                     ' -b ', File, ' -e ', ' start'], Command).
+		build_call(Platform,Host,Port,File,'',xterm,Command).
 
-device_manager(internet, swi, Command, [Host, Port]):- 
-        main_dir(Dir),
-        concat_atom([Dir,'Env/env_int_swi.pl'], File),
-        executable_path(xterm, Exterm),
-        executable_path(swi, Eswi),
-        concat_atom([Exterm, ' -e ', 
-                     Eswi, ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=1'], Command).
 
-		     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % ER1 DEVICE: to control the Evolution ER1 robot
@@ -152,15 +154,12 @@ device_manager(er1, eclipse, Command, [Host, Port]):-
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
         concat_atom([Dir,'Env/env_er1.pl'], File),
-        concat_atom(['xterm -e ', 
-                     'eclipse -g 10M host=', Host, ' port=', Port, 
-                     ' iper1=', IPER1, ' porter1=', PORTER1, 
-                     ' -b ', File, ' -e ', ' start'], Command).
+        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1, 
+                     ' -b ', File, ' -e ', ' start'], Options),
+		build_call(eclipse,Host,Port,File,Options,xterm,Command).
 
 % This is the address of the ER1 server
 er1_location('er1.cs.toronto.edu', 9000).
-
-
 
 
 
@@ -179,15 +178,12 @@ device_manager(virtual_wumpus, swi, Command, [Host, Port]):-
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
-        executable_path(xterm, Exterm),
-        executable_path(swi, Eswi),
-        concat_atom([Exterm, ' -e ', 
-                     Eswi, ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=1',
-                     ' ipwumpus=', IPW, ' portwumpus=', PORTW,
-                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
-                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario, '\''
-                     ], Command).
+        concat_atom([' debug=1',
+                     ' ipwumpus=', IPW, ' portwumpus=', PORTW, 
+                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
+                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
+                     ], Options),
+		build_call(swi,Host,Port,File,Options,xterm,Command).
 
 % Without terminal
 device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):- 
@@ -197,14 +193,13 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
-        executable_path(swi, Eswi),
-        concat_atom([Eswi, ' -t ', ' start', ' -f ', File,
-		     ' host=', Host, ' port=', Port,' debug=1',
+        concat_atom([' debug=1',
                      ' ipwumpus=', IPW, ' portwumpus=', PORTW, 
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
-                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\'',
-                     ' 1>/dev/null 2>/dev/null'
-                     ], Command).
+                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
+                     ], Options),
+		build_call(swi,Host,Port,File,Options,silent,Command),
+		writeln(Command).
 
 
 

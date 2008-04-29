@@ -103,9 +103,6 @@
 wait_until_close(5). % how many seconds to wait until closing the device manager
 
 
-% Tries to close socket X but catches the exception if not possible
-close_socket(X) :-
-	catch(close(X),E,report_message(warning,['Cannot close socket ',X,'--> ',E])).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -135,8 +132,8 @@ start :-
                % 3 - Setup stream socket with environment manager
         report_message(system(1),'Setting socket connection with env. manager'), 
         sleep(1),  % Give time to environment manager to wait for us
-        socket(internet, stream, env_manager),
-        connect(env_manager, Host/Port),
+        catch_fail(socket(internet, stream, env_manager),'Cannot open socket'),
+        catch_fail(connect(env_manager, Host/Port),'Cannot connect to EM'),
                % 4- We should listen to env_manager
         assert(listen_to(socket, env_manager, env_manager)),  
                % 5 - Initialize different interfaces
@@ -181,8 +178,8 @@ break_device :-
 
 close_all_sockets :-
         retract(listen_to(socket, _, X)),
-	close_socket(X), 
-	fail.
+        catch_succ(close(X),['Cannot close socket ',X]),
+		fail.
 close_all_sockets.
 
 % MAIN CYCLE: Wait for data to arrive from data comming from the

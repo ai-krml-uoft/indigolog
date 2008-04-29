@@ -87,7 +87,7 @@ guess_prolog :- assert(type_prolog(vanilla)).
 	set_flag(debug_compile, off),
 	set_flag(variable_names, off),
 	set_backquoted_string
-;
+	;
    type_prolog(swi) ->        % INITIALIZATION FOR SWI-PROLOG
 	main_dir(Dir),       
 	concat_atom([Dir,'lib'], LibDir),
@@ -98,7 +98,7 @@ guess_prolog :- assert(type_prolog(vanilla)).
 	style_check(-discontiguous),
 	set_prolog_flag(optimise, true),
 	set_backquoted_string
-;
+	;
 	true.
 
 

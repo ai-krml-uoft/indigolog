@@ -117,8 +117,8 @@ wumpus_config(indigolog(default),8,10,1,random).  % Default conf:
 % Load simulator, RCX and internet environments
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-%        member((Env,Type), [(virtual_wumpus_silent, swi)]),
-        member((Env,Type), [(virtual_wumpus, swi)]),
+        member((Env,Type), [(virtual_wumpus_silent, swi)]),
+%        member((Env,Type), [(virtual_wumpus, swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -130,8 +130,8 @@ load_device(Env, Command, Address) :-
 % HOW TO EXECUTE ACTIONS: Environment + low-level Code 
 %        how_to_execute(Action, Environment, Code)     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%how_to_execute(Action, virtual_wumpus_silent, Action).
 how_to_execute(Action, virtual_wumpus, Action).
+how_to_execute(Action, virtual_wumpus_silent, Action).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -206,7 +206,7 @@ test(Max,N) :-
 
 :- set_option(debug_level,0).
 :- set_option(wait_step,0).
-:- set_option(debug_level,warn_off).
+%:- set_option(debug_level,warn_off).
 
 
 
