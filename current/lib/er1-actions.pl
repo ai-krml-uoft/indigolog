@@ -189,7 +189,7 @@ actionNum(finishSaying, X) :- sub_atom(X,_,_,_,'play error'), !.
 actionNum(getStuck, X) :- sub_atom(X,_,_,_,'move error'), !.
 
 actionNum(spotObject(Object), X) :- 
-        get_object_event(X, Object, Rate, _, _, _).
+        get_object_event(X, Object, _, _, _, _).
 
 % A = lostObject <object>, e.g., lostObject warning sign
 actionNum(lostObject(Object), A) :-

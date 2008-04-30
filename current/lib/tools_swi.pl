@@ -27,10 +27,10 @@
            % OTHER TOOLS
            turn_on_gc/0,
            turn_off_gc/0,
-           catch_fail/2,
-           catch_succ/2,
            set_backquoted_string/0,
            reset_backquoted_string/0,
+	       catch_fail/2,
+    	   catch_succ/2,
            %
 	   % FROM 'common.pl' file
 	   subv/4,
@@ -130,6 +130,7 @@ proc_kill(Pid)    :- kill(Pid, 9).
 proc_wait(Pid, S) :- repeat, wait(Pid, S).
 file_exists(File) :- exists_file(File).
 
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 4 - OTHER TOOLS
@@ -139,8 +140,8 @@ file_exists(File) :- exists_file(File).
 %       Turn on/off garbage collection
 % -- set_backquoted_string/0
 %       Set the backquoted_string flag to true (transparent predicate)
-% -- catch_fail/2 
-% -- catch_succ/2
+% -- catch_succ(+Call,+Message)
+% -- catch_fail(+Call,+Message)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -160,7 +161,7 @@ reset_backquoted_string :- set_prolog_flag(backquoted_string, false).
 % If so, print message and then either fail or succeed
 catch_fail(Call, Message) :-
 	catch(Call,E,
-		(report_message(error,[Message, ' ---> ', E]),
+		(report_message(warning,[Message, ' ---> ', E]),
 	     fail)
 	    ).
 catch_succ(Call, Message) :-
@@ -168,6 +169,8 @@ catch_succ(Call, Message) :-
 		(report_message(warning,[Message, ' ---> ', E]),
 	     true)
 	    ).
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -126,24 +126,24 @@ checkLostEvery(5).   % How many seconds to wait until checking for lost objects
 % HERE YOU SHOULD INITIALIZE AND FINALIZE EACH OF THE INTERFACES TO BE USED
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 initializeInterfaces(L) :- 
+        report_message(system(3),'Establishing connection to ER1 API port'),
            % 1 - Obtain IP and Port from L
         member([iper1,IP], L),   
         member([porter1, SP], L),  % Get Host and Port of ER1 from L
         string_to_number(SP, Port),
            % 2 - Start ER1 main communication and events communication
-        report_message(system(3),'Establishing connection to ER1 API port'),
         initializeER1(IP, Port),
 %        initializeER1_Events,
         report_message(system(2),
                        'Connection to ER1 API port established successfully'),
-           % 3 - Set handlfer for the recognizing lost objects
+           % 3 - Set handler for the recognizing lost objects
         checkLostEvery(CheckEverySeconds),   
         set_event_handler(eobjects_lost, hobjects_lost/0),
         event_after_every(eobjects_lost, CheckEverySeconds),
         report_message(system(3),'After event for lost object started successfully'),
-           % 4 - Start listeling for events on ER1
+           % 4 - Start listening for events on ER1
         listen_to_er1,
-        report_message(system(3),'Exogenoug events report system started successfuly in ER1').
+        report_message(system(3),'Exogenous events report system started successfuly in ER1').
 
 finalizeInterfaces(_) :- 
         finalizeER1,

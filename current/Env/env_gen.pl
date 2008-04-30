@@ -100,19 +100,23 @@
 
 :- include('../lib/systemvar'). % Global include code and Prolog init
 
-wait_until_close(5). % how many seconds to wait until closing the device manager
-
-
+wait_until_close(20). % how many seconds to wait until closing the device manager
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% START OF STANDARD SECTION %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+start :- catch_fail(start2,'Main cycle for device manager got exception').
+start :-  
+	report_message(error, 'For some reason the environment has stopped'),
+	halt_device.
+
+
 % Run at the beginning of the environment setting
 % It initializes the communication with the environment manager and
 % it initializes every source of input (rcx, tcl/tk, etc.)
-start :- 
+start2 :- 
         name_dev(EnvId), 
         report_message(system(1), ['Initializing environment ', EnvId]),  
                % 1 - Obtain Host and Port number of env. manager from command 
@@ -131,7 +135,7 @@ start :-
 	),
                % 3 - Setup stream socket with environment manager
         report_message(system(1),'Setting socket connection with env. manager'), 
-        sleep(1),  % Give time to environment manager to wait for us
+        sleep(3),  % Give time to environment manager to wait for us
         catch_fail(socket(internet, stream, env_manager),'Cannot open socket'),
         catch_fail(connect(env_manager, Host/Port),'Cannot connect to EM'),
                % 4- We should listen to env_manager
@@ -150,9 +154,6 @@ start :-
         report_message(system(1), 'Finalizing'), !,
         finalize(CLArgs).
 
-start :-  
-	report_message(error, 'For some reason the environment has stopped'),
-	halt_device.
 
 % Run when the environment is closed. 
 % It should close all sockets, streams, pipes opened
@@ -167,7 +168,7 @@ finalize(CLArgs) :-
 halt_device :-
         report_message(system(1), 'Device manager terminating in a few seconds...'),
 	wait_until_close(Seconds),
-	sleep(Seconds),		% Hold for 10 seconds and then close
+	sleep(Seconds),		% Hold for Seconds and then close
 	halt.
 
 % halt device after waiting for some seconds (so that one can read debug info)

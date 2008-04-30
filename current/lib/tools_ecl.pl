@@ -72,10 +72,14 @@
    gethostname/1,         % Compatibility with SWI
    call_to_exec/3,
    time/1,		  % (Partial) compatibility with SWI
+   catch_fail/2,
+   catch_succ/2,
    % 5 - CONSTRAINTS
    indomain_rand/1,
    % 6 - OTHER TOOLS
    %catch/3,              % RE-EXPORTED
+   %call_succ/2,
+   %call_fail/2,
    %thhrow/1,             % RE-EXPORTED 
    %multifile/1,          % RE-EXPORTED
    %assertz/1,            % RE-EXPORTED
@@ -144,6 +148,8 @@
 :- export(report_message/2).           % Show a message
 :- export(set_debug_level/1).          % Set debug level to N
 :- export(proc_term/1).                % Check if process is terminated
+:- export(catch_succ/2).
+:- export(catch_fail/2).
 :- export(get_argument/2).             
 :- export(get_list_arguments/1).
 :- export(subv/4).
@@ -226,6 +232,21 @@ time_mesg(I, S) :-
 	     write('  seconds'),
 	     nl.
 
+
+% Perform a call catching it if there is an exception
+% If so, print message and then either fail or succeed
+:- tool(catch_fail/2, catch_fail/3).
+catch_fail(Call, Message, Module) :-
+	catch(Call,E,
+		(report_message(warning,[Message, ' ---> ', E]),
+	     fail)
+	    )@Module.
+:- tool(catch_succ/2, catch_succ/3).
+catch_succ(Call, Message, Module) :-
+	catch(Call,E,
+		(report_message(warning,[Message, ' ---> ', E]),
+	     true)
+	    )@Module.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

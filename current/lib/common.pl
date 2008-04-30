@@ -305,6 +305,8 @@ proc_term(Pid):-
 
 
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 4 - SOCKET COMMUNICATION PROTOCOL
 %

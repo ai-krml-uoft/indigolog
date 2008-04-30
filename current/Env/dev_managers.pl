@@ -87,7 +87,7 @@ build_call2(swi,ManagerHost,ManagerPort,File,Options,Command) :-
         concat_atom([Eswi, ' -t ', ' start', 
                     ' -f ', File,
 		 		    ' host=', ManagerHost, 
-		 		    ' port=', ManagerPort,' debug=1 ', Options], Command).
+		 		    ' port=', ManagerPort,' ', Options], Command).
 
 
 
@@ -154,8 +154,10 @@ device_manager(er1, eclipse, Command, [Host, Port]):-
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
         concat_atom([Dir,'Env/env_er1.pl'], File),
-        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1, 
-                     ' -b ', File, ' -e ', ' start'], Options),
+			% Use this if not debugging 
+%        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1], Options),
+			% Use this instead if you want debugging mode 
+        concat_atom(['debug=4 ',' iper1=', IPER1, ' porter1=', PORTER1], Options),
 		build_call(eclipse,Host,Port,File,Options,xterm,Command).
 
 % This is the address of the ER1 server

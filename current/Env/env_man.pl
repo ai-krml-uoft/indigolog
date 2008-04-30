@@ -396,7 +396,7 @@ handle_event(Data):-                         % The event is completely unknown
 start_env([], _).
 start_env([Env|LEnv], Address) :-
         Address = Host/Port,
-        load_device(Env, Command, [Host,Port]),   
+        load_device(Env, Command, [Host,Port]),
         call_to_exec(unix, Command, Command2), % Select right command for exec
         exec_group(Command2, [], Pid),
 	(type_manager(thread) ->
@@ -423,7 +423,7 @@ delete_dev(Env) :-
 	(ground(S) -> true ; S=free),
        	report_message(system(3),['(EM) Environment *',Env,'* deleted!',
        				  ' - Waiting result: ',(Pid, S)]),
-        catch(close(SocketEnv),E,report_message(system(2),E)).	% Disconnect server socket
+        catch_succ(close(SocketEnv),['Could not close socket ',SocketEnv]).	% Disconnect server socket
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
