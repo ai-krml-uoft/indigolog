@@ -163,7 +163,7 @@ main:- 	retractall(controller(_)),
 
 
     
-:- set_option(debug_level,3).
+:- set_option(debug_level,5).
 :- set_option(wait_step,3).
 
 

@@ -105,7 +105,7 @@ guess_prolog :- assert(type_prolog(vanilla)).
 
 % Defines the path of executables used to define device managers
 executable_path(swi, '/usr/bin/pl').
-executable_path(eclipse, '/usr/bin/eclipse-pl').
+executable_path(eclipse, '/opt/bin/eclipse-pl').
 executable_path(tcltk, '/usr/bin/wish').
 executable_path(xterm, '/usr/bin/xterm').
 

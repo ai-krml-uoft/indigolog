@@ -398,6 +398,7 @@ start_env([Env|LEnv], Address) :-
         Address = Host/Port,
         load_device(Env, Command, [Host,Port]),
         call_to_exec(unix, Command, Command2), % Select right command for exec
+        report_message(system(5), ['(EM) Command to initialize device ', Env, ': ', Command2]),
         exec_group(Command2, [], Pid),
 	(type_manager(thread) ->
 		accept(em_socket, From, Env)  % No signal with threads
