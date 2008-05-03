@@ -128,11 +128,12 @@ checkLostEvery(5).   % How many seconds to wait until checking for lost objects
 initializeInterfaces(L) :- 
         report_message(system(3),'Establishing connection to ER1 API port'),
            % 1 - Obtain IP and Port from L
-        member([iper1,IP], L),   
-        member([porter1, SP], L),  % Get Host and Port of ER1 from L
-        string_to_number(SP, Port),
+        member([iper1,SHost], L),   
+        member([porter1, SPort], L),  % Get Host and Port of ER1 from L
+  	    string_to_atom(SHost, Host),
+        string_to_number(SPort, Port),
            % 2 - Start ER1 main communication and events communication
-        initializeER1(IP, Port),
+        initializeER1(Host, Port),
 %        initializeER1_Events,
         report_message(system(2),
                        'Connection to ER1 API port established successfully'),
@@ -222,6 +223,8 @@ handle_stream(events_er1) :-
         ).
 
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % C - EXECUTION MODULE: execute/4
 %
@@ -247,6 +250,9 @@ executeER1(Action, _, N, Response) :-
         report_message(action, 
                        ['Executing non-sensing action: *',(Action,N),'*']),
         send_command_to_er1(Action, Response). % SEND ACTION TO ER1!
+
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
