@@ -112,7 +112,7 @@ server_port(9127).
 % Load simulator and ER1 environments
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(er1,eclipse), (simulator,swi)]),
+        member((Env,Type), [(er1,swi), (simulator,swi)]),
         %member((Env,Type), [(simulator,swi)]),
         (var(Address) -> 
              Host=null, Port=null ; 
