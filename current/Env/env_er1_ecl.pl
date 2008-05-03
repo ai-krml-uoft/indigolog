@@ -128,9 +128,8 @@ checkLostEvery(5).   % How many seconds to wait until checking for lost objects
 initializeInterfaces(L) :- 
         report_message(system(3),'Establishing connection to ER1 API port'),
            % 1 - Obtain IP and Port from L
-        member([iper1,SHost], L),   
+        member([iper1,Host], L),   
         member([porter1, SPort], L),  % Get Host and Port of ER1 from L
-  	    string_to_atom(SHost, Host),
         string_to_number(SPort, Port),
            % 2 - Start ER1 main communication and events communication
         initializeER1(Host, Port),

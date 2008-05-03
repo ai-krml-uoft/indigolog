@@ -150,7 +150,7 @@ device_manager(internet, Platform, Command, [Host, Port]):-
 % ER1 account at CS: er1 / come1er1
 % ER1 account at evolution web page: er1uoft@cs.toronto.edu / come1er1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(er1, eclipse, Command, [Host, Port]):- 
+device_manager(er1, swi, Command, [Host, Port]):- 
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
         concat_atom([Dir,'Env/env_er1.pl'], File),
@@ -158,7 +158,7 @@ device_manager(er1, eclipse, Command, [Host, Port]):-
 %        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1], Options),
 			% Use this instead if you want debugging mode 
         concat_atom(['debug=4 ',' iper1=', IPER1, ' porter1=', PORTER1], Options),
-		build_call(eclipse,Host,Port,File,Options,xterm,Command).
+		build_call(swi,Host,Port,File,Options,xterm,Command).
 
 % This is the address of the ER1 server
 er1_location('er1.cs.toronto.edu', 9000).
