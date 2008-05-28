@@ -122,6 +122,25 @@ get_integer(L, L, H) :- L=<H.
 get_integer(L, N, H) :- L<H, L2 is L+1, get_integer(L2, N, H).
 
 
+
+%%	extract_option(+LOptions,?Name,?Value,+Default) 
+%%	extract_option(+LOptions,?Name,?Value) 
+%
+%	Extract Value of option Name(Value) from list of options LOptions
+%	If the option is not mentioned in the list, assume value Default
+%
+extract_option(LOptions,NameOption,Value) :-
+	extract_option(LOptions,NameOption,Value,_),
+	\+ var(Value).
+extract_option(LOptions,NameOption,Value,Default) :-
+	ground(NameOption), 
+	Option =.. [NameOption|[ValueOption]],
+	member(Option,LOptions) -> Value=ValueOption ; Value=Default.
+extract_option(LOptions,NameOption,Value,_Default) :-
+	\+ ground(NameOption),
+	member(Option,LOptions),
+	Option =.. [NameOption|[Value]].
+
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 2 - STRINGS AND ATOMS

@@ -534,7 +534,6 @@ repair_expected([E1,H1|L],HNExp,[E1,H11|LN]) :-
 
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.2) CONDITIONAL SEARCH: Conditional plans with sensing  
 %%
@@ -609,18 +608,29 @@ trans(case(A,[if(V,Plan)|_]),H,Plan,H):- sensed(A,V,H), !.
 trans(case(A,[if(_,_)|BL]),H,case(A,BL),H).
 
 % Transition for the planning construct achieve
-% G     : the goal to achieve
-% Max   : the maximum depth for the search
-% IA    : the initial set of legal actions (list)
-% SimNo : number of the exogenous action simulator to use
-trans(achieve(G,Max,IA),H,E,H) :- trans(achieve(G,G,Max,IA,none),H,E,H).
-trans(achieve(Name,G,Max,IA,SimNo),H,E,H):- wscp(Name,G,Max,IA,SimNo,H,E).
-trans(achieve(Name,G,Max,IA,SimNo,Mess),H,E,H):- 
-        report_message(program,  ['Planning for: ', Mess]),
-        (trans(achieve(Name,G,Max,IA,SimNo),H,E,H) ->
-             report_message(program, 'Finished planning: Plan found!') ;
-             (report_message(program,'Finished planning: No plan found!'), 
-              fail) ).
+% G     	: the goal to achieve
+% Max   	: the maximum depth for the search
+% 	---	LOptions  is the list of options:
+%			- id(NameId) : planning name id  
+% 			- simid(Id) : Id of the exog. simulator to be used (none = no simulator)
+% 			- mess(Mess) : description of the planning work to be done (to be printed)
+%			- actions(LAct) : legal actions that may be used  
+
+trans(achieve(G,Max,LOptions),H,E,H) :- 
+	extract_option(LOptions,id,NameId,G),
+	extract_option(LOptions,mess,Mess,none),
+	(Mess\=none ->
+	    report_message(program,  ['Planning for: ', Mess])
+	;
+		true
+	),      
+	wscp(NameId,G,Max,H,E) ->		% Do the actual planning!
+		Mess\=none,
+        report_message(program, ['Finished planning for ',Mess,' : Plan found!'])
+	;    
+		Mess\=none,
+        report_message(program, ['Finished planning for ',Mess,' : No plan found!']),
+		fail. 
 
 
 

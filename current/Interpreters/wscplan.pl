@@ -5,8 +5,8 @@
 %		(Version with constraints for ECLIPSE Prolog) 
 %       Tested with ECLIPSE 5.3 and SWI Prolog over Linux RH 7.0-7.2
 %
-%	c) Hector J. Levesque      Many rights reserved		(Nov 2001)
-% Modified by Sebastian Sardina    Many rights reserved		(Jan 2002)
+%	c) 	Hector J. Levesque      		Many rights reserved	(Nov 2001)
+% 		Modified by Sebastian Sardina    Many rights reserved	(Jan 2002)
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This file provides the following:
@@ -46,6 +46,7 @@
 %  --- handle_sensing(A,H,Sr,H2): alter the history H to encode the sensing 
 %                                 result of action A at H
 %  --- fix_term(A): fix all of some of the variables in A (optional)
+%					used with theories with constraints
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic simulator/3,          % These predicates may be not defined
            fix_term/1,
@@ -63,47 +64,51 @@
 %    5) 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% PLANNER TOP LEVEL.
-% wscp/5 plans for a Goal up to some Max depth. 
-%        Assumes no exogenous action simulator and all actions allowed
-% wscp/7 plans for a Goal up to some Max depth. 
-%        It uses the SimNo^th exogenous action simulator and 
-%        IA is the list of actions allowed for the planning problem
-%        S is the initial history to plan from
-%        Name is a descriptive name for the planning (link restrict_actions)
-wscp(Name,Goal,Max,S,Plan)          :- wscp(Name,Goal,Max,all,_,S,Plan).
-wscp(Name,Goal,Max,IA,SimNo,S,Plan) :- idplan(Name,Goal,0,Max,S,Plan,IA,SimNo).
+%%	wscp(+Name,+Goal,+Max,+LAct,+InitState,-Plan) 
+%
+% Top-level planner predicate wscp/5 wscp/7
+%	--- Name id of the planning process type (used for forward filtering)
+%  	--- Goal is the condition to planfor
+%  	--- Max is the maximum level allowed 
+%  	--- InitState is the initial history we start on
+%  	--- Plan is the computed (output) plan
+% 	---	LOptions  is the list of options:
+% 			- simid(Id) : Id of the exog. simulator to be used (none = no simulator)
+% 			- mess(Mess) : description of the planning work to be done (to be printed)
+%			- actions(LAct) : legal actions that mayb be used  
+%
+% wscp/5 Assumes no exogenous action simulator and all actions allowed
+% wscp/7 Uses the exogenous action simulator with id SimId  
 
-% Iterative deeping planner
-%  --- Goal is the condition to planfor
-%  --- N is the current level
-%  --- M is the maximum level allowed 
-%  --- Ini is the initial history
-%  --- Plan is the computed plan
-%  --- IA is the initial set (list) of legal actions to use (all=all actions)  
-%  --- SimNo is the number of the exogenous action simulator to use (if any)
-idplan(Name,Goal,N,_,Ini,Plan,IA,SimNo) :- 
-                     dfplan(Name,Goal,N,Ini,Plan,IA,SimNo).
-idplan(Name,Goal,N,M,Ini,Plan,IA,SimNo) :- N < M, N1 is N+1, 
-                     idplan(Name,Goal,N1,M,Ini,Plan,IA,SimNo).
+wscp(Name,Goal,Max,InitState,Plan,LOptions) :-	% THE MAIN RULE
+	extract_option(LOptions,simid,SimId,none), 
+	extract_option(LOptions,actions,LAct,_AnyLAct), 
+	idplan(Name,Goal,0,Max,InitState,Plan,LAct,SimId).
+
+
+% Iterative deeping planner (on top of depth-search dfplan/7)
+idplan(Name,Goal,N,_Max,InitState,Plan,LAct,SimId) :- 
+	dfplan(Name,Goal,N,InitState,Plan,LAct,SimId).
+idplan(Name,Goal,N,Max,InitState,Plan,LAct,SimId) :- 
+	N < Max, N1 is N+1, 
+	idplan(Name,Goal,N1,Max,InitState,Plan,LAct,SimId).
+
 
 % Depth-first planner for Goal, up to depth level N
 % Simulated actions are "added" to both the situation S and the Plan
 % Usually, simulated actions will be stated via the sim(_) construct
-dfplan(_,Goal,_,S,[],_,_)           :- holds_wscp(Goal,S). 
-dfplan(Name,Goal,N,S,Plan,AA,SimNo) :- N > 0, 
-    filter(Name,Goal,N,AA,S,AA3), AA3\=[],
-    simulate_exog(S,SimNo,SE), append(SE,S,S2), append(SE,Plan2,Plan),
-    prim_action(A), allowed(A,AA3), 
+dfplan(_Name,Goal,_N,S,[],_LAct,_SimId) :- holds_wscp(Goal,S). 
+dfplan(Name,Goal,N,S,Plan,LAct,SimId) :- N > 0, 
+    filter(Name,Goal,N,LAct,S,LAct2), LAct2\=[], % Actions forward filtering
+    simulate_exog(S,SimId,SE), 
+    append(SE,S,S2),	% Add simulated actions to the current situation 
+    append(SE,Plan2,Plan),	% Add simulated actions to plan
+    prim_action(A), allowed(A,LAct2),	% Pick an allowed action 
     poss(A,C2), holds_wscp(C2,S2), 
     (fix_term(A) -> true ; true),    % Ground the action A if possible
-    N1 is N-1, try_action(Name,Goal,N1,S2,A,Plan2,AA,SimNo).
-
-% Perform the forward filtering. AA3 is the new set of possible actions
-filter(Name,Goal,N,AA,S,AA3):- restrict_actions(Name,Goal,N,AA,C1,AA2), !,
-                               (holds_wscp(C1,S) -> AA3=AA2 ; AA3=AA).
-filter(_,_,_,A,_,A).        % Assume no forward filtering
-   
+    N1 is N-1, 
+    try_action(Name,Goal,N1,S2,A,Plan2,LAct,SimId).
+  
 % Try sensing action A at level N
 try_action(Name,Goal,N,S,A,[A,case(A,BL)],AA,SimNo) :- 
                sensing(A,VL), !, build_ifs(Name,Goal,N,S,A,VL,BL,AA,SimNo).
@@ -119,18 +124,26 @@ build_ifs(Name,Goal,N,S,A,[V|VL],[if(V,Plan)|BL],AA,SimNo) :-
                               once(dfplan(Name,Goal,N,S2,Plan,AA,SimNo)) ),
 	build_ifs(Name,Goal,N,S,A,VL,BL,AA,SimNo).
 
+% Perform the forward filtering. LAct3 is the new set of possible actions
+filter(Name,Goal,N,LAct,S,LAct3):- 
+	restrict_actions(Name,Goal,N,LAct,C1,LAct2), !,
+	(holds_wscp(C1,S) -> LAct3=LAct2 ; LAct3=LAct2).
+filter(_,_,_,LAct,_,LAct).        % No forward filtering
 
-% allowed(A,AA): Action A is an allowed action w.r.t. AA
-% If AA=[], then every action of the domain is allowed
-allowed(_,all):- !.
+
+%%	allowed(+A,+LAct): Action A is an allowed action in list LAct
 allowed(A,AA):- \+ \+ member(A,AA), !.
 
-% Given situation S, and simulator number SimNo, S2 will be the next
-% situation that will contain all simulated exogenous actions
-simulate_exog(S,SimNo,[A|SE]):- \+ var(SimNo), 
-                                simulator(SimNo,C,A), holds_wscp(C,S), !,
-	                        simulate_exog([A|S],SimNo,SE).
-simulate_exog(_,_,[]).
+%%	simulate_exog(+S,+SimId,-S2):-
+% 
+% 	Given situation S, and exog. simulator with id SimId, S2 will
+%	be the next situation with all simulated exogenous actions included
+simulate_exog(S,SimId,[A|SE]):- 
+	ground(SimId), 
+	SimId\=none,
+	simulator(SimId,C,A), holds_wscp(C,S), !,
+	simulate_exog([A|S],SimId,SE).
+simulate_exog(_,_,[]).	% no action simulated
 
 
 % WSCP only considers true projection. Ignore false or unknowns.
@@ -185,3 +198,6 @@ run([A|R],H,H2):- run(R,[A|H],H2).
 hist_length(H,N):- findall(A, (member(A,H), prim_action(A)),LA),
 	           length(LA,N).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF: Interpreters/wscplan.pl
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
