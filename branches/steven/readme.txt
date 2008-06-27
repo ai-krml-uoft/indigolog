@@ -1,5 +1,4 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
 %  FILE      	: readme.txt
 %  DATE	     	: January 2007
 %  AUTHOR 	: Sebastian Sardina & Stavros Vassos 
