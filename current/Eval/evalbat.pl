@@ -110,7 +110,9 @@
 %  A basic action theory (BAT) is described with:
 %
 % -- fun_fluent(fluent)     : for each functional fluent (non-ground)
+%								(at least 1 clause is required)
 % -- rel_fluent(fluent)     : for each relational fluent (non-ground)
+%								(at least 1 clause is required)
 % -- cache(fluent)          : fluent should be cached (at least 1) MANDATORY
 %
 %           e.g., rel_fluent(painted(C)).
@@ -144,6 +146,7 @@
 %           e.g, poss(clean(C),   and(painted(C),holding(cleanear))).
 %
 % -- initially(fluent,value): fluent has value in S0 (ground)
+%								(at least 1 clause is required)
 %
 %          e.g., initially(painted(C), false):- domain(C,country), C\=3.
 %                initially(painted(3), true).

@@ -962,6 +962,8 @@ store_node(Id, E, H) :-
 % Evolve (E,H) as much as possible until (E2,H2)
 tttrans(E,H,E2,H2) :- ttrans(E,H,E2,H2), \+ trans(E2,H2,_,_).
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Interpreters/transfinal.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
