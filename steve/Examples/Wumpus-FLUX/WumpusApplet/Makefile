@@ -1,2 +1,0 @@
-compile:
-	javac WumpusApplet.java
