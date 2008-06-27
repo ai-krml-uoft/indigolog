@@ -134,7 +134,7 @@ mtrans(E,H,E2,H2) :-
     /*    rndet(E1,E2) : Real nondeterministic choice of program	 		*/
     /*    rconc(E1,E2) : Real concurrency on 2 programs   	    	 		*/
     /*    rconc(L) 	   : Real concurrency on a list of programs L 	 		*/
-    /*    itconc(L)	   : Real iterative concurrency on list of programs L 	*/
+    /*    rrobin(L)	   : Round-robin concurrency		 					*/	
     /*    rpi(X,D)     : Real nondeterministic choice of argument from D 	*/
     /*    gexec(P,E)   : Guarded execution of program E wrt condition P  	*/
     /*    goal(PSucc,E,PFail,ERec): full guarded execution		 			*/
@@ -174,11 +174,11 @@ final(rconc(E1,E2),H) :- final(conc(E1,E2),H).
 final(rconc([]),_).
 final(rconc([E|L]),H) :- final(E,H), final(rconc(L),H).
 
-trans(itconc(L),H,itconc(L2),H1) :-
+trans(rrobin(L),H,rrobin(L2),H1) :-
 	select(E,L,LRest),
 	trans(E,H,E1,H1),
 	append(LRest,[E1],L2).
-final(itconc(L),H) :- final(rconc(L),H).
+final(rrobin(L),H) :- final(rconc(L),H).
 
 
 % Execute E atomically (i.e., as a transaction)
