@@ -1,4 +1,14 @@
 ===========================================================================
+November 4, 2008
+===========================================================================
+
+- A few fixes performed for Stefano Valentini
+	- Change data to be sent not quoted, so that terms can be sent (common.pl)
+	- Fixed bug with closing of sockets; some remainde opened.
+			- This was because close/1 was not macro expanded to eclipse_close/1
+				when used within catch_succ/2
+
+===========================================================================
 March 4, 2008
 ===========================================================================
 

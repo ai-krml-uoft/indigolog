@@ -122,25 +122,6 @@ get_integer(L, L, H) :- L=<H.
 get_integer(L, N, H) :- L<H, L2 is L+1, get_integer(L2, N, H).
 
 
-
-%%	extract_option(+LOptions,?Name,?Value,+Default) 
-%%	extract_option(+LOptions,?Name,?Value) 
-%
-%	Extract Value of option Name(Value) from list of options LOptions
-%	If the option is not mentioned in the list, assume value Default
-%
-extract_option(LOptions,NameOption,Value) :-
-	extract_option(LOptions,NameOption,Value,_),
-	\+ var(Value).
-extract_option(LOptions,NameOption,Value,Default) :-
-	ground(NameOption), 
-	Option =.. [NameOption|[ValueOption]],
-	member(Option,LOptions) -> Value=ValueOption ; Value=Default.
-extract_option(LOptions,NameOption,Value,_Default) :-
-	\+ ground(NameOption),
-	member(Option,LOptions),
-	Option =.. [NameOption|[Value]].
-
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 2 - STRINGS AND ATOMS
@@ -241,7 +222,6 @@ any_to_string(A, S) :- is_list(A),
               string_to_list(S, A) % A is list of char codes!
         ).
 any_to_string(A, S) :- \+ is_list(A), compound(A), string_to_term(S, A).
-any_to_string(A, '_Var') :- var(A).
 
 % Convert a list of anything to into a list of strings
 lany_to_string([], []).
@@ -354,13 +334,11 @@ proc_term(Pid):-
 :- dynamic name_env/1. % Stores the name of the current module
 
   
-% Send: [Env, Data] where Env is the name of the device (e.g., simulator)        
+% Send: [Env, Data] where Env is the name of the environment (simulator)        
 send_data_socket(Socket, Data) :- 
         (name_env(Env2) -> Env=Env2 ; Env=unknown),
         decode_data(_, DataToSent, [Env, Data]),
-        				% Changed quote(true) --> quote(false) so that TERMS can be transmited (e.g., begin(photo,1,id_2))
-        				% Otherwise, the term is quoted!
-        write_term(Socket, DataToSent, [quoted(false)]),
+        write_term(Socket, DataToSent, [quoted(true)]),
         write(Socket, '.'),
         nl(Socket),
         flush(Socket).

@@ -2,9 +2,9 @@
 %
 %  FILE      	: readme.txt
 %  DATE	     	: January 2007
-%  AUTHOR 	: Sebastian Sardina & Stavros Vassos 
+%  AUTHOR 		: Sebastian Sardina & Stavros Vassos 
 %  EMAIL        : {ssardina,stavros}@cs.toronto.edu
-%  WWW    	: www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
+%  WWW    		: www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
 %  DESCRIPTION	: top-level readme.txt file
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

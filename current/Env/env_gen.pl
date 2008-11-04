@@ -1,5 +1,4 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
 %  FILE      : Env/env_gen.pl
 %
 %  AUTHOR : Sebastian Sardina (2003)
@@ -100,7 +99,13 @@
 
 :- include('../lib/systemvar'). % Global include code and Prolog init
 
-wait_until_close(20). % how many seconds to wait until closing the device manager
+wait_until_close(5). % how many seconds to wait until closing the device manager
+
+
+% Close a stream and always succeed
+safe_close(StreamId) :-
+        catch_succ(myclose(StreamId), ['Could not close socket ', StreamId]).
+myclose(Id) :- close(Id).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,7 +123,7 @@ start :-
 % it initializes every source of input (rcx, tcl/tk, etc.)
 start2 :- 
         name_dev(EnvId), 
-        report_message(system(1), ['Initializing environment ', EnvId]),  
+    	    report_message(system(1), ['Initializing environment ', EnvId]),  
                % 1 - Obtain Host and Port number of env. manager from command 
         get_argument(host, SHost),
         get_argument(port, SPort),
@@ -134,25 +139,32 @@ start2 :-
 	        true
 	),
                % 3 - Setup stream socket with environment manager
-        report_message(system(1),'Setting socket connection with env. manager'), 
+	        report_message(system(1),'Setting socket connection with env. manager'), 
         sleep(3),  % Give time to environment manager to wait for us
         catch_fail(socket(internet, stream, env_manager),'Cannot open socket'),
         catch_fail(connect(env_manager, Host/Port),'Cannot connect to EM'),
                % 4- We should listen to env_manager
         assert(listen_to(socket, env_manager, env_manager)),  
                % 5 - Initialize different interfaces
-        report_message(system(1), 'Initializing required interfaces'), 
 	         % The manager may have been called with special arguments
 	         % Example: the IP and Port of the robot plataform
 	         % Then we read all command line arguments into CLArg
         get_list_arguments(CLArgs), 
+        report_message(system(1), 'Initializing required interfaces...'), 
         initializeInterfaces(CLArgs),   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
                % 6 - Run the main cycle
-        report_message(system(1), 'Starting main cycle'), !,
+        	report_message(system(1), 'Starting main cycle'), !,
         main_cycle,
                % 7 - Terminate environment
-        report_message(system(1), 'Finalizing'), !,
-        finalize(CLArgs).
+    	    report_message(system(1), 'Finalizing domain interfaces...'), !,
+        finalize(CLArgs),
+	        report_message(system(1), 'Device manager totally finished; about to halt...'),
+	    halt_device.
+
+halt_device :-
+		(wait_until_close(Seconds) -> true ; Seconds = 5),
+		sleep(Seconds),		% Hold for Seconds and then close
+		halt.
 
 
 % Run when the environment is closed. 
@@ -160,16 +172,8 @@ start2 :-
 finalize(CLArgs) :- 
         report_message(system(3), 'Start closing device....'),
         finalizeInterfaces(CLArgs),  %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-        close_all_sockets,
-              % Close all interfaces that were opened
-	halt_device.
-
-% halt device after waiting for some seconds (so that one can read debug info)
-halt_device :-
-        report_message(system(1), 'Device manager terminating in a few seconds...'),
-	wait_until_close(Seconds),
-	sleep(Seconds),		% Hold for Seconds and then close
-	halt.
+        close_all_sockets.	    % Close all interfaces that were opened
+        
 
 % halt device after waiting for some seconds (so that one can read debug info)
 break_device :-
@@ -177,11 +181,14 @@ break_device :-
 	break.
 
 
+% Close all sockets for which there is a listen_to/3 entry
 close_all_sockets :-
         retract(listen_to(socket, _, X)),
-        catch_succ(close(X),['Cannot close socket ',X]),
+        safe_close(X),
 		fail.
 close_all_sockets.
+
+
 
 % MAIN CYCLE: Wait for data to arrive from data comming from the
 %             environment manager or any interface that was initialized

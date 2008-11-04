@@ -74,7 +74,7 @@
 %
 % -- server_port(Port)       
 %	Port to set up the environment manager
-% -- load_environment(Env, Command, Options) 
+% -- load_device(Env, Command, Options) 
 %     	for each environemnt to be loaded
 % -- how_to_execute(Action, Env, Code)
 %       Action should be executed in environment Env with using code Code
@@ -139,25 +139,25 @@ initializeEM :-
 	retractall(counter_actions(_)),
 	assert(counter_actions(0)),
           report_message(system(1), '(EM) 2 - Openinig server-input socket...'),
-        socket(internet, stream, em_socket), % signal when data comes
+    socket(internet, stream, em_socket), % signal when data comes
 		% Build the Address where the manager will be listeling
 	(server_host(ServerHost2) -> true ; gethostname(ServerHost2)),
-        string_to_atom(ServerHost2, ServerHost),
-        server_port(ServerPort),
-        Address=ServerHost/ServerPort,
-        bind(em_socket, Address),
+    string_to_atom(ServerHost2, ServerHost),
+    server_port(ServerPort),
+    Address=ServerHost/ServerPort,
+    bind(em_socket, Address),
           report_message(system(1),'(EM) 3 - Loading different devices...'),
-        findall(Env, load_device(Env,_, _), LEnv),
-        (LEnv=[] ->
+    findall(Env, load_device(Env,_, _), LEnv),
+    (LEnv=[] ->
                report_message(warning,'(EM) No devices defined to load!') 
 	;
                true
 	),
-        length(LEnv, LengthLEnv),
-        listen(em_socket, LengthLEnv),
-        start_env(LEnv, Address), !, % That is it!
+    length(LEnv, LengthLEnv),
+    listen(em_socket, LengthLEnv),
+    start_env(LEnv, Address), !, % Start each of the devices used (LEnv)
           report_message(system(2),'(EM) 4 - Start EM cycle...'),
-        type_manager(Type),
+    type_manager(Type),
 	start_env_cycle(Type).   % Start the env. manager main cycle
 
 
@@ -167,34 +167,20 @@ initializeEM :-
 %	3 - Close EM server socket em_socket
 %	4 - Report the number of actions that were executed
 finalizeEM :- 
-        report_message(system(2),'(EM) 1 - Closing all device managers...'),
-        setof(Dev, X^Y^env_data(Dev, X, Y), LDev), % Get all current open devices
+    	report_message(system(2),'(EM) 1 - Closing all device managers...'),
+    setof(Dev, X^Y^env_data(Dev, X, Y), LDev), % Get all current open devices
 	close_dev(LDev),	% Close all the devices found
-	sleep(3),			% Wait to give time to devices to finish cleanly
-	fail.	  
-finalizeEM :-
-        type_manager(thread),
-	report_message(system(2), '(EM) 2 - Terminating EM cycle...'),
+	sleep(3), 			% Wait to give time to devices to finish cleanly
+		!, report_message(system(2), '(EM) 2 - Terminating EM cycle...'), 
 	catch(wait_for_children,_,true),
-        type_manager(Type),
+    type_manager(Type),
 	finish_env_cycle(Type),   	% Terminate main env. manager cycle
-	fail.
-
-finalizeEM :-
-        type_manager(signal),
-	report_message(system(2), '(EM) 2 - Terminating EM cycle...'),
-        type_manager(Type),
-	finish_env_cycle(Type),   	% Terminate main env. manager cycle
-	fail.
-
-finalizeEM :-
-	report_message(system(2),'(EM) 3 - Closing EM server socket...'),
-        catch(close(em_socket),E,report_message(system(2),E)),	% Disconnect server socket
-        fail.       
-finalizeEM :-
-        counter_actions(N),
-        report_message(system(1),
-        	['(EM) Finalization of EM completed with *', N, '* executed actions.']).
+		!, report_message(system(2),'(EM) 3 - Closing EM server socket...'), 
+    safe_close(em_socket),		% Disconnect server socket
+		!, report_message(system(2),'(EM) 4 - All finished...'),
+    counter_actions(N),
+    report_message(system(1),
+       	['(EM) Finalization of EM completed with *', N, '* executed actions.']).
 
 
 wait_for_children :-
@@ -204,6 +190,10 @@ wait_for_children :-
 	wait_for_children.
 wait_for_children.
 
+% Close a stream and always succeed
+safe_close(StreamId) :-
+        catch_succ(myclose(StreamId), ['Could not close socket ', StreamId]).
+myclose(Id) :- close(Id).
 
 
 
@@ -227,11 +217,11 @@ start_env_cycle(thread) :-
 em_cycle_thread :- em_one_cycle(block), !, em_cycle_thread.
 em_cycle_thread :-	 % if em_one_cycle/1 has nothing to wait, then just terminate
 	 	report_message(system(5),'(EM) EM cycle finished, no more streams to wait for...').
-	
+
 
 finish_env_cycle(thread) :-
 	(current_thread(em_thread, running) -> 
-		% Signal thread explicitely to finish!
+		% Signal thread explicitly to finish!
 		thread_signal(em_thread, throw(finish))  
 	;
 		% The thread has already finished (because all devices were closed)
@@ -239,31 +229,6 @@ finish_env_cycle(thread) :-
 	), 
 	thread_join(em_thread,_),
 	report_message(system(3),'(EM) Environment cycle (thread) finished').  
-
-
-
-
-% B.2. SIGNAL IMPLEMENTATION (interrputs with ECLIPSE)
-%
-%
-start_env_cycle(signal) :- 
-	report_message(system(1),'(EM) 3 - Registering io interrupt handler....'),
-        set_interrupt_handler(io, handle_io/0),
-	report_message(system(1),'(EM) Env. Manager initialization successful!'). 
-
-finish_env_cycle(signal) :- 
-	set_interrupt_handler(io, default/0).  % Reset io handler
-
-% The handle_io/0 is called when new data has arrived from one of the
-% active devices.
-% The hanlder collects the sockets that have information to be read,
-% reads all that data from them (get_events_from_env/2) and then handle
-% the list (of events read from the ready env) read using handle_events/1
-handle_io(_) :- handle_io.  % Wrapper for SWI that uses 1-ary signal hanlder
-handle_io :- em_one_cycle(0).        
-
-
-
 
 
 
@@ -285,17 +250,17 @@ em_one_cycle(HowMuchToWait) :-
 			env_data(Env, X, S)), ListEnvR),
 	report_message(system(5), ['(EM) Handling messages in devices:: '|ListEnvR]),
 	% Next, read all the events waiting from these devices
-	get_events_form_env(ListEnvR, ListEvents),
+	get_events_from_env(ListEnvR, ListEvents),
 	% Finally, handle all these events
 	handle_levents(ListEvents).
 
 % Given a list of devices that have information on their sockets
 % collect all the data from them
-get_events_form_env([], []).
-get_events_form_env([Env|LEnv], TotalListEvents) :-
+get_events_from_env([], []).
+get_events_from_env([Env|LEnv], TotalListEvents) :-
         env_data(Env, _, SocketEnv),
         receive_list_data_socket(SocketEnv, LEventsEnv),
-        get_events_form_env(LEnv, RestEvents),
+        get_events_from_env(LEnv, RestEvents),
         append(LEventsEnv, RestEvents, TotalListEvents).
 
 
@@ -344,41 +309,41 @@ handle_levents(_).
 
 
 
-% Handle each *single* event
+
+
+
+
+
+
+% handle_event/1: Handle each *single* event
 handle_event([_, [sensing, N, OutcomeCode]]) :- !, 
-        executing_action(N, Action, _),
-	(translateSensing(Action, OutcomeCode, Outcome) -> 
-		true 
-        ; 
-	        Outcome=OutcomeCode
-	),
-        assert(got_sensing(N, Outcome)),
-        report_message(system(5),
-	               ['(EM) Sensing outcome arrived for action ',
-		        (N, Action), ' - Sensing Outcome:: ',(OutcomeCode,Outcome)]).
+	executing_action(N, Action, _),
+	(translateSensing(Action, OutcomeCode, Outcome) ->  true ; Outcome=OutcomeCode),
+	assert(got_sensing(N, Outcome)),
+		report_message(system(5),
+			['(EM) Sensing outcome arrived for action ',
+			(N, Action), ' - Sensing Outcome:: ',(OutcomeCode,Outcome)]).
 
 handle_event([_, [exog_action, CodeAction]]):- 
-	(translateExogAction(CodeAction, Action) -> 
-		true 
-	; 
-	        Action=CodeAction
-	),
-        exog_action(Action), !,
+	(translateExogAction(CodeAction, Action) -> true ; Action=CodeAction),
+    exog_action(Action), !,
+	writeln(ssssssssssssssssssssss),
 	assert(got_exogenous(Action)),
         report_message(system(5),
-	               ['(EM) Exog. action occurred:: ',(CodeAction, Action)]).
+	               ['(EM) Exogenous action occurred:: ', (CodeAction, Action)]).
 
 handle_event([socket(Socket), [_, end_of_file]]) :- !,  % Env has been closed! 
         env_data(Env, _,Socket),                        % remove it
-        delete_dev(Env),
-        report_message(system(5),['(EM) Device ',Env,' has terminated!']).
+        report_message(system(2),['(EM) Device ',Env,' has reported termination!']),
+        delete_dev(Env).
 
 handle_event([Sender, [Type, Message]]):- !, % The event is unknown but with form
-        report_message(system(5), ['(EM) UNKNOWN MESSAGE! Sender: ',Sender,
-                                   ' ; Type: ' ,Type,' ; Message: ',Message]).
+        report_message(system(5), 
+        	['(EM) UNKNOWN MESSAGE! Sender: ', Sender,
+                                   ' ; Type: ' ,Type,' ; Message: ', Message]).
 
 handle_event(Data):-                         % The event is completely unknown
-        report_message(system(5), ['(EM) UNKNOWN MESSAGE!:: ', Data]).
+        report_message(system(5), ['(EM) UNKNOWN and UNSTRUCTURED MESSAGE!:: ', Data]).
 
 
 
@@ -395,19 +360,15 @@ handle_event(Data):-                         % The event is completely unknown
 %  env_data/3 stores the Pid and Address of each device started
 start_env([], _).
 start_env([Env|LEnv], Address) :-
-        Address = Host/Port,
-        load_device(Env, Command, [Host,Port]),
-        call_to_exec(unix, Command, Command2), % Select right command for exec
-        report_message(system(5), ['(EM) Command to initialize device ', Env, ': ', Command2]),
-        exec_group(Command2, [], Pid),
-	(type_manager(thread) ->
-		accept(em_socket, From, Env)  % No signal with threads
-	;
-		accept(em_socket, From, sigio(Env))
-	),
-        report_message(system(1), ['(EM) Device ', Env, ' initialized at: ', From]),
-        assert(env_data(Env, Pid, Env)),
-        start_env(LEnv, Address).
+	Address = Host/Port,
+	load_device(Env, Command, [Host,Port]),
+	call_to_exec(unix, Command, Command2), % Select right command for exec
+		report_message(system(5), ['(EM) Command to initialize device ', Env, ': ', Command2]),
+	exec_group(Command2, [], Pid),
+	accept(em_socket, From, Env), % Wait until the device connects to socket em_socket  
+		report_message(system(1), ['(EM) Device ', Env, ' initialized at: ', From]),
+	assert(env_data(Env, Pid, Env)),
+	start_env(LEnv, Address).
 
 % Tell each device to terminate
 close_dev([]).
@@ -424,7 +385,11 @@ delete_dev(Env) :-
 	(ground(S) -> true ; S=free),
        	report_message(system(3),['(EM) Environment *',Env,'* deleted!',
        				  ' - Waiting result: ',(Pid, S)]),
-        catch_succ(close(SocketEnv),['Could not close socket ',SocketEnv]).	% Disconnect server socket
+        safe_close(SocketEnv).	% Disconnect server socket
+
+
+
+	
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
