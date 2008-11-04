@@ -1,3 +1,34 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% FILE: Env/env_java_swing.pl
+%
+%  AUTHOR    : Stefano Valentini
+%  EMAIL     : 
+%  WWW       : 
+%  TESTED    : SWI Prolog 5.0.10 http://www.swi-prolog.org
+%  TYPE CODE : 
+%
+% This files provides a .........
+%
+% This environment is self-contained (automatically it loads the required
+%  libraries). It should be called as follows:
+%
+%   pl host=<HOST> port=<PORT> -b env_wumpus.pl -e start
+%	idrun=<id for the run> idscenario=<id to load for fixed world>
+%	size=<size of grid> ppits=<prob of pits> nogolds=<no of golds>
+%	ipwumpus=<applet ip> portwumpus=<applet port>
+%
+% For example:
+%
+%   pl host='cluster1.cs.toronto.edu' port=9022 -b env_wumpus.pl -e start
+%	idrun=test(10) idscenario=random
+%	size=8 ppits=15 nogolds=1
+%	ipwumpus='cluster1.cs.toronto.edu' portwumpus=9002
+%
+% where HOST/PORT is the address of the environment manager socket.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 :- include(env_gen).
 
 name_dev(javaswing).
@@ -135,3 +166,10 @@ printKbInstructions :-
     writeln('* NOTE: This is the JAVA SWING SIMULATOR environment*****'),
     writeln('*created by STEFANO VALENTINI ***************************'),
     writeln('*********************************************************'), nl.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF:  Env/env_java_swing.pl
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
