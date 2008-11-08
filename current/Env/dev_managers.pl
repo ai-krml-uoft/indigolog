@@ -299,14 +299,32 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 % JAVA SWING SIMULATOR DEVICE: to communicate with a java swing
 % Stefano from Rome 2008
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%swing_location('127.0.0.1', 5555).
-
+% requires swing_location/2.
 device_manager(javaswing, swi, Command, [Host, Port]):- 
     main_dir(Dir),
 	swing_location(IPSW, PORTSW),
     concat_atom([Dir,'Env/env_java_swing.pl'], File),
     concat_atom([' ipswing=', IPSW, ' portswing=', PORTSW], Options),
  	build_call(swi, Host, Port, File, Options, xterm, Command).
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% JAVA MULTISWING SIMULATOR DEVICE: to communicate with a java swing
+% Stefano from Rome 2008
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% requires swing_location/2.
+device_manager(javaswings(Id), swi, Command, [Host, Port]):- 
+    main_dir(Dir),
+	swing_location(IPSW, PORTSW, Id),
+    concat_atom([Dir,'Env/env_java_swing_id.pl'], File),
+    concat_atom([' ipswing=', IPSW, ' portswing=', PORTSW,' id=',Id], Options),
+ 	build_call(swi, Host, Port, File, Options, xterm, Command).
+
+
+
+
 
 
 

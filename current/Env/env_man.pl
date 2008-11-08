@@ -149,9 +149,9 @@ initializeEM :-
           report_message(system(1),'(EM) 3 - Loading different devices...'),
     findall(Env, load_device(Env,_, _), LEnv),
     (LEnv=[] ->
-               report_message(warning,'(EM) No devices defined to load!') 
+               	report_message(warning,'(EM) No devices defined to load!') 
 	;
-               true
+				report_message(system(2),['(EM) Devices to load: '|LEnv])            
 	),
     length(LEnv, LengthLEnv),
     listen(em_socket, LengthLEnv),

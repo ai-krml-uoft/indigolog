@@ -175,8 +175,10 @@ listen(SocketId, N) :-
        socket_info(SocketId, S, _, _),
        tcp_listen(S, N).
 
-% accept/3: Accepts a connection for a stream socket and creates a new socket
-% which can be used for I/O.
+
+
+% accept/3: 
+% Accepts a connection for a stream socket and creates a new socket which can be used for I/O.
 accept(SocketId, From, NewSock) :-        % Handle the case for sigio(S)
         \+ var(NewSock), NewSock = sigio(SocketId2), !,  
         accept(SocketId, From, SocketId2),
@@ -185,32 +187,37 @@ accept(SocketId, From, NewSock) :-        % Handle the case for sigio(S)
         assert(socket_info(SocketId2, S, R2, W)).
 
 
-% Handle the general case when the socket is just new (Read & Write Streams=null)
+% Socket is new & Read/Write Streams are still null
 accept(SocketId, Host/unknown, NewSocketId2) :-  
        retract(socket_info(SocketId, S, null, null)), !,
-       (atom(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
+       (ground(NewSocketId2) -> \+ socket_info(NewSocketId2, _, _, _) ; true),
        %
        tcp_open_socket(S, R, _),  
        assert(socket_info(SocketId, S, R, null)),
        %
        tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (atom(NewSocketId2) -> 
+       (ground(NewSocketId2) -> 
 	       true
        ;                              % Write socket has no alias
 	       S2 =.. [_, NewSocketId2]  % because S2= 'socket'(NewSocketId2)
        ),  
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
 
-% Handle the general case when the socket is just new
+% Socket is just new but Read stream is not null
 accept(SocketId, Host/unknown, NewSocketId2) :-
        socket_info(SocketId, _, R, _), 
-       R\=null,             % SocketId must have been binded already
+       R\=null,             
        %
        tcp_accept(R, S2, Host),
        tcp_open_socket(S2, ReadS, WriteS),
-       (atom(NewSocketId2) -> true ; S2 =.. [_, NewSocketId2]),
+       (ground(NewSocketId2) -> 
+       		true ; 
+       	S2 =.. [_, NewSocketId2]
+       ),
        assert(socket_info(NewSocketId2, S2, ReadS, WriteS)).
+
+
 
 
 % Connects a socket with the given address.
