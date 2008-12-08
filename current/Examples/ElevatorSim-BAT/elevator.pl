@@ -204,6 +204,8 @@ exog_action(smoke).              /* smoke enters elevator */
 exog_action(reset).              /* smoke detector alarm is reset */
 exog_action(on(N)) :- floor(N).     /* turn on call button on floor n */  
 
+prim_action(Act) :- exog_action(Act).
+poss(Act, true) :- exog_action(Act).
 
 /* ABBREVIATIONS */
 proc(too_hot, temp>2).
@@ -214,12 +216,12 @@ proc(next_floor_to_serve(N), light(N)=on).
 
 
 /* INITIAL STATE: elevator is at floor 3, lights 2 and 6 are on */
-initially(floor,3).	
+initially(floor,2).	
 initially(temp,2).
 initially(fan,false).
-initially(light(N),off) :- floor(N), N\=6, N\=2.
-initially(light(2),on). 		   	
-initially(light(6),on). 		   	
+initially(light(N),off) :- floor(N), N\=1, N\=3.
+initially(light(3),on). 		   	
+initially(light(1),on). 		   	
 initially(alarm,off).
 
 
@@ -277,6 +279,8 @@ proc(check_buttons,
 	[look(1), look(2), look(3), look(4), look(5), look(6), look(7), look(8), look(9), look(10)]).
 
 
+
+proc(mainControl(5), searchn(minimize_motion(0),[]) ).  
 
 
 

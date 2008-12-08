@@ -400,6 +400,7 @@ trans(rpi(V,D,E),H,E1,H1)  :- rdomain(W,D), subv(V,W,E,E2), trans(E2,H,E1,H1).
 %% (D.1) search(E)    : linear search on E	
 %% (D.1) searchg(P,E,M) : linear search on E, with message M, replanning condition P
 %% (D.1) search(P,E)    : linear search on E, replanning condition P	
+%% (D.1) searcho(P,Options)  : linear search on E, with list of Options	
 %%
 %% (D.2) searchc(E,M) : conditional  search on E, with message M   
 %% (D.2) searchc(E)   : conditional  search on E
@@ -449,8 +450,7 @@ trans(search(E,M),H,E1,H1):-
              fail
         ).
 
-%
-% findpath(E,H,L): find a solution for E at H; 
+% findpath(E,H,L): find a solution L for E at H; 
 %		   L is the list [E1,H1,E2,H2,...,EN,HN] encoding
 %		   each step evolution (Ei,Hi) where final(EN,HN)
 %
@@ -464,16 +464,6 @@ findpath(E,H,[E,H|L]) :-
         trans(E,H,E1,H1), 
         findpath(E1,H1,L).
 
-% This was the previous version to handle commit by passing around a mark
-% meaning failure in the bottom to be propageted up to the top
-% This approach would work in vanilla-Prolog without catch/3 but is much
-% more demanding computationally, so we use the above version.
-%findpath(E,[commit|H],R)    :- findpath(E,H,R).
-%findpath(E,[commit|H],fail) :- !.
-%findpath(E,H,[E,H]) :- final(E,H).
-%findpath(E,H,L)     :- trans(E,H,E1,H1), findpath(E1,H1,L2),
-%                       (L2=fail -> (!, L=fail) ; L=[E,H|L2]).
-
 
 % followpath(E,L): execute program E wrt expected sequence of
 %		   configurations L=[E,HEx,E1,H1,...]
@@ -481,9 +471,47 @@ findpath(E,H,[E,H|L]) :-
 % 	in L (i.e., H\=HEx), then redo the search for E from H
 final(followpath(E,[E,H]),H) :- !.
 final(followpath(E,_),H) :- final(E,H).  /* off path; check again */
-
 trans(followpath(E,[E,H,E1,H1|L]),H,followpath(E1,[E1,H1|L]),H1) :- !.
 trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% searchext(P,Opt) : search for E with options Opt
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :- 
+        trans(E,H,E1,H1), 
+        findpath(E1, H1, L, LOptions).
+final(search(E,opt(_LOptions)),H) :- final(E,H).
+
+
+findpath(E,H,[E,H],_LOpt) :- final(E,H).
+findpath(E,H,[E,H|L],LOpt) :- 
+        trans(E,H,E1,H1), 
+		(member(assumptions(LAssumptions), LOpt) -> 
+			add_assumptions(H,H1,LAssumptions,ExogAss,_TestAss),
+			E2 = [ExogAss|E1]
+		;
+			E2 = E1
+		),
+        findpath(E2,H1,L,LOpt).
+
+add_assumptions(H,[A|H],LAssumptions,Exog,Test) :-
+	member([A, Exog, Test], LAssumptions).
+	
+
+final(mnt(_,_,followpath(E,[E,H]),_),H) :- !.
+final(mnt(_,_,followpath(E,_),_),H) :- final(E,H).  /* off path; check again */
+trans(mnt(EO,HO,followpath(E,[E,H,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- !.
+trans(mnt(EO,HO,followpath(_Eexpected,_Hexpected),LOpt),H,E1,H1) :- 
+	recover(EO,HO,H,ERecovered),
+	trans(searchn(ERecovered,LOpt),H,E1,H1).
+	
+recover(E,H,H1,E2) :-
+	transstar(conc(E,star(pi(a,[?(exog_action(a)),a]))),H,conc(E2,_),H1).	
+
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -931,6 +959,7 @@ do(E,H,H3) :-
 	final(E3,H3).
 	
 % Transitive clousure of trans/4
+transstar(E,H,E1,H1) :- ttrans(E,H,E1,H1).
 ttrans(E,H,E,H).
 ttrans(E,H,E1,H1) :- 
 	trans(E,H,E2,H2), 
@@ -939,7 +968,7 @@ ttrans(E,H,E1,H1) :-
 	; 
 		once(before(H2, H1))	% If H1 is given, H2 is a subhistory of H1
 	), 				% Avoid infinite ttrans steps
-        ttrans(E2,H2,E1,H1).
+    ttrans(E2,H2,E1,H1).
 
 % transitive version of trans/4 and final/2 combined
 tfinal(E,H) :- final(E,H).

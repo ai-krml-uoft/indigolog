@@ -3,7 +3,7 @@
 % FILE: lib/systemvar.pl
 %
 %    WRITTEN BY: Sebastian Sardina (ssardina@cs.toronto.edu)
-%    Time-stamp: <03/10/02 10:46:45 ssardina>
+%    Time-stamp: <2008-11-29 09:11:03 ssardina>
 %    TESTED    : ECLiPSe 5.4 on RedHat Linux 6.2-7.2
 %    TYPE CODE : system independent predicates 
 %
@@ -104,7 +104,7 @@ guess_prolog :- assert(type_prolog(vanilla)).
 
 
 % Defines the path of executables used to define device managers
-executable_path(swi, '/usr/bin/pl').
+executable_path(swi, '/usr/bin/swipl').
 executable_path(eclipse, '/opt/bin/eclipse-pl').
 executable_path(tcltk, '/usr/bin/wish').
 executable_path(xterm, '/usr/bin/xterm').

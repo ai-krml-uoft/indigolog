@@ -575,7 +575,7 @@ pause_or_roll(H1,H2) :- can_roll(H1), !, roll(H1, H2).
 pause_or_roll(H1,H1).
 
 roll(H1, H2) :-
-        report_message(system(0),'Rolling down the river.......'), 
+        report_message(system(0),'Rolling down the river (progressing the database).......'), 
 	roll_db(H1, H2), 
         report_message(system(0), 'done progressing the database!'), 
         report_message(system(3), ['New History: ', H2]), 

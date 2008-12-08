@@ -327,7 +327,6 @@ handle_event([_, [sensing, N, OutcomeCode]]) :- !,
 handle_event([_, [exog_action, CodeAction]]):- 
 	(translateExogAction(CodeAction, Action) -> true ; Action=CodeAction),
     exog_action(Action), !,
-	writeln(ssssssssssssssssssssss),
 	assert(got_exogenous(Action)),
         report_message(system(5),
 	               ['(EM) Exogenous action occurred:: ', (CodeAction, Action)]).

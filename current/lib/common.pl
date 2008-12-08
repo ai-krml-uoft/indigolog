@@ -446,6 +446,9 @@ report_message(exogaction, T) :- !,
 	nl,
         write('=========> EXOGENOUS EVENT:: '), writeln(T).
 
+report_message(user, T) :-
+        write('  **** USER MESSAGE:: '),  writeln(T).
+
 report_message(_, T) :-
         write('  **** OTHER EVENT:: '),  writeln(T).
 
