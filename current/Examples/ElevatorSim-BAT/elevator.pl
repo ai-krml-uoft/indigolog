@@ -294,3 +294,15 @@ actionNum(X,X).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: ElevatorSim-BAT/elevator.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+/*
+
+trans(searchn(minimize_motion(0),[]),[],E,H),transn(E,H,E2,H2,10),!,ttrans(E2,[on(3)|H2],EF,HF), final(EF,HF).
+
+
+ trans(searchn(minimize_motion(0),[]),[],E,H),transn(E,H,E2,H2,10),!,trans(E2,[on(3)|H2],E3,H3), transn(E3,H3,E4,H4,5), ttrans(E4,[smoke|H4],EF,HF), final(EF,HF).
+
+
+*/
+
+
