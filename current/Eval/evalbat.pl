@@ -351,7 +351,8 @@ holds(some(V,D,P),H) :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
 holds(all(V,D,P),H)	:- !, holds(neg(some(V,D,neg(P))), H).
 holds(impl(P1,P2),H) :- !, holds(or(neg(P1),P2),H).
 holds(P,H)			:- proc(P,P1), !, holds(P1,H).
-holds(P,H)			:- rel_fluent(P), !, subf(P,true,H).
+holds(P,H)			:- ground(P), rel_fluent(P), !, subf(P,true,H).
+holds(P,H)			:- \+ \+ rel_fluent(P), !, rel_fluent(P), subf(P,true,H).
 holds(P,H)			:- subf(P,P1,H), call(P1).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
