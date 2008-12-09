@@ -481,34 +481,59 @@ trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
 
 trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :- 
         trans(E,H,E1,H1), 
-        findpath(E1, H1, L, LOptions).
+        findpathn(E1, H1, L, LOptions).
 final(search(E,opt(_LOptions)),H) :- final(E,H).
 
 
-findpath(E,H,[E,H],_LOpt) :- final(E,H).
-findpath(E,H,[E,H|L],LOpt) :- 
+findpathn(E,H,[E,H],_LOpt) :- final(E,H).
+findpathn(E,H,[E,H|L],LOpt) :- 
         trans(E,H,E1,H1), 
-		(member(assumptions(LAssumptions), LOpt) -> 
-			add_assumptions(H,H1,LAssumptions,ExogAss,_TestAss),
+		(member(assumptions(LAssumptions), LOpt), add_assumptions(H,H1,LAssumptions,ExogAss,_TestAss) -> 
 			E2 = [ExogAss|E1]
 		;
 			E2 = E1
 		),
-        findpath(E2,H1,L,LOpt).
-
+        findpathn(E2,H1,L,LOpt).
 add_assumptions(H,[A|H],LAssumptions,Exog,Test) :-
 	member([A, Exog, Test], LAssumptions).
 	
 
+%% Semantics of mnt(EOriginal,HOriginal,EFollow,LPlanningOptions)
+%%
 final(mnt(_,_,followpath(E,[E,H]),_),H) :- !.
 final(mnt(_,_,followpath(E,_),_),H) :- final(E,H).  /* off path; check again */
-trans(mnt(EO,HO,followpath(E,[E,H,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- !.
-trans(mnt(EO,HO,followpath(_Eexpected,_Hexpected),LOpt),H,E1,H1) :- 
-	recover(EO,HO,H,ERecovered),
-	trans(searchn(ERecovered,LOpt),H,E1,H1).
+
+
+trans(mnt(EO,HO,followpath(E,[E,_,E1,H1|L]),LOpt),H1,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- 
+	E = [ExogAction|_],			% An exogenous action was assumed, wait until added to current history H1
+	exog_action(ExogAction), !.	
+trans(mnt(EO,HO,followpath(E,[E,H,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- 
+	\+ (E = [ExogAction|_], exog_action(ExogAction)), !.	% Progress blindly if not an assumed exog action
+trans(mnt(EO,HO,EFollow,LOpt),H,ERecovered,HRecovered) :- 
+	EFollow=followpath(Ex,[Ex,Hx|_]),						% History is not what expected, recover
+	H\=Hx,		% Replan only if the current situation is not the one expected
+	recover(EO,HO,LOpt,EFollow,H,ERecovered,HRecovered).	
+
+
+%% recover(EOriginal,HOriginal,LPlanningOptions,EFollow,HCurrent,ERecoveredPlan)
+%%
+recover(_EO,_HO,_LOpt,EFollow,H,followpath(Ex,ListRecovered),H) :-
+	EFollow=followpath(Ex,[Ex,Hx|L]),
+	append(H,HDropped,Hx), !,					% The expected history has been chopped (progressed)
+	writeln('======> Surgery recovering plan.........'),
+	dropPrefixHistory([Ex,Hx|L],HDropped,ListRecovered).
+
+dropPrefixHistory([],_,[]).
+dropPrefixHistory([E,H|L],HDropped,followpath(E,[E,HNew|L2])) :-
+	append(HNew,HDropped,H),
+	dropPrefixHistory(L,HDropped,L2).
+
 	
-recover(E,H,H1,E2) :-
-	transstar(conc(E,star(pi(a,[?(exog_action(a)),a]))),H,conc(E2,_),H1).	
+recover(EO,HO,LOpt,_,H,EN,HN) :-
+	writeln('======> Full recovering......'),		% Full re-planning is required
+	transstar(conc(EO,star(pi(a,[?(exog_action(a)),a]))),HO,conc(E1,_),H),	% respect actions already done
+	trans(searchn(E1,LOpt),H,EN,HN).	
+
 
 
 
