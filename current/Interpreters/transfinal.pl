@@ -378,6 +378,7 @@ trans(if(P,E1,E2),H,E,H1)  :- !,
 	((isTrue(P,H), trans(E1,H,E,H1)) ; (isTrue(neg(P),H), trans(E2,H,E,H1))).
 trans(star(E,1),H,E1,H1)  :- !, trans(E,H,E1,H1).
 trans(star(E,N),H,[E1,star(E,M)],H1)   :- N>1, trans(E,H,E1,H1), M is N-1.
+trans(star(E),H,E1,H1)       :- trans(E,H,E1,H1).
 trans(star(E),H,[E1,star(E)],H1)       :- trans(E,H,E1,H1).
 trans(while(P,E),H,[E1,while(P,E)],H1) :- isTrue(P,H), trans(E,H,E1,H1).
 
@@ -495,7 +496,7 @@ findpathn(E,H,[E,H|L],LOpt) :-
 		),
         findpathn(E2,H1,L,LOpt).
 add_assumptions(H,[A|H],LAssumptions,Exog,Test) :-
-	member([A, Exog, Test], LAssumptions).
+	member([A, Exog], LAssumptions).
 	
 
 %% Semantics of mnt(EOriginal,HOriginal,EFollow,LPlanningOptions)
