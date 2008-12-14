@@ -485,7 +485,6 @@ trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :-
         findpathn(E1, H1, L, LOptions).
 final(search(E,opt(_LOptions)),H) :- final(E,H).
 
-
 findpathn(E,H,[E,H],_LOpt) :- final(E,H).
 findpathn(E,H,[E,H|L],LOpt) :- 
         trans(E,H,E1,H1), 
@@ -495,7 +494,9 @@ findpathn(E,H,[E,H|L],LOpt) :-
 			E2 = E1
 		),
         findpathn(E2,H1,L,LOpt).
-add_assumptions(H,[A|H],LAssumptions,Exog,Test) :-
+% If action A has just been executed in H, then assume exog action Exog
+% occurrs. _Test is supposed to encode a test to wait for the exog. action (not used at this point)
+add_assumptions(H,[A|H],LAssumptions,Exog,_Test) :-
 	member([A, Exog], LAssumptions).
 	
 
