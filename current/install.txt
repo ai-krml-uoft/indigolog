@@ -29,6 +29,11 @@ To run the IndiGolog architecture, you need to do the following:
    For example, if <mypath> is /home/ssardina/code/ then in bash you do this:
        export PATH_INDIGOLOG=/home/ssardina/code/indigolog-linux-vvv
 
+5. Set the right options for predicate executable_path/2 in file lib/systemvar.pl
+so that IndiGolog knows where certain programs are (e.g., xterm)
+
+
+
 For some applications, you will also need to do the following:
 
 1. Install Tcl/Tk and the 'wish' executable.  (This is used by the simulator
