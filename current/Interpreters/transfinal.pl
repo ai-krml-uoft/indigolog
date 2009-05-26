@@ -85,7 +85,7 @@
 %
 %  Code for describing the high-level program:
 % -- proc(name,P)           : for each procedure P 
-% -- simulator(N,P)         : P is the N exogenous action simulator
+% -- simulator(Id,C,A)      : Under simulator Id, exog action A must happens if C holds
 %
 % OTHERS (PROLOG SPECIFIC):
 % -- false

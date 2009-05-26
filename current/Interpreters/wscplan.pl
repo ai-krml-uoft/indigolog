@@ -34,7 +34,7 @@
 %  --- poss(action,cond)   - when cond holds, action is executable
 %  --- sensing(A,VL) - VL is a list of possible sensing values of action A
 %
-%  --- simulator(N,P) - P is the N exogenous action simulator (optional)
+%  --- simulator(Id,C,A) : Under simulator Id, exog action A must happens if C holds (optional)
 %  --- inconsistent(H) - last action make history H inconsistent
 %  --- restrict_actions(Name,Goal,N,AA,C,NA) - 
 %                 In the planning Name, when C holds, restrict to 
@@ -57,11 +57,10 @@
 % Differences with the original version:
 %    1) change good_state/3 for the more general restrict_actions/5
 %    2) simulate exogenous action after each step using user provided
-%       exogenous action simulator via simulator/2
-%    3) sensing handlede more general by using handle_sensing/3 depending
+%       exogenous action simulator via simulator/3
+%    3) sensing handled more general by using handle_sensing/3 depending
 %       on what theory of action is used
 %    4) inconsistent situations is now handle via type-theory inconsistent/1 
-%    5) 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%	wscp(+Name,+Goal,+Max,+LAct,+InitState,-Plan) 
