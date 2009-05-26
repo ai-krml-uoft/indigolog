@@ -53,7 +53,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%% AUTOMATIC LOAD OF REQUIRED LIBRARIES %%%%%%%%%%%%%%%%%%%%%%%
+%%%%% AUTOMATIC LOAD OF REQUIRED LIBRARIES %%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This subsection does the following:
 %  (a) provides main_dir(Path)
