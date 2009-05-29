@@ -100,6 +100,9 @@
 % 3 - Consult application
 :- consult(wumpus).                          % Application code in IndiGolog
 
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (4,5) ENVIRONMENTS TO LOAD
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,7 +121,7 @@ wumpus_config(indigolog(default),8,10,1,random).  % Default conf:
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
         member((Env,Type), [(virtual_wumpus_silent, swi)]),
-%        member((Env,Type), [(virtual_wumpus, swi)]),
+       % member((Env,Type), [(virtual_wumpus, swi)]),  % use virtual_wumpus to get the xterm console
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
@@ -204,7 +207,7 @@ test(Max,N) :-
 % PREDICATES WITH SYSTEM DEPENDENT CODE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-:- set_option(debug_level,0).
+:- set_option(debug_level,4).
 :- set_option(wait_step,0).
 %:- set_option(debug_level,warn_off).
 

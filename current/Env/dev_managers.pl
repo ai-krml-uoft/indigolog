@@ -200,8 +200,7 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
                      ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
                      ], Options),
-		build_call(swi,Host,Port,File,Options,silent,Command),
-		writeln(Command).
+		build_call(swi,Host,Port,File,Options,silent,Command).
 
 
 
