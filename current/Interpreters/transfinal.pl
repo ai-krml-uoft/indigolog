@@ -494,6 +494,10 @@ findpathn(E,H,[E,H|L],LOpt) :-
 			E2 = E1
 		),
         findpathn(E2,H1,L,LOpt).
+  
+% LAssumption is a list of assumptions of the form [A, Exog]: If A just happend
+% then assume Exog will ocurr right away.
+%      
 % If action A has just been executed in H, then assume exog action Exog
 % occurrs. _Test is supposed to encode a test to wait for the exog. action (not used at this point)
 add_assumptions(H,[A|H],LAssumptions,Exog,_Test) :-
