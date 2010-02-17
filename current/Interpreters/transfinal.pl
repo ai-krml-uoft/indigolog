@@ -370,6 +370,9 @@ final(E,H)           :- proc(E,E2), !, final(E2,H).
 
 trans([E|L],H,E1,H2)      :- \+ L=[], final(E,H), trans(L,H,E1,H2).
 trans([E|L],H,[E1|L],H2)  :- trans(E,H,E1,H2).
+trans(?(printHistory),H,[],H) :- !, 
+	write('CURRENT HISTORY: '), 
+	writeln(H).
 trans(?(P),H,[],H)        :- isTrue(P,H).
 trans(ndet(E1,E2),H,E,H1) :- trans(E1,H,E,H1) ; trans(E2,H,E,H1).
 trans(if(P,E1,E2),H,E,H1) :- ground(P), !,
@@ -488,7 +491,7 @@ final(search(E,opt(_LOptions)),H) :- final(E,H).
 findpathn(E,H,[E,H],_LOpt) :- final(E,H).
 findpathn(E,H,[E,H|L],LOpt) :- 
         trans(E,H,E1,H1), 
-		(member(assumptions(LAssumptions), LOpt), add_assumptions(H,H1,LAssumptions,ExogAss,_TestAss) -> 
+		(H1=[A|H], member(assumptions(LAssumptions), LOpt), add_assumptions(A,LAssumptions,ExogAss,_TestAss) -> 
 			E2 = [ExogAss|E1]
 		;
 			E2 = E1
@@ -500,8 +503,9 @@ findpathn(E,H,[E,H|L],LOpt) :-
 %      
 % If action A has just been executed in H, then assume exog action Exog
 % occurrs. _Test is supposed to encode a test to wait for the exog. action (not used at this point)
-add_assumptions(H,[A|H],LAssumptions,Exog,_Test) :-
-	member([A, Exog], LAssumptions).
+add_assumptions(A, LAssumptions, Exog, _Test) :-
+	copy_term(LAssumptions,LAssumptionsCopy), % get a copy of the assumptions to avoid binding their orig vars
+	member([A, Exog], LAssumptionsCopy).
 	
 
 %% Semantics of mnt(EOriginal,HOriginal,EFollow,LPlanningOptions)

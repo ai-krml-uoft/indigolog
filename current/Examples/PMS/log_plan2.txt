@@ -934,3 +934,28 @@ IS IT RELEVANT?
   DEBUG 3: (EM) Environment * simulator * deleted!  - Waiting result:  12145, free
  ITERATION = 1  AT(1) = loc(0, 0) TASK = takephoto INPUT = [loc(1, 2), 0] SERVICE = 1
 IS IT RELEVANT?
+
+
+now(H),holds(neg(relevant),[assign([workitem(go,id_30,loc(1,0))],1),readyToStart(go,id_30,1),start(go,id_30,1,loc(1,0)),finishedTask(go,id_30,1,loc(1,0)),ackTaskCompletion(go,id_30,1),release([workitem(go,id_30,loc(1,0))],1)|H]).
+
+[adaptStart, photoLost(1, loc(0, 1))]
+
+
+some(srvc,and(service(srvc),and(hasConnection_prev(srvc),neg(hasConnection(srvc)))))
+some(loc,and(location(loc),neg(photoBuild_prev(loc)=photoBuild(loc)))
+
+
+
+
+
+Y=1, holds(photoBuild(loc(0,1))=V,[release([workitem(takephoto, id_30,[loc(0,1),Y])], 1), ackTaskCompletion(takephoto, id_30, 1),finishedTask(takephoto, id_30, 1, [loc(0,1),Y]), start(takephoto, id_30,1, [loc(0,1),Y]), readyToStart(takephoto, id_30, 1),assign([workitem(takephoto, id_30, [loc(0,1),Y])],1),release([workitem(go, id_30, loc(0,1))], 1), ackTaskCompletion(go,id_30, 1), finishedTask(go, id_30, 1, loc(0,1)), start(go, id_30, 1,loc(0,1)), readyToStart(go, id_30, 1), assign([workitem(go, id_30,loc(0,1))], 1), adaptStart, photoLost(1, loc(0, 1))]).
+
+
+
+
+[ assumptions([ 	[ assign([workitem(T,D,_I)],N), readyToStart(T,D,N) ],[ start(T,D,N,I), finishedTask(T,D,N,I) ])]
+
+
+
+
+

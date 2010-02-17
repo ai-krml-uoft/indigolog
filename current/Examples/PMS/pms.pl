@@ -206,11 +206,12 @@ causes_val(finishedTask(go,_ID,SRVC,V),at(SRVC),loc(I,J),V=loc(I,J)).
 fun_fluent(photoBuild(LOC)) :- location(LOC).
 causes_val(finishedTask(TASK,_ID,SRVC,V),photoBuild(LOC),N,
     							and(TASK=takephoto,
-							   and(number(Nadd,2),
-							      and(V=[LOC,Nadd],
-								  and(at(SRVC)=LOC,
-     									 and(Nold=photoBuild(LOC),
-       										N is Nold+Nadd)))))).
+							   			and(number(Nadd,2),
+							      		and(V=[LOC,Nadd],
+								  		and(at(SRVC)=LOC,
+     									and(Nold=photoBuild(LOC),
+								N is Nold+Nadd)))))
+).
 
 
 rel_fluent(evaluationOK(LOC)) :- location(LOC).
@@ -317,9 +318,15 @@ causes_val(photoLost(_,_),photoBuild_prev(LOC),X,photoBuild(LOC)=X) :- location(
 causes_val(photoLost(_,_),evaluationOK_prev(Loc),X,evaluationOK(Loc)=X) :- location(Loc).
 causes_val(photoLost(_,_),infoSent_prev,X,infoSent=X).
 
-proc(hasConnection_prev(SRVC),hasConnectionHelper_prev(SRVC,[SRVC])).
+proc(hasConnection_prev(SRVC), hasConnectionHelper_prev(SRVC,[SRVC])).
 
-proc(hasConnectionHelper_prev(SRVC,M), or(neigh_prev(SRVC,1),some(n,and(service(n),and(neg(member(n,M)),and(neigh_prev(n,SRVC),hasConnectionHelper_prev(n,[n|M]))))))).
+proc(hasConnectionHelper_prev(SRVC,M), 
+	or(neigh_prev(SRVC,1),
+		some(n,and(service(n),
+					and(neg(member(n,M)),
+					and(neigh_prev(n,SRVC),
+							hasConnectionHelper_prev(n,[n|M]))))))
+).
 
 proc(neigh_prev(Srvc1,Srvc2),  some(x1,some(x2,some(y1,some(y2,some(k1,some(k2,and(at_prev(Srvc1)=loc(x1,y1),and(at_prev(Srvc2)=loc(x2,y2),and(square(x1-x2,k1),and(square(y1-y2,k2),sqrt(k1+k2)<7))))))))))).
 
@@ -348,14 +355,26 @@ poss(adaptFinish,true).
 prim_action(adaptStart).
 poss(adaptStart,true).
 
+%proc(relevant,
+%  and(writeln('IS IT RELEVANT?'),
+%    or(some(Srvc,and(service(Srvc),
+%		  and(hasConnection_prev(Srvc), 
+%                     neg(hasConnection(Srvc))))),
+%       some(Loc,and(location(Loc),
+%		  and(photoBuild_prev(Loc)=Y, 
+%                      neg(photoBuild(Loc)=Y))))))).
+
 proc(relevant,
-    and(writeln('IS IT RELEVANT?'),
-    or(some(Srvc,and(service(Srvc),
-		  and(hasConnection_prev(Srvc), 
-                      neg(hasConnection(Srvc))))),
-       some(Loc,and(location(Loc),
-		  and(photoBuild_prev(Loc)=Y, 
-                      neg(photoBuild(Loc)=Y))))))).
+    		or(some(srvc,	and(service(srvc),
+		  							and(hasConnection_prev(srvc), 
+                      						neg(hasConnection(srvc))))
+       					), % some
+       			some(loc,and(location(loc),
+		       						   neg(photoBuild_prev(loc)=photoBuild(loc))
+		       							  )
+		       			) % some
+		       	) % or
+).
 
 
 proc(goalReached,neg(relevant)).
@@ -369,37 +388,33 @@ proc(adapt,[adaptStart, ?(writeln('about to adapt')),
 
 
 proc(adaptingProgram,  
-	searchn([?(true),searchProgram], 
-				[ assumptions([ [ assign([workitem(T,D,_I)],N), readyToStart(T,D,N) ],
-				 		        [ start(T,D,N,I), finishedTask(T,D,N,I) ]
-						      ])
-					     ]
-			     )
+	searchn([?(true),searchProgram,?(writenln('YESSSSSSSSSSSSS FINISHED ADAPTING!!!'))], 
+				[ assumptions([ 	[ assign([workitem(T,D,_I)],N), readyToStart(T,D,N) ],
+				 		       			 	[ start(T,D,N,I), finishedTask(T,D,N,I) ]
+						      			])
+				]
+				)
 ). 
 
-proc(searchProgram,plans(0,2)).
+proc(searchProgram,plans(2,2)).
 
 proc(plans(M,N),[?(M<(N+1)),ndet(
-				[actionSequence(M),?(goalReached)],
+				[actionSequence(M),?(printHistory),?(goalReached)],
 				[?(SUCCM is M+1),plans(SUCCM,N)]
 			    )]).
-
 
 proc(actionSequence(N),ndet(
 				[?(N=0)],
 				[?(N>0),pi([t,i,n], 
 				 [ ?(isPickable([workitem(t,id_30,i)],n)),
-				   ?(write(' ITERATION = ')),?(write(N)),?(write(' ')),?(write(' AT(1) = ')), ?(write(at(1))),?(write(' TASK = ')),
-                                   ?(write(t)), ?(write(' INPUT = ')), ?(write(i)), ?(write(' SERVICE = ')), ?(writeln(n)),
+				 	?(nl),
 				   assign([workitem(t,id_30,i)],n),
 				   start(t,id_30,n,i),
 				   ackTaskCompletion(t,id_30,n),
-				   release([workitem(t,id_30,i)],n)
-				]
+				   release([workitem(t,id_30,i)],n),
 			     ), 
 				?(PRECN is N-1), actionSequence(PRECN)]
 			   )).
-
 
 
 /* report_message(user,[]) */
