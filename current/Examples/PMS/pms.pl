@@ -380,7 +380,7 @@ proc(relevant,
 proc(goalReached,neg(relevant)).
 
 
-proc(adapt,[adaptStart, ?(writeln('about to adapt')),
+proc(adapt,[adaptStart, ?(report_message(user, 'About to adapt...')),
 	  	 pconc([adaptingProgram, adaptFinish],
 	 		while(neg(adapted), [?(writeln('waiting')),wait]))
 	   ]
@@ -388,7 +388,7 @@ proc(adapt,[adaptStart, ?(writeln('about to adapt')),
 
 
 proc(adaptingProgram,  
-	searchn([?(true),searchProgram,?(writenln('YESSSSSSSSSSSSS FINISHED ADAPTING!!!'))], 
+	searchn([?(true),searchProgram, ?(report_message(user, 'Adaptation program found!'))], 
 				[ assumptions([ 	[ assign([workitem(T,D,_I)],N), readyToStart(T,D,N) ],
 				 		       			 	[ start(T,D,N,I), finishedTask(T,D,N,I) ]
 						      			])
@@ -399,7 +399,7 @@ proc(adaptingProgram,
 proc(searchProgram,plans(2,2)).
 
 proc(plans(M,N),[?(M<(N+1)),ndet(
-				[actionSequence(M),?(printHistory),?(goalReached)],
+				[actionSequence(M),?(goalReached)],
 				[?(SUCCM is M+1),plans(SUCCM,N)]
 			    )]).
 
@@ -407,14 +407,15 @@ proc(actionSequence(N),ndet(
 				[?(N=0)],
 				[?(N>0),pi([t,i,n], 
 				 [ ?(isPickable([workitem(t,id_30,i)],n)),
-				 	?(nl),
 				   assign([workitem(t,id_30,i)],n),
 				   start(t,id_30,n,i),
 				   ackTaskCompletion(t,id_30,n),
-				   release([workitem(t,id_30,i)],n),
+				   release([workitem(t,id_30,i)],n)
+				  ]
 			     ), 
 				?(PRECN is N-1), actionSequence(PRECN)]
 			   )).
+
 
 
 /* report_message(user,[]) */
