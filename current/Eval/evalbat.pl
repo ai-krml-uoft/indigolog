@@ -346,14 +346,20 @@ holds(know(F),H)     :- !, holds(F=_,H).
 holds(and(P1,P2),H)	:- !, holds(P1,H), holds(P2,H).
 holds(or(P1,P2),H)	:- !, (holds(P1,H) ; holds(P2,H)).
 holds(neg(P),H)	:- !, checkgr(P), \+ holds(P,H). /* Negation by failure */
+holds(some([],P),H)	:- !, holds(P,H).
+holds(some([V|L],P),H)	:- !, holds(some(V,some(L,P)), H).
+holds(some([],P),H)	:- !, holds(P,H).
+holds(some([V|L],P),H)	:- !, holds(some(V,some(L,P)), H).
 holds(some(V,P),H)	:- !, subv(V,_,P,P1), holds(P1,H).
-holds(some(V,D,P),H) :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
-holds(all(V,D,P),H)	:- !, holds(neg(some(V,D,neg(P))), H).
+holds(some((V,D),P),H) :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
+holds(all([],P),H)	:- !, holds(P, H).
+holds(all([V|L],P),H)	:- !, holds(all(V,all(L,P)), H).
+holds(all((V,D),P),H)	:- !, holds(neg(some(V,D,neg(P))), H).
 holds(impl(P1,P2),H) :- !, holds(or(neg(P1),P2),H).
-holds(P,H)			:- proc(P,P1), !, holds(P1,H).
-holds(P,H)			:- ground(P), rel_fluent(P), !, subf(P,true,H).
-holds(P,H)			:- \+ \+ rel_fluent(P), !, rel_fluent(P), subf(P,true,H).
-holds(P,H)			:- subf(P,P1,H), call(P1).
+holds(P,H) :- proc(P,P1), !, (ground(P) -> (holds(P1,H), !) ; holds(P1,H)).
+holds(P,H) :- ground(P), rel_fluent(P), !, subf(P,true,H), !.
+holds(P,H) :- \+ \+ rel_fluent(P), !, rel_fluent(P), subf(P,true,H).
+holds(P,H) :- subf(P,P1,H), (ground(P) -> (call(P1), !) ; call(P1)).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
 subf(P1,P2,_)  :- (var(P1) ; number(P1)), !, P2 = P1.
