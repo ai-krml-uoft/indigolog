@@ -160,7 +160,7 @@ causes_false(toggle,  fan, fan).
 
 fun_fluent(alarm).              /* the smoke alarm is on or off */
 causes_val(smoke, alarm, on,  true).
-causes_val(reset, alarm, off, true).
+causes_val(resetAlarm, alarm, off, true).
 
 fun_fluent(light(N)) :- floor(N).  /* call button of floor n is on or off */
 causes_val(on(N),  light(N), on,  true).
@@ -201,7 +201,7 @@ poss(look(_), true).
 exog_action(heat).               /* increase temperature by 1 */
 exog_action(cold).               /* decrease temperature by 1 */
 exog_action(smoke).              /* smoke enters elevator */
-exog_action(reset).              /* smoke detector alarm is reset */
+exog_action(resetAlarm).              /* smoke detector alarm is reset */
 exog_action(on(N)) :- floor(N).     /* turn on call button on floor n */  
 
 prim_action(Act) :- exog_action(Act).
