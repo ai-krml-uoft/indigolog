@@ -166,7 +166,11 @@
    multifile(exog_action/1),	% Many modules can register exog. actions 
    multifile(system_action/1).  % Many modules can register system actions 
 
+
+
 :- ensure_loaded(transfinal).  % Load the TRANS and FINAL definitions
+	
+	
 	
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    CONFIGURATION SECTION
@@ -209,6 +213,25 @@ set_option(debug_level, N) 	:-
 	set_debug_level(N),
 	report_message(system(0), ['** System debug level set to ',N]).
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    SOME SYSTEM BUILT-IN EXOGENOUS ACTIONS
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% BUILT-IN exogenous actions that will be mapped to system actions for the cycle
+exog_action(debug).	% Show debugging information	
+exog_action(halt).		% Terminate program execution by jumping to the empty program
+exog_action(abort).		% Abort program execution by jumping to ?(false) program
+exog_action(break).		% Pause the execution of the program
+exog_action(reset).		% Reset agent execution from scratch
+exog_action(start).		% Start the execution of the program
+
+exog_action(debug_exec).	% Show debugging information	
+exog_action(halt_exec).		% Terminate program execution by jumping to the empty program
+exog_action(abort_exec).		% Abort program execution by jumping to ?(false) program
+exog_action(break_exec).	% Pause the execution of the program
+exog_action(reset_exec).		% Reset agent execution from scratch
+exog_action(start_exec).		% Start the execution of the program
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    MAIN LOOP
