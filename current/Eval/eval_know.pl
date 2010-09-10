@@ -329,6 +329,7 @@ holds(neg(all(V,D,P)),H)  :- !, holds(some(V,D,neg(P)),H).     /* Loyd-Topor Tra
 holds(neg(some(V,D,P)),H) :- !, holds(all(V,D,neg(P)),H).      /* Loyd-Topor Transf */
 holds(neg(impl(P1,P2)),H) :- !, holds(and(P1,neg(P2)),H).      /* Loyd-Topor Transf */
 holds(neg(equiv(P1,P2)),H):- !, holds(and(and(P1,neg(P2)),and(neg(P1),P2)),H).
+holds(neg(P),H):- !, proc(P,P1), holds(neg(P1), H).
 
 % implication as a macro
 holds(impl(P1,P2),H)  	:- !, holds(or(neg(P1),P2),H).
