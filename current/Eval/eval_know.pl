@@ -308,8 +308,12 @@ update_cache(_).
 % This is guarranteed to be sound P only when P is ground. Free vars are 
 % allowed and in some special cases. ***
 %---------------------------------------------------------------------------
-kholds(P,H) :- 	ground(P) ->  \+ holds(neg(P),H) ;
-				(warn(['kholds/2 called with open variables: ',P]), holds(P,H), \+ holds(neg(P),H)).	
+kholds(P,H) :-	ground(P) ->  
+			\+ holds(neg(P),H) 
+		;
+			(warn(['kholds/2 called with open variables: ',P]), 
+			holds(P,H), 
+			\+ holds(neg(P),H)).	
 
 %kholds(P,H) :- 	ground(P) -> 
 %			( !, \+ holds(neg(P),H), (holds(P,H) -> true ;
@@ -322,14 +326,14 @@ kholds(P,H) :- 	ground(P) ->  \+ holds(neg(P),H) ;
 %---------------------------------------------------------------------------
 
 % negation normal form transformation
-holds(neg(or(P1,P2)),H)   :- !, holds(and(neg(P1),neg(P2)),H). /* Loyd-Topor Transf */
-holds(neg(and(P1,P2)),H)  :- !, holds(or(neg(P1),neg(P2)),H).  /* Loyd-Topor Transf */
-holds(neg(neg(P)),H)      :- !, holds(P,H). 				   /* Loyd-Topor Transf */
-holds(neg(all(V,D,P)),H)  :- !, holds(some(V,D,neg(P)),H).     /* Loyd-Topor Transf */
-holds(neg(some(V,D,P)),H) :- !, holds(all(V,D,neg(P)),H).      /* Loyd-Topor Transf */
-holds(neg(impl(P1,P2)),H) :- !, holds(and(P1,neg(P2)),H).      /* Loyd-Topor Transf */
-holds(neg(equiv(P1,P2)),H):- !, holds(and(and(P1,neg(P2)),and(neg(P1),P2)),H).
-holds(neg(P),H):- !, proc(P,P1), holds(neg(P1), H).
+holds(neg(or(P1,P2)),H)   :- !, holds(and(neg(P1),neg(P2)),H). 	/* Loyd-Topor Transf */
+holds(neg(and(P1,P2)),H)  :- !, holds(or(neg(P1),neg(P2)),H).  	/* Loyd-Topor Transf */
+holds(neg(neg(P)),H)      :- !, holds(P,H). 			/* Loyd-Topor Transf */
+holds(neg(all(V,D,P)),H)  :- !, holds(some(V,D,neg(P)),H).     	/* Loyd-Topor Transf */
+holds(neg(some(V,D,P)),H) :- !, holds(all(V,D,neg(P)),H).      	/* Loyd-Topor Transf */
+holds(neg(impl(P1,P2)),H) :- !, holds(and(P1,neg(P2)),H).      	/* Loyd-Topor Transf */
+holds(neg(equiv(P1,P2)),H):- !, holds(or(and(P1,neg(P2)),and(neg(P1),P2)),H).
+holds(neg(P),H):- proc(P,P1), !, holds(neg(P1), H).
 
 % implication as a macro
 holds(impl(P1,P2),H)  	:- !, holds(or(neg(P1),P2),H).
@@ -342,13 +346,6 @@ holds(some(V,D,P),H)    :- !, domain(O,D), subv(V,O,P,P1), holds(P1,H).
 holds(all(V,D,P),H)     :- !, \+((domain(O,D), subv(V,O,P,P1), \+ holds(P1,H))).
 holds(P,H)           	:- proc(P,P1), !, holds(P1,H).
 
-%holds(neg(Fluent=Term),H):- prim_fluent(Fluent),ground(Term),\+prim_fluent(Term),!,warn('&&&&&&&&&&&&&&&&&'),\+has_val(Fluent,Term,H).
-%holds(neg(P),H)   		:- write('------->nholds:'),write(neg(P)),write('@'),writeln(H),fail.
-%%holds(neg(P),H)      	:- !, subf(P,P1,H), \+ call(P1).
-%holds(Fluent=Term,H):- prim_fluent(Fluent),\+prim_fluent(Term),ground(Term),!,warn('&&&&&&&&&&&&&&&&&'),has_val(Fluent,Term,H).
-%%holds(P,H)           	:- subf(P,P1,H), call(P1).
-% *SV*: call needs to be replaced by a "smart" call which uses =:= for arithmetic
-%       expressions and simple unification = for the rest
 
 %---------------------------------------------------------------------------
 % Evaluation of ground atoms. Atoms are either equality (fluent) atoms or 
@@ -359,17 +356,49 @@ holds(P,H)           	:- proc(P,P1), !, holds(P1,H).
 % ola ayta 8a allajoyn me ta kainoyria domains poy 8a dhlwnontai jexwrista apo to onoma *****
 holds(neg(P),H):- !, subf(P,P1,H), \+ call(P1).
 
-holds(T1=T2,H)	:- ground(T1), ground(T2), T1=..[H1|L1], templist(L1,L11), T11=..[H1,L11], prim_fluent(T11), 
-			T2=..[H2|L2], templist(L2,L22), T22=..[H2,L22], \+ prim_fluent(T22), !,
-			subf(L1,L111,H), T111=..[H1,L111], has_value(T111,T2,H).
-holds(T1=T2,H)	:- ground(T1), ground(T2), T1=..[H1|L1], templist(L1,L11), T11=..[H1,L11], \+ prim_fluent(T11), 
-			T2=..[H2|L2], templist(L2,L22), T22=..[H2,L22], prim_fluent(T22), !,
-			subf(L2,L222,H), T222=..[H2,L222], has_value(T222,T1,H).
-holds(P,H)		:- !, subf(P,P1,H), call(P1).
 
-templist([],[]).
-templist([_],[_]).
-templist([_,_],[_,_]).
+%% This is a special optimized case when evaluating Fluent = Value so as to
+%% feed has_value/3 with the exact match that can guide de search
+holds(T1=T2,H) :- ground(T1), ground(T2), 
+		  liftAtom(T1, NameT1, ArgT1, LiftT1),  
+		  liftAtom(T2, NameT2, ArgT2, LiftT2),
+		  ( (prim_fluent(LiftT1), \+ prim_fluent(LiftT2), !,
+		     subf(ArgT1,ArgT1Eval,H),
+		     T1Eval =..[NameT1|ArgT1Eval],
+		     has_value(T1Eval,T2,H)
+		     )
+		  ;
+		    (prim_fluent(LiftT2), \+ prim_fluent(LiftT1), !,
+		     subf(ArgT2,ArgT2Eval,H),
+		     T2Eval =..[NameT2|ArgT2Eval],
+		     has_value(T2Eval,T1,H)
+		     )
+		   ).
+holds(P,H) :- !, subf(P,P1,H), call(P1).
+
+liftAtom(Atom, NameA, ArgA, LiftedAtom) :-
+	Atom =..[NameA|ArgA],
+	templist(ArgA,ArgAVars), 
+	LiftedAtom =..[NameA|ArgAVars]. 
+	
+liftAtom2(Atom, NameA, ArgA, LiftedAtom) :-
+	Atom =..[NameA|ArgA],
+	length(ArgA, L),
+	length(ArgAVars, L),
+	LiftedAtom =..[NameA|ArgAVars]. 
+	
+
+% templist(X,Y) : X and Y are lists of the same length; Y used to return a list of variables of size |X|
+templist([],[]) :- !.
+templist([_],[_]) :- !.
+templist([_,_],[_,_]) :- !.
+templist([_,_,_],[_,_,_]) :- !. 
+templist([_,_,_,_],[_,_,_,_]) :- !.
+templist([_,_,_,_,_],[_,_,_,_,_]) :- !.
+templist([_,_,_,_,_,_],[_,_,_,_,_,_]) :- !.
+templist([_,_,_,_,_,_,_],[_,_,_,_,_,_,_]) :- !.
+templist([_|R1],[_|R2]) :- templist(R1,R2).
+
 
 %---------------------------------------------------------------------------
 % subf(+P1,?P2): P2 is P1 with all fluents replaced by a possible value at H

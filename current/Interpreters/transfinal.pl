@@ -121,10 +121,10 @@ mtrans(E,H,E2,H2) :-
 :- multifile(trans/4),
    multifile(final/2).
 
-:- ensure_loaded(transfinal-ext).  % Load extended constructs
-:- ensure_loaded(transfinal-search).  % Load search constructs (IndiGolog)
-:- ensure_loaded(transfinal-bdi).  % Load BDI extensions (Yves Lesperance)
-:- ensure_loaded(transfinal-congolog).  % Load basic ConGolog language (must be last)
+:- ensure_loaded('transfinal-ext').  % Load extended constructs
+:- ensure_loaded('transfinal-search').  % Load search constructs (IndiGolog)
+:- ensure_loaded('transfinal-bdi').  % Load BDI extensions (Yves Lesperance)
+:- ensure_loaded('transfinal-congolog').  % Load basic ConGolog language (must be last)
 
 
 

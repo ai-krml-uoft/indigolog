@@ -120,8 +120,8 @@ wumpus_config(indigolog(default),8,10,1,random).  % Default conf:
 % Load simulator, RCX and internet environments
 :- ['../../Env/dev_managers'].              % Common facts (device_manager/4)
 load_device(Env, Command, Address) :- 
-        member((Env,Type), [(virtual_wumpus_silent, swi)]),
-       % member((Env,Type), [(virtual_wumpus, swi)]),  % use virtual_wumpus to get the xterm console
+       % member((Env,Type), [(virtual_wumpus_silent, swi)]),
+       member((Env,Type), [(virtual_wumpus, swi)]),  % use virtual_wumpus to get the xterm console
         (var(Address) -> 
              Host=null, Port=null ; 
              Address = [Host, Port]
