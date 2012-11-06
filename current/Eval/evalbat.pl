@@ -421,15 +421,18 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %     L: the history has to be longer than this, or dont bother
 %     M: if the history is longer than this, forced roll
 %     N: the length of the tail of the history to be preserved
-%		(set N=0 to never roll forward)
+%	If clause is missing, then no roll forward
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- dynamic temp/2.         % Temporal predicate used for rolling forward
+:- dynamic 
+	temp/2,
+	roll_parameters/3.         % Temporal predicate used for rolling forward
 
+% roll_parameters/3 has to be given in the domain spec.
 %roll_parameters(1,1,0).  % Never roll forward
-roll_parameters(20,40,5).
+%roll_parameters(20,40,5). % can role after 20, must roll after 40, keep 5 actions
 
-can_roll(H) :- roll_parameters(L,_,N), length(H,L1), L1 > L, N>0.
-must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, N>0.
+can_roll(H) :- roll_parameters(L,_,_), length(H,L1), L1 > L.
+must_roll(H) :- roll_parameters(_,M,_), length(H,L1), L1 > M.
 
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history

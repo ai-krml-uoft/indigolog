@@ -251,7 +251,7 @@ init :-
 	report_message(system(0),'Starting PROJECTOR...'),
 	initializeDB,             	% Initialization of projector
 	report_message(system(0),'PROJECTOR was started successfully.'),
-	reset_indigolog_dbs.      	% Reset the DB wrt the controller
+	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
 
 fin  :- 
 	report_message(system(0),'Finalizing PROJECTOR...'),
@@ -263,16 +263,16 @@ fin  :-
 
 
 % Clean all exogenous actions and set the initial now/1 situation 
-reset_indigolog_dbs :- 
+reset_indigolog_dbs(H) :- 
 	retractall(doing_step),
 	retractall(indi_exog(_)), 
 	retractall(rollednow(_)),
 	retractall(now(_)),
-	update_now([]),
+	update_now(H),
 	assert(rollednow([])),
 	assert((indi_exog(_) :- fail)),
 	fail.
-reset_indigolog_dbs.
+reset_indigolog_dbs(_).
 
 
 %%
@@ -280,7 +280,7 @@ reset_indigolog_dbs.
 %%
 indigolog :- indigolog(none).
 indigolog(_) :-		% Used to require a program, now we start proc. main always (March 06)
-	init,  !, 
+	init,  !,
 	(proc(main, E) ->		% obtain main agent program
 		report_message(system(0),'Starting to execute the main program'),
 		indigo(E,[]), !
@@ -323,8 +323,10 @@ indigo2(H,E,[wait|H])   :- !,
 	indigo(E,H2).
 indigo2(_,E,[debug_exec|H]) :- !, 
 	report_message(system(0), 'Request for DEBUGGING'),
-	debug(debug, H, null),  !,
+	debug(debug, H, null),  
 	delete(H,debug,H2),
+	length(H2,LH2),
+	assert(debuginfo(E,H2,LH2)), !,
 	indigo(E,H2).
 indigo2(_,_,[halt_exec|H]) :- !, 
 	report_message(system(0), 'Request for TERMINATION of the program'),
@@ -526,6 +528,8 @@ wait_if_neccessary.
 
 % Updates the current history to H
 update_now(H):- 
+        %report_message(system(2),['Updating now history to: ',H]),
+        %write(H), 
         retract(now(_)) -> assert(now(H)) ; assert(now(H)).
 
 action_failed(Action, H) :-
@@ -597,14 +601,16 @@ handle_rolling(H1,H1).
 pause_or_roll(H1,H2) :- can_roll(H1), !, roll(H1, H2).
 pause_or_roll(H1,H1).
 
+
 roll(H1, H2) :-
         report_message(system(0),'Rolling down the river (progressing the database).......'), 
 	roll_db(H1, H2), 
         report_message(system(0), 'done progressing the database!'), 
         report_message(system(3), ['New History: ', H2]), 
 	update_now(H2), 			% Update the current history	
-	retract(rollednow(HO)),			% Update the rollednow/1 predicate
-	append(H1,HO,HN),			% rollednow(H): H is the full system history
+	append(H2,HDropped,H1),	% Extract what was dropped from H1
+	retract(rollednow(HO)),		% Update the rollednow/1 predicate to store all that has been rolled forward
+	append(HDropped,HO,HN),			% rollednow(H): H is the full system history
 	assert(rollednow(HN)),
 	save_exog.	% Collect all exogenous actions
 

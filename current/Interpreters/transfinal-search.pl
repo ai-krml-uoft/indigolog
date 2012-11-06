@@ -142,7 +142,7 @@ trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
 %% searchext(P,Opt) : search for E with options Opt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :- 
+trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :-
         trans(E,H,E1,H1), 
         findpathn(E1, H1, L, LOptions).
 final(search(E,opt(_LOptions)),H) :- final(E,H).
@@ -172,23 +172,24 @@ add_assumptions(A, LAssumptions, Exog, _Test) :-
 final(mnt(_,_,followpath(E,[E,H]),_),H) :- !.
 final(mnt(_,_,followpath(E,_),_),H) :- final(E,H).  /* off path; check again */
 
-
-trans(mnt(EO,HO,followpath(E,[E,_,E1,H1|L]),LOpt),H1,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- 
-	E = [ExogAction|_],			% An exogenous action was assumed, wait until added to current history H1
-	exog_action(ExogAction), !.	
+	
+trans(mnt(EO,HO,followpath(E,[E,_,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H) :- 
+	E = [ExogAction|_],			% An exogenous action was assumed and expected for exec now
+	exog_action(ExogAction), 	% step if exogenous action was alredy added to current history H1
+	append(H,_HDropped,H1), !.	% The current history may be H1 chopped (due to progression)
 trans(mnt(EO,HO,followpath(E,[E,H,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H1) :- 
 	\+ (E = [ExogAction|_], exog_action(ExogAction)), !.	% Progress blindly if not an assumed exog action
 trans(mnt(EO,HO,EFollow,LOpt),H,ERecovered,HRecovered) :- 
-	EFollow=followpath(Ex,[Ex,Hx|_]),						% History is not what expected, recover
+	EFollow = followpath(Ex,[Ex,Hx|_]),						% History is not what expected, recover
 	H\=Hx,		% Replan only if the current situation is not the one expected
 	recover(EO,HO,LOpt,EFollow,H,ERecovered,HRecovered).	
 
 
-%% recover(EOriginal,HOriginal,LPlanningOptions,EFollow,HCurrent,ERecoveredPlan)
+%% recover(EOriginal,HOriginal,LPlanningOptions,EFollow,HCurrent,ERecoveredPlan, HRecovered)
 %%
-recover(_EO,_HO,_LOpt,EFollow,H,followpath(Ex,ListRecovered),H) :-
-	EFollow=followpath(Ex,[Ex,Hx|L]),
-	append(H,HDropped,Hx), !,					% The expected history has been chopped (progressed)
+recover(EO,HO,LOpt,EFollow,H,mnt(EO,HO,followpath(Ex,ListRecovered),LOpt),H) :-
+	EFollow = followpath(Ex,[Ex,Hx|L]),
+	append(H,HDropped,Hx), !,					% The expected history Hx has been chopped (progressed)
 	writeln('======> Surgery recovering plan.........'),
 	dropPrefixHistory([Ex,Hx|L],HDropped,ListRecovered).
 

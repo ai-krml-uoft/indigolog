@@ -72,6 +72,7 @@ initializeJavaSwing(Host, Port):-
       	socket(internet, stream, comm_java),
       	connect(comm_java, Host/Port),
       	assert(listen_to(socket, comm_java, comm_java)),
+	send_command_to_swing('SI INIZIA', _),
       	report_message(system(1), 'Connection to JAVA SWING port established successfully').
 
 finalizeJavaSwing(_, _) :-
@@ -108,7 +109,7 @@ execute(Action, T, _, Sensing) :-
         read_response_from_swing(Sensing), nl.
 
 execute(Action, _, _, ok) :- 
-        report_message(action, ['Executing non-sensing action: *',Action,'*']).
+        report_message(action, ['Executing non-sensing action: *',Action,'*']),send_command_to_swing(Action,_).
 
 :- type_prolog(ecl) -> 
 	set_event_handler(170, my_system_error_handler/2) ; true.
@@ -167,7 +168,7 @@ javaSwingOn :- listen_to(socket, comm_java, comm_java).
 printKbInstructions :-
     writeln('*********************************************************'), 
     writeln('* NOTE: This is the JAVA SWING SIMULATOR environment*****'),
-    writeln('*created by STEFANO VALENTINI ***************************'),
+    writeln('*********************************************************'),
     writeln('*********************************************************'), nl.
 
 
