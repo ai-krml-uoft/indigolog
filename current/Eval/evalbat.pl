@@ -431,13 +431,12 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %roll_parameters(1,1,0).  % Never roll forward
 %roll_parameters(20,40,5). % can role after 20, must roll after 40, keep 5 actions
 
-can_roll(H) :- roll_parameters(L,_,_), length(H,L1), L1 > L.
-must_roll(H) :- roll_parameters(_,M,_), length(H,L1), L1 > M.
+can_roll(H) :-  \+ protectHistory(_), roll_parameters(L,_,_), length(H,L1), L1 > L.
+must_roll(H) :- \+ protectHistory(_), roll_parameters(_,M,_), length(H,L1), L1 > M.
 
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
 % H3 is the tail of H1 that is going to be dropped
-roll_db(H,H) :- protectHistory(_), !, writeln('-------------------------- SORRY I CANNOT ROLL NOW.....'). 
 roll_db(H1,H2) :- 
 	roll_parameters(_,_,N), 	
 	split(N,H1,H2,H3), 
