@@ -157,7 +157,8 @@
 	now/1,            	% Used to store the actual history
 	rollednow/1,           	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
-	doing_step/0,     	% A step is being calculated
+	doing_step/0,		% A step is being calculated
+	protectHistory/1,	% Protect a history to avoid rolling forward     	
 	pause_step/0.     	% Pause the step being calculated
 	
 % Predicates that they have definitions here but they can defined elsewhere
@@ -171,7 +172,7 @@
 :- ensure_loaded(transfinal).  % Load the TRANS and FINAL definitions
 	
 	
-	
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    CONFIGURATION SECTION
 %
@@ -266,6 +267,7 @@ fin  :-
 reset_indigolog_dbs(H) :- 
 	retractall(doing_step),
 	retractall(indi_exog(_)), 
+	retractall(protectHistory(_)),
 	retractall(rollednow(_)),
 	retractall(now(_)),
 	update_now(H),

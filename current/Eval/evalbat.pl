@@ -437,13 +437,14 @@ must_roll(H) :- roll_parameters(_,M,_), length(H,L1), L1 > M.
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
 % H3 is the tail of H1 that is going to be dropped
+roll_db(H,H) :- protectHistory(_), !, writeln('-------------------------- SORRY I CANNOT ROLL NOW.....'). 
 roll_db(H1,H2) :- 
 	roll_parameters(_,_,N), 	
 	split(N,H1,H2,H3), 
 	preserve(H3),
 	update_cache(H3).	    % Update the cache wrt the preserved history H3
 
-	/* split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N. */
+%% split(N,H,H1,H2) splits H = [H1|H2] (i.e., append(H1,H2,H)) such that length(H1)=N
 split(0,H,[],H).
 split(N,[A|H],[A|H1],H2) :- N > 0, N1 is N-1, split(N1,H,H1,H2).
 

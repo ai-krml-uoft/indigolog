@@ -86,9 +86,9 @@
 % search(E): search on E, using caching and replanning only when
 %		situation is not the expected one
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-final(search(E,_),H) :- final(search(E),H).
-final(search(E),H) :- final(E,H).
 
+%% Search with a message
+final(search(E,_),H) :- final(search(E),H).
 trans(search(E,M),H,E1,H1):- 
         report_message(program, ['Thinking linear plan on:      ', M]),
         (trans(search(E),H,E1,H1) ->
@@ -98,34 +98,26 @@ trans(search(E,M),H,E1,H1):-
               fail
         ).
 
-% if findpath/3 wants to abort everhting it has to throw exception search
+%% Basic search/1
+% if findpath/3 wants to abort everything it has to throw exception search
 % you can obtain the vanilla search version by having Prolog code to
 % ignore both catch/3 and throw/1.
+final(search(E),H) :- final(E,H).
 trans(search(E),H,followpath(E1,L),H1) :- 
-%	store_node(search, E, H),  % For debugging
         catch( (trans(E,H,E1,H1), findpath(E1, H1, L)) , search, fail).
-trans(search(E,M),H,E1,H1):- 
-        report_message(program, ['Thinking linear plan on:      ', M]),
-        (trans(search(E),H,E1,H1) ->
-             report_message(program, 'Finished thinking: Plan found!') 
-        ;
-             report_message(program, 'Finished thinking: No plan found!'), 
-             fail
-        ).
+
 
 % findpath(E,H,L): find a solution L for E at H; 
 %		   L is the list [E1,H1,E2,H2,...,EN,HN] encoding
 %		   each step evolution (Ei,Hi) where final(EN,HN)
 %
-% If last action was commit, then try to find a plan with what remains
-% if no plan is possible then throw exception "search" to abort the
-% whole search
-findpath(E,[commit|H],L) :- !, (findpath(E,H,L) -> true ; throw(search)).
+% If last action was commit, then commit to the sub-plan found.
+findpath(E,[commit|H],L) :- !, 
+	(findpath(E,H,L) -> true ; throw(search)).
 findpath(E,H,[E,H]) :- final(E,H).
 findpath(E,H,[E,H|L]) :- 
-%	store_node(search, E, H),  % For debugging only
-        trans(E,H,E1,H1), 
-        findpath(E1,H1,L).
+	trans(E,H,E1,H1), 
+	findpath(E1,H1,L).
 
 
 % followpath(E,L): execute program E wrt expected sequence of
@@ -141,20 +133,20 @@ trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% searchext(P,Opt) : search for E with options Opt
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :-
         trans(E,H,E1,H1), 
-        findpathn(E1, H1, L, LOptions).
-final(search(E,opt(_LOptions)),H) :- final(E,H).
+        findpathn(E1, H1, L, LOptions),
+        assert(protectHistory(H)).
+final(searchn(E,opt(_)),H) :- final(E,H).
 
 findpathn(E,H,[E,H],_LOpt) :- final(E,H).
 findpathn(E,H,[E,H|L],LOpt) :- 
         trans(E,H,E1,H1), 
-		(H1=[A|H], member(assumptions(LAssumptions), LOpt), add_assumptions(A,LAssumptions,ExogAss,_TestAss) -> 
-			E2 = [ExogAss|E1]
-		;
-			E2 = E1
-		),
+	(H1=[A|H], member(assumptions(LAssumptions), LOpt), add_assumptions(A,LAssumptions,ExogAss,_TestAss) -> 
+		E2 = [ExogAss|E1]
+	;
+		E2 = E1
+	),
         findpathn(E2,H1,L,LOpt).
   
 % LAssumption is a list of assumptions of the form [A, Exog]: If A just happend
@@ -169,8 +161,9 @@ add_assumptions(A, LAssumptions, Exog, _Test) :-
 
 %% Semantics of mnt(EOriginal,HOriginal,EFollow,LPlanningOptions)
 %%
-final(mnt(_,_,followpath(E,[E,H]),_),H) :- !.
-final(mnt(_,_,followpath(E,_),_),H) :- final(E,H).  /* off path; check again */
+final(mnt(_,HO,followpath(E,[E,H]),_),H) :- !, retractall(protectHistory(HO)).
+final(mnt(_,HO,followpath(E,_),_),H) :- 
+	final(E,H), retractall(protectHistory(HO)).  /* off path; check again */
 
 	
 trans(mnt(EO,HO,followpath(E,[E,_,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H) :- 
