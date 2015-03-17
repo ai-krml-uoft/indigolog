@@ -69,8 +69,7 @@
            stime/1,
            cputime/1,		
            % 4 - OTHER TOOLS
-	   shuffle/2,
-           false/0,               
+		   shuffle/2,
            type_of/2,
            writeln/2,
            flush/1,
@@ -764,8 +763,6 @@ copy_pipe(In, Out) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% false/0 is an alias for fail
-false:- fail.
 
 % X is of type TX
 type_of(X, TX):-

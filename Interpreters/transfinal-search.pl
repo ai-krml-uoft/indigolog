@@ -535,7 +535,7 @@ evaluate_trace(H, [[Goal,Value]|RG], Utility) :-
 extract_trace([],_,[]).
 extract_trace([if(P,E1,E2)],H,H2) :-
 	isTrue(P=Y,H), !,
-	(Y=true -> extract_trace(E1,[A|H], H2) ; extract_trace(E2,[A|H], H2)).
+	(Y=true -> extract_trace(E1,[_|H], H2) ; extract_trace(E2,[_|H], H2)).
 extract_trace([if(P,E1,_)],H,HR) :-
 	assume(P,true,H,H2),
 	extract_trace(E1,H2, H3),
