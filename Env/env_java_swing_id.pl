@@ -31,7 +31,6 @@
 
 :- include(env_gen).
 
-
 name_dev(javaswing).
 
 :- set_debug_level(3).
@@ -60,12 +59,6 @@ finalizeInterfaces(_)   :-
 	finalizeJavaSwing(_,_), 
 	%finalizeStatistics,	% SEB: PREDICATE NOT DEFINED
 	report_message(system(0), 'FINALIZATION COMPLETED!').
-
-
-
-
-
-
 
 initializeJavaSwing(Host, Port):-
       	report_message(system(3), ['Establishing connection to JAVA SWING:',Host,'/',Port]), !,
