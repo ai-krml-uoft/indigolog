@@ -82,24 +82,18 @@ guess_prolog :- assert(type_prolog(vanilla)).
 	
 
 % This is the initialization needed for each type of Prolog used
-:- type_prolog(ecl) ->        % INITIALIZATION FOR ECLIPSE PROLOG
-	use_module(library(tools_ecl)),
-	set_flag(debug_compile, off),
-	set_flag(variable_names, off),
-	set_backquoted_string
-	;
-   type_prolog(swi) ->        % INITIALIZATION FOR SWI-PROLOG
-	main_dir(Dir),       
-	concat_atom([Dir,'lib'], LibDir),
-	assert(library_directory(LibDir)),
-	use_module(library(eclipse_swi)), init_eclipse_lib, % ECLIPSE Compat lib
-	use_module(library(tools_swi)), 
-	use_module(library(time)),	% for call_with_time_limit/2
-	style_check(-discontiguous),
-	set_prolog_flag(optimise, true),
-	set_backquoted_string
-	;
-	true.
+:- type_prolog(swi) ->        % INITIALIZATION FOR SWI-PROLOG
+		main_dir(Dir),       
+		concat_atom([Dir,'lib'], LibDir),
+		assert(library_directory(LibDir)),
+		use_module(library(eclipse_swi)), init_eclipse_lib, % ECLIPSE Compat lib
+		use_module(library(tools_swi)), 
+		use_module(library(time)),	% for call_with_time_limit/2
+		style_check(-discontiguous),
+		set_prolog_flag(optimise, true),
+		set_backquoted_string
+		;
+		true.
 
 
 

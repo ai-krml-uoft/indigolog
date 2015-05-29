@@ -95,7 +95,7 @@
 
 % Consult Lego low-level subsystem manager
 %  This file is in charge of the actual communication with the RCX brick 
-:- use_module(rcx_ecl).
+:- use_module(rcx_swi).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS TO BE USED
