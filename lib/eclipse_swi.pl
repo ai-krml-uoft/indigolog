@@ -459,11 +459,11 @@ join_string([E|R], Glue, String) :-
            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % term_string/2: conversion between terms and strings
-term_string(S, T) :- 
+term_string(T, S) :- 
         ground(S),
         string_to_atom(S, A), 
         term_to_atom(T, A). 
-term_string(S, T) :- 
+term_string(T, S) :- 
         ground(T),
         term_to_atom(T, A), 
         string_to_atom(S, A).
