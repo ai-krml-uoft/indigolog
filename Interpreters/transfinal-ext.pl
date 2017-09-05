@@ -72,6 +72,7 @@
     /*    abort        : Meta action to, suddenly,  abort execution      	*/
     /*	  time(P,Sec)  : Make first step on P in less than Sec seconds	 	*/
     /*	  ttime(P,Sec) : Make every step on P in less than Sec seconds 	 	*/
+    /*	  atomic(P)    : Executes P atomically, without any interleaving	*/
 % Try to execute program E1 first. If impossible, then try program E2 instead
 trans(wndet(E1,E2),H,E,H1) :- trans(E1,H,E,H1) -> true ; trans(E2,H,E,H1).
 final(wndet(E1,E2),H)      :- final(E1,H), final(E2,H).
