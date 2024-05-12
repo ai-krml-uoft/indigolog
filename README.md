@@ -1,12 +1,11 @@
 # IndiGolog: A High-Level Programming Language for Embedded Reasoning Agents
 
-This repo contains the IndiGolog interpreter and several device managers to sense and execute from the environment.
+This repo contains the **IndiGolog** interpreter and other pieces of code to enable IndiGolog progarms to run in external environments (e.g., Lego Mindstorm robotic platforms). 
 
-**IndiGolog** is a programming language for autonomous agents that sense their environment and do planning as they operate. Instead of classical planning, it supports _high-level program execution_. The programmer provides a _high-level nondeterministic program_ involving domain-specific actions and tests to perform
-the agent's tasks. The IndiGolog interpreter then reasons about the preconditions and effects of the actions in the program to find a legal terminating execution. To support this, the programmer provides a declarative specification of the domain (i.e., primitive actions, preconditions and effects, what is known about the initial state) in the Situation calculus. The programmer can control the amount of non-determinism in the program and how much of it is searched over. The language is rich and supports concurrent programming. Programs are executed online together with sensing the environment and monitoring for events, thus supporting
-the development of reactive agents. 
+_What is IndiGolog?_ **IndiGolog** is a high-level programming language for autonomous agents that sense their environment and do planning as they operate. Instead of classical planning, it supports _high-level program execution_. The programmer provides a _high-level nondeterministic program_ involving domain-specific actions and tests to perform the agent's tasks. The IndiGolog interpreter then reasons about the preconditions and effects of the actions in the program to find a legal terminating execution. To support this, the programmer provides a declarative specification of the domain (i.e., primitive actions, preconditions and effects, what is known about the initial state) in the Situation calculus. The programmer can control the amount of non-determinism in the program and how much of it is searched over. The language is rich and supports concurrent programming. Programs are executed online together with sensing the environment and monitoring for events, thus supporting
+the development of reactive agents.
 
-A report description of the language and interpreter can be found here:
+A report on the language and interpreter can be found in the following article:
 
 * Giuseppe De Giacomo, Yves Lespérance, Hector J. Levesque, Sebastian Sardiña: [IndiGolog: A High-Level Programming Language for Embedded Reasoning Agents](https://dblp.uni-trier.de/pid/g/GDGiacomo.html). Multi-Agent Programming, Languages, Tools and Applications 2009: 31-72.
 
@@ -94,9 +93,11 @@ interface where the user can enter exogenous actions asynchronously.
 
 ## Contributors
 
+IndiGolog is one of the many high-level agent-oriented programming languages developed by the Cognitive Robotics Group @ UofT under the direction of Hector Levesque and Ray Reiter.
+
 * Sebastian Sardina (ssardina@cs.toronto.edu or ssardina@gmail.com)
 * Hector Levesque
 * Yves Lesperance
 * Giuseppe De Giacomo
-* Stavros Vassos
 * Maurice Pagnucco
+* Stavros Vassos
