@@ -1,8 +1,9 @@
 /**
-    Main file for running the simple Elevator examples.
+    Main file for running the complex Elevator examples with exogenous events and sensing.
 
-    This file loads the interpreter and the application file, and has a main/1 predicate
-    to run the available controllers.
+    This file loads the interpreter and the application file, and has a main/0 and main/1 predicate to run the available controllers.
+
+    This file needs to be combined after a configuration file, such as config.pl, is loaded (defining interpreter/1).
 **/
 
 
@@ -10,7 +11,7 @@
 % CONSULT NECESSARY FILES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% top-level interpreter
+% top-level interpreter (interpreter/1 is defined in config.pl)
 :- interpreter(indigolog_plain, F), consult(F).
 % :- ['../../Interpreters/indigolog_plain_swi'].
 

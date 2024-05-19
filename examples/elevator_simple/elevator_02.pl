@@ -1,27 +1,42 @@
-%  This is the elevator that appears in the IJCAI-97 paper on ConGolog
-%  It uses exogenous actions for temperature, smoke, and call buttons
-%  run: ?- indigolog(control).
-%
-%  Respond to "Exogenous action:" with either "nil." or with one of the
-%    exogenous actions below, such as "on(5)." or "heat."
-%  The elevator stops when it is parked and all lights are off.
+/**
+  This is the elevator that appears in the IJCAI-97 paper on ConGolog.
 
-:- [elevator_01].
+  It uses exogenous actions for temperature, smoke, and call buttons
+  run:
 
-:- abolish(exog_occurs/1).
+  Respond to "Exogenous action:" with either "nil." or with one of the
+    exogenous actions below, such as "on(5)." or "heat."
+
+  The elevator stops when it is parked and all lights are off.
+**/
 
 % Interface to the outside world via read and write
+execute(A, SR) :- ask_execute(A, SR).
 exog_occurs(A) :- ask_exog_occurs(A).
 
+max_floor(10).
+
+fl(N) :- max_floor(M), between(1, M, N).    % the 6 elevator floors
+
+% Fluents
+prim_fluent(floor).             % the floor the elevator is on (1 to 6)
+prim_fluent(light(N)) :- fl(N). % call button of floor n (on or off)
+prim_fluent(lights).            % call buttons of ALL floors (as a list)
+
+prim_fluent(temp).               % the temperature in the elevator (number)
+prim_fluent(fan).                % the fan (on or off)
+prim_fluent(alarm).              % the smoke alarm (on or off)
+
+% Actions (basics)
+prim_action(down).              % elevator down one floor
+prim_action(up).                % elevator up one floor
+prim_action(open).              % open elevator door
+prim_action(close).             % close elevator door
+prim_action(off(N)) :- fl(N).   % turn off call button on floor n
 
 % Actions for the fan and alarm
 prim_action(toggle).             % toggle the fan
 prim_action(ring).               % ring the smoke alarm
-
-% Fluents
-prim_fluent(temp).               % the temperature in the elevator (number)
-prim_fluent(fan).                % the fan (on or off)
-prim_fluent(alarm).              % the smoke alarm (on or off)
 
 % Exogenous events
 exog_action(heat).               % increase temperature by 1
@@ -30,25 +45,42 @@ exog_action(smoke).              % smoke enters elevator
 exog_action(reset).              % smoke detector alarm is reset
 exog_action(on(N)) :- fl(N).     % turn on call button on floor n
 
+% Sensing axioms for primitive fluents.
+senses(look(N), light(N)).      % look(n) asks for the value of light(n)
+senses(look, lights).           % ask for current value of all lights
 
-% Causal laws
+% Preconditions of prim actions
+poss(down,    neg(floor = 1)).
+poss(up,      neg(floor = M)) :- max_floor(M).
+poss(off(N),  and(floor = N, light(N) = on)).
+poss(open, true).
+poss(close, true).
+poss(toggle, true).
+poss(ring,   true).
+poss(look(_), true).
+poss(look, true).
+
+
+% Causal laws / SSA
+causes_val(up,   floor, N, N is floor + 1).
+causes_val(down, floor, N, N is floor - 1).
+causes_val(off(N), light(N), off, true).
+causes_val(on(N),  light(N), on,  true).
+
+causes_val(off(N), lights, L, replace(lights, L, N, 0)).
+causes_val(on(N), lights, L, replace(lights, L, N, 1)).
+
 causes_val(heat, temp, X, X is temp+1).
 causes_val(cold, temp, X, X is temp-1).
 
 causes_val(toggle, fan, on,  fan=off).
 causes_val(toggle, fan, off, fan=on).
 
-causes_val(on(N),  light(N), on,  true).
-
 causes_val(smoke, alarm, on,  true).
 causes_val(reset, alarm, off, true).
 
-% Preconditions of prim actions
-poss(toggle, true).
-poss(ring,   true).
 
 % Initial state
-:- abolish(initially/2).
 initially(floor, 3).
 initially(temp, 2).
 initially(fan, off).
@@ -59,15 +91,55 @@ initially(alarm, off).
 proc(too_hot, temp > 2).
 proc(too_cold, -2 > temp).
 
+% Definitions of complex conditions
+proc(below_floor(N), floor < N).
+proc(above_floor(N), floor > N).
+proc(pending_floor(N), light(N) = on).
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Definitions of complex actions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-proc(control, prioritized_interrupts(
+% got to floor N
+proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).
+
+% serve floor N
+proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
+
+% pick a floor that is pending to be served and serve it
+proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
+
+% L = [look(1), look(2), look(3), look(4), look(5), look(6), ...]
+proc(check_buttons, L) :- findall(look(N), fl(N), L).
+
+% BASIC CONTROLER: sense all buttons and serve reactively
+proc(control(basic),
+  [ check_buttons,
+    while(or(some(n,light(n)=on), above_floor(1)),
+      if(some(n,light(n)=on), serve_a_floor, [down, check_buttons])) ]).
+
+% COMPLEX CONTROLER: operate elevator concurrently
+proc(control(concurrent), prioritized_interrupts(
         [interrupt(and(too_hot, fan = off), toggle),
          interrupt(and(too_cold, fan = on), toggle),
          interrupt(alarm = on, ring),
          interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down)])).
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Utility predicates
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% List utility used above
+% replace(L, L2, N, V) replaces the Nth element of L with V, giving L2
+replace(L1, L2, N, V) :-
+        N2 is N-1,
+        length(L11, N2),
+        append(L11, [_|L12], L1),
+        append(L11, [V|L12], L2).

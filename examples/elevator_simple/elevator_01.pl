@@ -1,7 +1,7 @@
 /**
   This is the original Golog elevator with no exogenous events and no sensing.
 
-  Serve each floor whose call button is on initially, then park the elevator.
+  Serves each floor whose call button is on initially, then park the elevator.
 
 **/
 
@@ -53,12 +53,12 @@ proc(pending_floor(N), light(N) = on).
 % got to floor N
 proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).
 
-% pick a floor that is pendign to be served and serve it
-proc(serve_some_floor, pi(n,
-   [?(pending_floor(n)), go_floor(n), open, close, off(n)])).
-
 % serve floor N
-proc(serve_floor(N), [ go_floor(N), open, close, off(N) ]).
+proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
+
+% pick a floor that is pending to be served and serve it
+proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
+
 
 % CONTROLER 1: while there are some light on, pick one and serve it
 proc(control(basic),
