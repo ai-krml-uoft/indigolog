@@ -108,7 +108,8 @@ true.
 
 ## Example 2: Control under exogenous events
 
-There are two controllers:
+There are two type of controllers.
 
-* `basic`: This is a reactive controller, except that sensing is used to find out which elevator call lights are on at the start.
-* `control`: Full fledged control using concurrency.
+The `basic(1)` and `basic(2)` controllers are reactive non-optimized controllers that once all pending floors are known (via sensing), it keeps serving them in any order. Sensing of lights is done at the start, and once all pending floors are served and elevator travels down to ground floor. While `basic(1)` uses a sequence of `look(N)` sensing action (sensing outcome `on` or `off`), one per floor, controller `basic(2)` senses status of all lights as a list of 0s and 1s.
+
+The complex controller `control` is the one that appeared in the ConGolog paper and uses concurrency to serve floors and react to temperature and smoke eventualities. There is no sensing, but exogenous action `on(N)` may set a floor in pending mode.

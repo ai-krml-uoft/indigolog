@@ -14,7 +14,7 @@
 execute(A, SR) :- ask_execute(A, SR).
 exog_occurs(A) :- ask_exog_occurs(A).
 
-max_floor(10).
+max_floor(3).
 
 fl(N) :- max_floor(M), between(1, M, N).    % the 6 elevator floors
 
@@ -33,6 +33,8 @@ prim_action(up).                % elevator up one floor
 prim_action(open).              % open elevator door
 prim_action(close).             % close elevator door
 prim_action(off(N)) :- fl(N).   % turn off call button on floor n
+prim_action(look).              % check all call buttons
+prim_action(look(N)) :- fl(N).  % check button N
 
 % Actions for the fan and alarm
 prim_action(toggle).             % toggle the fan
@@ -52,7 +54,7 @@ senses(look, lights).           % ask for current value of all lights
 % Preconditions of prim actions
 poss(down,    neg(floor = 1)).
 poss(up,      neg(floor = M)) :- max_floor(M).
-poss(off(N),  and(floor = N, light(N) = on)).
+poss(off(N),  and(floor = N, pending_floor(N))).
 poss(open, true).
 poss(close, true).
 poss(toggle, true).
@@ -94,7 +96,9 @@ proc(too_cold, -2 > temp).
 % Definitions of complex conditions
 proc(below_floor(N), floor < N).
 proc(above_floor(N), floor > N).
-proc(pending_floor(N), light(N) = on).
+
+
+proc(pending_floor(N), or(light(N) = on, nth1(N, lights, 1))).
 
 
 
@@ -109,17 +113,22 @@ proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).
 % serve floor N
 proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
 
-% pick a floor that is pending to be served and serve it
+% pick a floor that is pending_floor to be served and serve it
 proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
 
 % L = [look(1), look(2), look(3), look(4), look(5), look(6), ...]
 proc(check_buttons, L) :- findall(look(N), fl(N), L).
 
-% BASIC CONTROLER: sense all buttons and serve reactively
-proc(control(basic),
+% BASIC CONTROLERS: sense buttons and serve reactively
+proc(control(basic(1)),
   [ check_buttons,
-    while(or(some(n,light(n)=on), above_floor(1)),
-      if(some(n,light(n)=on), serve_a_floor, [down, check_buttons])) ]).
+    while(or(some(n, pending_floor(n)), above_floor(1)),
+      if(some(n, light(n) = on), serve_some_floor, [down, check_buttons])) ]).
+
+proc(control(basic(2)),
+  [ look,
+    while(or(member(1, lights), above_floor(1)),
+      if(member(1, lights), serve_some_floor, [down, look]))]).
 
 % COMPLEX CONTROLER: operate elevator concurrently
 proc(control(concurrent), prioritized_interrupts(
@@ -128,7 +137,6 @@ proc(control(concurrent), prioritized_interrupts(
          interrupt(alarm = on, ring),
          interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down)])).
-
 
 
 
