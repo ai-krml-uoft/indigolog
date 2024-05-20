@@ -44,7 +44,7 @@
 % RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
 % CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-% 
+%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %
@@ -54,8 +54,8 @@
 %
 % The following definition of constants are provided:
 %
-% -- device_manager(+S, +P, -C, [+Host, +Port]) : 
-%         Retract comand C for environment P on plataform P with 
+% -- device_manager(+S, +P, -C, [+Host, +Port]) :
+%         Retract comand C for environment P on plataform P with
 %         manager listeling at address Host/Port
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -65,7 +65,7 @@
 %% 		Command is the command line to execute File using Prolog
 %%		Platform (swi, eclispe); connecting to the EM at Port:host
 %%		and passing the extra Options.
-%%		The Type may be xterm (display terminal) or silent (background) 
+%%		The Type may be xterm (display terminal) or silent (background)
 build_call(Platform,ManagerHost,ManagerPort,File,Options,xterm,Command) :-
 	build_call2(Platform,ManagerHost,ManagerPort,File,Options,Command2),
     executable_path(xterm, Exterm),
@@ -79,14 +79,14 @@ build_call(Platform,ManagerHost,ManagerPort,File,Options,silent,Command) :-
 
 build_call2(eclipse,ManagerHost,ManagerPort,File,Options,Command) :-
         executable_path(eclipse, Eeclipse),
-        concat_atom([Eeclipse, ' -g 10M host=', ManagerHost, 
-                     ' port=', ManagerPort, 
+        concat_atom([Eeclipse, ' -g 10M host=', ManagerHost,
+                     ' port=', ManagerPort,
                      ' -b ', File, ' -e ', ' start ', Options], Command).
 build_call2(swi,ManagerHost,ManagerPort,File,Options,Command) :-
         executable_path(swi, Eswi),
-        concat_atom([Eswi, ' -t ', ' start', 
+        concat_atom([Eswi, ' -t ', ' start',
                     ' -f ', File,
-		 		    ' host=', ManagerHost, 
+		 		    ' host=', ManagerHost,
 		 		    ' port=', ManagerPort,' ', Options], Command).
 
 
@@ -95,33 +95,33 @@ build_call2(swi,ManagerHost,ManagerPort,File,Options,Command) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% SIMULATOR DEVICE 
+% SIMULATOR DEVICE
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(simulator, Platform, Command, [Host, Port]):- 
+device_manager(simulator, Platform, Command, [Host, Port]):-
         main_dir(Dir),
         concat_atom([Dir,'Env/env_sim.pl'], File),
 		build_call(Platform,Host,Port,File,'',xterm,Command).
-		     
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% RCX LEGO MINDSTORM DEVICE 
+% RCX LEGO MINDSTORM DEVICE
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(rcx, eclipse, Command, [Host, Port]):- 
+device_manager(rcx, eclipse, Command, [Host, Port]):-
         main_dir(Dir),
         concat_atom([Dir,'Env/env_rcx.pl'], File),
 		build_call(eclipse,Host,Port,File,'',xterm,Command).
-      
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% INTERNET/SYSTEM DEVICE 
+% INTERNET/SYSTEM DEVICE
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(internet, Platform, Command, [Host, Port]):- 
+device_manager(internet, Platform, Command, [Host, Port]):-
         main_dir(Dir),
         concat_atom([Dir,'Env/env_int.pl'], File),
 		build_call(Platform,Host,Port,File,'',xterm,Command).
@@ -144,19 +144,19 @@ device_manager(internet, Platform, Command, [Host, Port]):-
 %	2. SSH to er1.cs.toronto.edu as user <er1> (with the corresponding password)
 %
 %	3. To talk to the robot from outside, connect to er1.cs.toronto.edu on port 9000
-%   
+%
 %	You should now be "talking" to the robot
 %
 % ER1 account at CS: er1 / come1er1
 % ER1 account at evolution web page: er1uoft@cs.toronto.edu / come1er1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(er1, swi, Command, [Host, Port]):- 
+device_manager(er1, swi, Command, [Host, Port]):-
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
         concat_atom([Dir,'Env/env_er1.pl'], File),
-			% Use this if not debugging 
+			% Use this if not debugging
 %        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1], Options),
-			% Use this instead if you want debugging mode 
+			% Use this instead if you want debugging mode
         concat_atom(['debug=4 ',' iper1=', IPER1, ' porter1=', PORTER1], Options),
 		build_call(swi,Host,Port,File,Options,xterm,Command).
 
@@ -167,13 +167,13 @@ er1_location('er1.cs.toronto.edu', 9000).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-% WUMPUS WORLD SIMULATOR DEVICE 
+% WUMPUS WORLD SIMULATOR DEVICE
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 wumpus_location('127.0.0.1', 9002).
 
 % With terminal
-device_manager(virtual_wumpus, swi, Command, [Host, Port]):- 
+device_manager(virtual_wumpus, swi, Command, [Host, Port]):-
         main_dir(Dir),
         wumpus_location(IPW, PORTW),
         wumpus_config(TIDRun,Size,PPits,NoGolds,TIDScenario),
@@ -181,14 +181,14 @@ device_manager(virtual_wumpus, swi, Command, [Host, Port]):-
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
         concat_atom([' debug=1',
-                     ' ipwumpus=', IPW, ' portwumpus=', PORTW, 
-                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
+                     ' ipwumpus=', IPW, ' portwumpus=', PORTW,
+                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
                      ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
                      ], Options),
 		build_call(swi,Host,Port,File,Options,xterm,Command).
 
 % Without terminal
-device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):- 
+device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
         main_dir(Dir),
         wumpus_location(IPW, PORTW),
         wumpus_config(TIDRun,Size,PPits,NoGolds,TIDScenario),
@@ -196,8 +196,8 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
         term_to_atom(TIDScenario, IDScenario),
         concat_atom([Dir,'Env/env_wumpus.pl'], File),
         concat_atom([' debug=1',
-                     ' ipwumpus=', IPW, ' portwumpus=', PORTW, 
-                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size, 
+                     ' ipwumpus=', IPW, ' portwumpus=', PORTW,
+                     ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
                      ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
                      ], Options),
 		build_call(swi,Host,Port,File,Options,silent,Command).
@@ -208,7 +208,7 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CLIMA GAME SIMULATOR DEVICE: to communicate with the game simulator
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):- 
+device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         main_dir(Dir),
         clima_location(IPCLIMA, PORTCLIMA),
         clima_agentID(TAgentName, TAgentPass),
@@ -252,7 +252,7 @@ device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MESSENGER SERVER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):- 
+device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         main_dir(Dir),
         mess_location(IPMESS, PORTMESS),
         agentID(TAgentName),
@@ -299,7 +299,7 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 % Stefano from Rome 2008
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % requires swing_location/2.
-device_manager(javaswing, swi, Command, [Host, Port]):- 
+device_manager(javaswing, swi, Command, [Host, Port]):-
     main_dir(Dir),
 	swing_location(IPSW, PORTSW),
     concat_atom([Dir,'Env/env_java_swing.pl'], File),
@@ -314,7 +314,7 @@ device_manager(javaswing, swi, Command, [Host, Port]):-
 % Stefano from Rome 2008
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % requires swing_location/2.
-device_manager(javaswings(Id), swi, Command, [Host, Port]):- 
+device_manager(javaswings(Id), swi, Command, [Host, Port]):-
     main_dir(Dir),
 	swing_location(IPSW, PORTSW, Id),
     concat_atom([Dir,'Env/env_java_swing_id.pl'], File),
