@@ -1,136 +1,26 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% FILE: ElevatorSim-BAT/elevator.pl
-%
-%  AUTHOR : Sebastian Sardina (2001-2006)
-%		(based on code previously written by Hector Levesque)
-%  EMAIL  : ssardina@cs.toronto.edu
-%  WWW    : www.cs.toronto.edu/~ssardina www.cs.toronto.edu/cogrobo
-%  TYPE   : system independent code
-%  TESTED : SWI Prolog 5.0.10 http://www.swi-prolog.org
-%
-%  This file contains 4 of the controllers from the original code
-%  written by Hector Levesque for the 1st IndiGolog version:
-%
-%  controller(1) : (example2.pl in the original IndiGolog)
-%  The dumb controller tries without search but commits too soon
-%
-%  controller(2) : (example2.pl in the original IndiGolog)
-%  The smart controller uses search to minimize the up-down motion
-%
-%  controller(3) : (example3.pl in the original IndiGolog)
-%  This is the elevator that appears in the IJCAI-97 paper on ConGolog
-%  It uses exogenous actions for temperature, smoke, and call buttons
-%
-%  controller(4) : (example4.pl in the original IndiGolog)
-%  This is the elevator with no exogenous events, but with sensing
-%  actions for each call button of the elevator
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%                             May 18, 2001
-%
-% This software was developed by the Cognitive Robotics Group under the
-% direction of Hector Levesque and Ray Reiter.
-%
-%        Do not distribute without permission.
-%        Include this notice in any copy made.
-%
-%
-%         Copyright (c) 2000 by The University of Toronto,
-%                        Toronto, Ontario, Canada.
-%
-%                          All Rights Reserved
-%
-% Permission to use, copy, and modify, this software and its
-% documentation for non-commercial research purpose is hereby granted
-% without fee, provided that the above copyright notice appears in all
-% copies and that both the copyright notice and this permission notice
-% appear in supporting documentation, and that the name of The University
-% of Toronto not be used in advertising or publicity pertaining to
-% distribution of the software without specific, written prior
-% permission.  The University of Toronto makes no representations about
-% the suitability of this software for any purpose.  It is provided "as
-% is" without express or implied warranty.
-%
-% THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
-% SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-% FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
-% SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
-% RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-% CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-% CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%  A basic action theory (BAT) is described with:
-%
-% -- fun_fluent(fluent)     : for each functional fluent (non-ground)
-% -- rel_fluent(fluent)     : for each relational fluent (non-ground)
-%
-%           e.g., rel_fluent(painted(C)).
-%           e.g., fun_fluent(color(C)).
-%
-% -- prim_action(action)    : for each primitive action (ground)
-% -- exog_action(action)    : for each exogenous action (ground)
-%
-%           e.g., prim_action(clean(C)) :- domain(C,country).
-%           e.g., exog_action(painte(C,B)):- domain(C,country), domain(B,color).
-%
-% -- senses(action,fluent)  : for each sensing action
-%
-%           e.g, poss(check_painted(C),  painted(C)).
-%
-% -- poss(action,cond)      : when cond, action is executable
-%
-%           e.g, poss(clean(C),   and(painted(C),holding(cleanear))).
-%
-% -- initially(fluent,value): fluent has value in S0 (ground)
-%
-%          e.g., initially(painted(C), false):- domain(C,country), C\=3.
-%                initially(painted(3), true).
-%                initially(color(3), blue).
-%
-% -- causes_val(action,fluent,value,cond)
-%          when cond holds, doing act causes functional fluent to have value
-%
-%            e.g., causes_val(paint(C2,V), color(C), V, C = C2).
-%               or causes_val(paint(C,V), color(C), V, true).
-%
-% -- causes_true(action,fluent,cond)
-%          when cond holds, doing act causes relational fluent to hold
-% -- causes_false(action,fluent,cond)
-%          when cond holds, doing act causes relational fluent to not hold
-%
-%            e.g., causes_true(paint(C2,_), painted(C), C = C2).
-%               or causes_true(paint(C,_), painted(C), true).
-%            e.g., causes_false(clean(C2),  painted(C), C = C2).
-%               or causes_false(clean(C),  painted(C), true).
-%
-% -- sort(name,domain_of_sort).      : all sorts used in the domain
-%
-%        e.g., varsort(c, colors).
-%              varsort(temp, temperature).
-%              color([blue, green, yellow, red]).
-%              temperature([-10,0,10,20,30,40]).
-%
-%
-% A high-level program-controller is described with:
-%
-% -- proc(name,P): for each procedure P
-% -- simulator(N,P): P is the N exogenous action simulator
-%
-% The interface for Lego is described with:
-%
-% -- actionNum(action, num)
-%         action has RCX code num
-% -- simulateSensing(action)
-%         sensing result for action should be asked to the user
-% -- translateSensing(action, sensorValue, sensorResult)
-%         translate the sensorValue of action to sensorResult
-% -- translateExogAction(codeAction, action)
-%         translateSensing action name into codeAction and vice-versa
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+  Complex elevator domain as per the original IndiGolog code
+
+  @author Sebastian Sardina - ssardina@gmail.com  (2001-2006)
+		(based on code previously written by Hector Levesque)
+
+  This file contains 4 of the controllers from the original code
+  written by Hector Levesque for the 1st IndiGolog version:
+
+  1. controller(1) : (example2.pl in the original IndiGolog)
+  The dumb controller tries without search but commits too soon
+
+  2. controller(2) : (example2.pl in the original IndiGolog)
+  The smart controller uses search to minimize the up-down motion
+
+  3. controller(3) : (example3.pl in the original IndiGolog)
+  This is the elevator that appears in the IJCAI-97 paper on ConGolog
+  It uses exogenous actions for temperature, smoke, and call buttons
+
+  4. controller(4) : (example4.pl in the original IndiGolog)
+  This is the elevator with no exogenous events, but with sensing
+  actions for each call button of the elevator
+*/
 :- dynamic controller/1.
 
 
@@ -280,7 +170,7 @@ proc(check_buttons,
 
 
 
-proc(controller(5), searchn(minimize_motion(0),[]) ).
+proc(controller(5), search(minimize_motion(0),[]) ).
 
 
 

@@ -1,3 +1,12 @@
+# Elevator Controller Simulator
+
+
+This is the example for the first IndiGolog code written by H. Levesque.
+
+It is the elevator that appears in the IJCAI-97 paper on ConGolog 
+
+It uses exogenous actions for temperature, smoke, and call buttons
+
 
 Mini getting-started guide to get the Elevator examples running:
 
