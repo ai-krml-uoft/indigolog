@@ -12,17 +12,17 @@
 %  This file contains 4 of the controllers from the original code
 %  written by Hector Levesque for the 1st IndiGolog version:
 %
-%  mainControl(1) : (example2.pl in the original IndiGolog)
-%  The dumb controller tries without search but commits too soon       
+%  controller(1) : (example2.pl in the original IndiGolog)
+%  The dumb controller tries without search but commits too soon
 %
-%  mainControl(2) : (example2.pl in the original IndiGolog)
-%  The smart controller uses search to minimize the up-down motion     
+%  controller(2) : (example2.pl in the original IndiGolog)
+%  The smart controller uses search to minimize the up-down motion
 %
-%  mainControl(3) : (example3.pl in the original IndiGolog)
-%  This is the elevator that appears in the IJCAI-97 paper on ConGolog 
-%  It uses exogenous actions for temperature, smoke, and call buttons  
+%  controller(3) : (example3.pl in the original IndiGolog)
+%  This is the elevator that appears in the IJCAI-97 paper on ConGolog
+%  It uses exogenous actions for temperature, smoke, and call buttons
 %
-%  mainControl(4) : (example4.pl in the original IndiGolog)
+%  controller(4) : (example4.pl in the original IndiGolog)
 %  This is the elevator with no exogenous events, but with sensing
 %  actions for each call button of the elevator
 %
@@ -32,16 +32,16 @@
 %
 % This software was developed by the Cognitive Robotics Group under the
 % direction of Hector Levesque and Ray Reiter.
-% 
+%
 %        Do not distribute without permission.
 %        Include this notice in any copy made.
-% 
-% 
+%
+%
 %         Copyright (c) 2000 by The University of Toronto,
 %                        Toronto, Ontario, Canada.
-% 
+%
 %                          All Rights Reserved
-% 
+%
 % Permission to use, copy, and modify, this software and its
 % documentation for non-commercial research purpose is hereby granted
 % without fee, provided that the above copyright notice appears in all
@@ -52,7 +52,7 @@
 % permission.  The University of Toronto makes no representations about
 % the suitability of this software for any purpose.  It is provided "as
 % is" without express or implied warranty.
-% 
+%
 % THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
 % SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
 % FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
@@ -62,7 +62,7 @@
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
+%
 %  A basic action theory (BAT) is described with:
 %
 % -- fun_fluent(fluent)     : for each functional fluent (non-ground)
@@ -111,32 +111,32 @@
 %
 %        e.g., varsort(c, colors).
 %              varsort(temp, temperature).
-%              color([blue, green, yellow, red]).       
+%              color([blue, green, yellow, red]).
 %              temperature([-10,0,10,20,30,40]).
 %
 %
 % A high-level program-controller is described with:
 %
-% -- proc(name,P): for each procedure P 
+% -- proc(name,P): for each procedure P
 % -- simulator(N,P): P is the N exogenous action simulator
 %
 % The interface for Lego is described with:
 %
-% -- actionNum(action, num)  
+% -- actionNum(action, num)
 %         action has RCX code num
 % -- simulateSensing(action)
 %         sensing result for action should be asked to the user
-% -- translateSensing(action, sensorValue, sensorResult) 
+% -- translateSensing(action, sensorValue, sensorResult)
 %         translate the sensorValue of action to sensorResult
-% -- translateExogAction(codeAction, action) 
+% -- translateExogAction(codeAction, action)
 %         translateSensing action name into codeAction and vice-versa
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic controller/1.
 
 
 /* DOMAINS-SORTS AVAILABLE */
-fl([1,2,3,4,5,6,7,8,9,10]).       	% possible floors 
-dir([up,down]).                    	% possible directions 
+fl([1,2,3,4,5,6,7,8,9,10]).       	% possible floors
+dir([up,down]).                    	% possible directions
 temperature([15,20,25,30,35]).     	% possible temperatures
 
 % There is nothing to do caching on (required becase cache/1 is static)
@@ -154,7 +154,7 @@ fun_fluent(temp).               /* the temperature of the elevator */
 causes_val(heat, temp, X, X is temp+5).
 causes_val(cold, temp, X, X is temp-5).
 
-rel_fluent(fan).                   % the fan is on or off 
+rel_fluent(fan).                   % the fan is on or off
 causes_true(toggle,   fan, neg(fan)).
 causes_false(toggle,  fan, fan).
 
@@ -202,7 +202,7 @@ exog_action(heat).               /* increase temperature by 1 */
 exog_action(cold).               /* decrease temperature by 1 */
 exog_action(smoke).              /* smoke enters elevator */
 exog_action(resetAlarm).              /* smoke detector alarm is reset */
-exog_action(on(N)) :- floor(N).     /* turn on call button on floor n */  
+exog_action(on(N)) :- floor(N).     /* turn on call button on floor n */
 
 prim_action(Act) :- exog_action(Act).
 poss(Act, true) :- exog_action(Act).
@@ -216,22 +216,22 @@ proc(next_floor_to_serve(N), light(N)=on).
 
 
 /* INITIAL STATE: elevator is at floor 3, lights 2 and 6 are on */
-initially(floor,2).	
+initially(floor,2).
 initially(temp,2).
 initially(fan,false).
 initially(light(N),off) :- floor(N), N\=1, N\=3.
-initially(light(3),on). 		   	
-initially(light(1),on). 		   	
+initially(light(3),on).
+initially(light(1),on).
 initially(alarm,off).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  Definitions of complex actions 
+%  Definitions of complex actions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % THIS IS THE MAIN PROCEDURE FOR INDIGOLOG
-proc(main,  mainControl(N)) :- controller(N), !.
-proc(main,  mainControl(3)). % default one
+proc(main,  controller(N)) :- controller(N), !.
+proc(main,  controller(3)). % default one
 
 proc(go_floor(N), while(neg(floor=N), if(below_floor(N),up,down))).
 proc(serve_floor(N), [go_floor(N), off(N)]).
@@ -249,8 +249,8 @@ proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
 /*  This is the original elevator with no exogenous events, no sensing  */
 /*  The smart controller uses search to minimize the up-down motion     */
 /*  The dumb controller tries without search but commits too soon       */
-proc(mainControl(1), dumb_control).
-proc(mainControl(2), smart_control).
+proc(controller(1), dumb_control).
+proc(controller(2), smart_control).
 
 proc(minimize_motion(Max),  /* iterative deepening search */
     ndet( handle_reqs(Max), pi(m, [?(m is Max+1), minimize_motion(m)]))).
@@ -261,7 +261,7 @@ proc(smart_control, search(minimize_motion(0)) ).  /* eventually succeeds */
 
 /*  This is the elevator that appears in the IJCAI-97 paper on ConGolog */
 /*  It uses exogenous actions for temperature, smoke, and call buttons  */
-proc(mainControl(3), prioritized_interrupts(
+proc(controller(3), prioritized_interrupts(
         [interrupt(and(too_hot,neg(fan)), toggle),
          interrupt(and(too_cold,fan), toggle),
          interrupt(alarm=on, ring),
@@ -270,17 +270,17 @@ proc(mainControl(3), prioritized_interrupts(
 
 /*  This is the elevator with no exogenous events, but with sensing   	*/
 /*  actions for each call button of the elevator                      	*/
-proc(mainControl(4), 
-  [ check_buttons, 
-    while(or(some(n,light(n)=on), above_floor(1)), 
+proc(controller(4),
+  [ check_buttons,
+    while(or(some(n,light(n)=on), above_floor(1)),
       if(some(n,light(n)=on), serve_a_floor, [down, check_buttons])) ]).
 proc(serve_a_floor, pi(n, [?(next_floor_to_serve(n)), go_floor(n), off(n)])).
-proc(check_buttons, 
+proc(check_buttons,
 	[look(1), look(2), look(3), look(4), look(5), look(6), look(7), look(8), look(9), look(10)]).
 
 
 
-proc(mainControl(5), searchn(minimize_motion(0),[]) ).  
+proc(controller(5), searchn(minimize_motion(0),[]) ).
 
 
 
@@ -288,7 +288,7 @@ proc(mainControl(5), searchn(minimize_motion(0),[]) ).
 %  INFORMATION FOR THE EXECUTOR
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Translations of domain actions to real actions (one-to-one)
-actionNum(X,X).	
+actionNum(X,X).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
