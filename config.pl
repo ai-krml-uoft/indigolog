@@ -1,73 +1,16 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% FILE: lib/systemvar.pl
-%
-%    WRITTEN BY: Sebastian Sardina (ssardina@cs.toronto.edu)
-%    Time-stamp: <2008-11-29 09:11:03 ssardina>
-%    TESTED    : ECLiPSe 5.4 on RedHat Linux 6.2-7.2
-%    TYPE CODE : system independent predicates
-%
-% DESCRIPTION: wide-system variables and constants
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%                             July 9, 2002
-%
-% This software was developed by the Cognitive Robotics Group under the
-% direction of Hector Levesque and Ray Reiter.
-%
-%        Do not distribute without permission.
-%        Include this notice in any copy made.
-%
-%
-%         Copyright (c) 2000 by The University of Toronto,
-%                        Toronto, Ontario, Canada.
-%
-%                          All Rights Reserved
-%
-% Permission to use, copy, and modify, this software and its
-% documentation for non-commercial research purpose is hereby granted
-% without fee, provided that the above copyright notice appears in all
-% copies and that both the copyright notice and this permission notice
-% appear in supporting documentation, and that the name of The University
-% of Toronto not be used in advertising or publicity pertaining to
-% distribution of the software without specific, written prior
-% permission.  The University of Toronto makes no representations about
-% the suitability of this software for any purpose.  It is provided "as
-% is" without express or implied warranty.
-% THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
-% SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-% FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
-% SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
-% RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-% CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-% CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% The following definition of constants are provided:
-%
-% -- main_dir(Dir) : main directory of the whole code
-% -- type_prolog(T) : current prolog engine is T (swi/ecl/sics/van)
-% -- executable_path(A, P) : P is the executable path for software A
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/*
+	IndiGolog configuration file
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%% AUTOMATIC LOAD OF REQUIRED LIBRARIES %%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This subsection does the following:
-%  (a) provides main_dir(Path)
-%  (b) loads the neccessary compatibility library: compat_ecl or compat_swi
-%  (c) sets ` to be the string construct (using set_backquoted_string)
+	This file contains various wide-system configuration variables and options
+	such as location of files/modules, libraries, constants, etc.
 
+	@author ssardina - 2002-2024
+*/
 
+% asserts root_indigolog/1 with the path to the IndiGolog root folder
 :- prolog_load_context(directory, Dir), assert(root_indigolog(Dir)).
 
-% Path is the root path of the IndiGolog system
-% In SWI Pwd will be a string already
-main_dir(Path):- getenv('PATH_INDIGOLOG',Pwd),
-                 (string(Pwd) -> atom_string(APwd, Pwd) ; APwd=Pwd),
-                 concat_atom([APwd, '/'], Path).
+main_dir(Path):- root_indigolog(Path).
 
 
 % This is the initialization needed for each type of Prolog used
@@ -82,24 +25,36 @@ main_dir(Path):- getenv('PATH_INDIGOLOG',Pwd),
 	set_backquoted_string.
 
 
-interpreter(indigolog_plain, F) :-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% location of various modules
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+dir(indigolog_plain, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "interpreters/indigolog_plain_swi.pl", F).
+dir(indigolog, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "interpreters/indigolog.pl", F).
+
+dir(env_manager, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "env/env_man.pl", F).
+dir(eval_bat, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "eval/eval_bat.pl", F).
 
 
+dir(dev_managers, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "env/dev_managers", F).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Defines the path of executables used to define device managers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 executable_path(swi, '/usr/bin/swipl').
 executable_path(eclipse, '/opt/bin/eclipse-pl').  % if available
 executable_path(tcltk, '/usr/bin/wish').
 executable_path(xterm, '/usr/bin/xterm').
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: lib/systemvar.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 
 

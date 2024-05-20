@@ -12,7 +12,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % top-level interpreter (interpreter/1 is defined in config.pl)
-:- interpreter(indigolog_plain, F), consult(F).
+:- dir(indigolog_plain, F), consult(F).
 % :- ['../../Interpreters/indigolog_plain_swi'].
 
 % 4 - Consult application
