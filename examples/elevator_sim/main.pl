@@ -70,7 +70,7 @@ translateSensing(_, SensorValue, SensorValue).
 
 % main/0: Gets IndiGolog to evaluate a chosen mainControl procedure
 main :-
-    findall(C, proc(control(C), _), L),
+    findall(C, proc(controller(C), _), L),
     repeat,
     format('Controllers available: ~w\n', [L]),
     write('Select controller: '),
