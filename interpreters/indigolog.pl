@@ -240,79 +240,75 @@ reset_indigolog_dbs(_).
 %%
 %% (A) INTERFACE PREDICATE TO THE TOP LEVEL MAIN CYCLE
 %%
-indigolog :- indigolog(none).
-indigolog(_) :-		% Used to require a program, now we start proc. main always (March 06)
-	init,  !,
-	(proc(main, E) ->		% obtain main agent program
-		report_message(system(0),'Starting to execute the main program'),
-		indigo(E,[]), !
-	;
-		report_message(system(0),'No main program to execute')
-	),
-	report_message(system(0),'Program execution finished. Closing modules...'),
+indigolog(E) :-		% Used to require a program, now we start proc. main always (March 06)
+	(var(E) -> proc(main, E) ; true),
+	init,
+	report_message(system(0), 'Starting to execute main program'),
+	indigolog(E, []), !,
+	report_message(system(0), 'Execution finished. Closing modules...'),
 	fin, !,
-	report_message(system(0),'Everything finished - HALTING TOP-LEVEL CONTROLLER').
+	report_message(system(0), 'Everything finished - HALTING TOP-LEVEL CONTROLLER').
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
 %%
-indigo(E,H) :-
-	handle_rolling(H,H2), !,		% Must roll forward?
-	handle_exog(H2,H3),   !, 		% Handle pending exog. events
-	prepare_for_step,			% Prepare for step
-	mayEvolve(E,H3,E4,H4,S), !,	% Compute next configuration evolution
-	wrap_up_step,				% Finish step
-	(S=trans -> indigo2(H3,E4,H4) ;
+indigolog(E, H) :-
+	handle_rolling(H, H2), !,		% Must roll forward?
+	handle_exog(H2, H3),   !, 		% Handle pending exog. events
+	prepare_for_step,				% Prepare for step
+	mayEvolve(E, H3, E4, H4, S), !,	% Compute next configuration evolution
+	wrap_up_step,					% Finish step
+	(S=trans -> indigolog(H3, E4, H4) ;
 	 S=final -> report_message(program,  'Success.') ;
-	 S=exog  -> (report_message(program, 'Restarting step.'), indigo(E,H3)) ;
+	 S=exog  -> (report_message(program, 'Restarting step.'), indigolog(E, H3)) ;
 	 S=failed-> report_message(program,  'Program fails.')
 	).
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
-%% indigo2(+H1,+E,+H2): called from indigo/2 only after a successful Trans on the program
+%% indigolog(+H1,+E,+H2): called from indigo/2 only after a successful Trans on the program
 %% 	H1 is the history *before* the transition
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition
 %%
-indigo2(H,E,H)          :-
-	indigo(E,H).	% The case of Trans for tests
-indigo2(H,E,[sim(_)|H]) :- !,
-	indigo(E,H).	% Drop simulated actions
-indigo2(H,E,[wait|H])   :- !,
+indigolog(H,E,H)          :-
+	indigolog(E,H).	% The case of Trans for tests
+indigolog(H,E,[sim(_)|H]) :- !,
+	indigolog(E,H).	% Drop simulated actions
+indigolog(H,E,[wait|H])   :- !,
 	pause_or_roll(H,H1),
 	doWaitForExog(H1,H2),
-	indigo(E,H2).
-indigo2(_,E,[debug_exec|H]) :- !,
+	indigolog(E,H2).
+indigolog(_,E,[debug_exec|H]) :- !,
 	report_message(system(0), 'Request for DEBUGGING'),
 	debug(debug, H, null),
 	delete(H,debug,H2),
 	length(H2,LH2),
 	assert(debuginfo(E,H2,LH2)), !,
-	indigo(E,H2).
-indigo2(_,_,[halt_exec|H]) :- !,
+	indigolog(E,H2).
+indigolog(_,_,[halt_exec|H]) :- !,
 	report_message(system(0), 'Request for TERMINATION of the program'),
-	indigo([], H).
-indigo2(_,_,[abort_exec|H]) :- !,
+	indigolog([], H).
+indigolog(_,_,[abort_exec|H]) :- !,
 	report_message(system(0), 'Request for ABORTION of the program'),
-	indigo([?(false)], H).
-indigo2(_,E,[break_exec|H]) :- !,
+	indigolog([?(false)], H).
+indigolog(_,E,[break_exec|H]) :- !,
 	report_message(system(0), 'Request for PAUSE of the program'),
 	writeln(E),
 	break,		% BREAK POINT (CTRL+D to continue execution)
 	delete(H,pause,H2),
-	indigo(E,H2).
-indigo2(_,_,[reset_exec|_]) :- !,
+	indigolog(E,H2).
+indigolog(_,_,[reset_exec|_]) :- !,
 	report_message(system(0), 'Request for RESETING agent execution'),
 	finalizeDB,
 	initializeDB,
 	proc(main, E),		% obtain main agent program
-	indigo(E,[]).		% restart main with empty history
-indigo2(H,E,[stop_interrupts|H]) :- !,
-	indigo(E,[stop_interrupts|H]).
-indigo2(H,E,[A|H]) :-
+	indigolog(E,[]).		% restart main with empty history
+indigolog(H,E,[stop_interrupts|H]) :- !,
+	indigolog(E,[stop_interrupts|H]).
+indigolog(H,E,[A|H]) :-
 	indixeq(A, H, H1),
-	indigo(E, H1).  % DOMAIN ACTION
+	indigolog(E, H1).  % DOMAIN ACTION
 
 % This are special actions that if they are in the current history
 % they are interpreted by the interpreter in a particular way
@@ -592,5 +588,5 @@ warn(M):-
         report_message(warning, M).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: Interpreters/indigolog.pl
+% EOF
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
