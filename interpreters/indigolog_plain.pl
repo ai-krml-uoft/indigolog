@@ -52,9 +52,9 @@ indigo(E,H) :- final(E,H), nl, length(H,N), write(N), write(' actions.'), nl.
 % (1) - No action was performed so we dont execute anything
 indixeq(H,H,H).
 % (2) - The action is not a sensing one: execute and ignore its sensing
-indixeq(H,[Act|H],[Act|H]) :- \+ senses(Act,_), execute(Act,_).
+indixeq(H, [A|H], [A|H]) :- \+ senses(A,_), execute(A,_).
 % (3) - The action is a sensing one for fluent F: execute sensing action
-indixeq(H,[Act|H],[e(F,Sr),Act|H]) :- senses(Act,F), execute(Act,Sr).
+indixeq(H, [A|H], [e(F,SR), A|H]) :- senses(A, F), execute(A, SR).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -63,8 +63,12 @@ indixeq(H,[Act|H],[e(F,Sr),Act|H]) :- senses(Act,F), execute(Act,Sr).
 %	Here are two basic versions using read and write that the domain
 %	may use as a simulated environment.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ask_exog_occurs(Act) :- write('Exogenous input:'), read(Act).
-ask_execute(Act,Sr) :-  write(Act), senses(Act,_) -> (write(':'),read(Sr)); nl.
+
+ask_exog_occurs(A) :- write('Exogenous input (ending with "."): '), read(A).
+
+ask_execute(A, _) :-  \+ senses(A, _), !, write(A), nl.
+ask_execute(A, SR) :-  senses(A,_), format("~w - Sensing outcome: ", [A]), read(SR).
+
 
 
 
