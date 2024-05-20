@@ -59,6 +59,7 @@
 %         manager listeling at address Host/Port
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+:- discontiguous device_manager/4.
 
 
 %% build_call(Platform,Host,Port,File,Options,Type,Command)

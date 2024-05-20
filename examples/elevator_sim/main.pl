@@ -19,7 +19,7 @@
 
 % Consult the top-level interpreter, environent manager and projector
 :- dir(indigolog, F), consult(F).
-:- dir(env_man, F), consult(F).
+:- dir(env_manager, F), consult(F).
 :- dir(eval_bat, F), consult(F).
 
 % Consult application
@@ -40,7 +40,7 @@ server_host('localhost').  % this is the default anyways...
 load_dev(simulator, swi).
 
 load_device(Env, Command, Address) :-
-	findall((Env, Type), load_dev(Name, Type), Dev),
+	findall((Name, Type), load_dev(Name, Type), Dev),
         member((Env,Type), Dev),
         (var(Address) -> (Host = null, Port = null) ; Address = [Host, Port]),
         device_manager(Env, Type, Command, [Host, Port]).
@@ -82,8 +82,8 @@ main :-
 main(C) :- assert(controller(C)), indigolog.
 
 
-:- set_option(debug_level,0).
-:- set_option(wait_step,3).
+:- set_option(debug_level, 0).
+:- set_option(wait_step, 3).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF

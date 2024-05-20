@@ -22,7 +22,7 @@
   actions for each call button of the elevator
 */
 :- dynamic controller/1.
-
+:- discontiguous fun_fluent/1, rel_fluent/1, proc/2.
 
 /* DOMAINS-SORTS AVAILABLE */
 fl([1,2,3,4,5,6,7,8,9,10]).       	% possible floors

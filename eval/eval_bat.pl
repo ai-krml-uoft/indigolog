@@ -14,9 +14,9 @@
 %  This file allows for the projection of conditions wrt
 %  basic action theories.
 %
-%  The main tool provided in this file is the following predicate:        
+%  The main tool provided in this file is the following predicate:
 %
-% -- eval(P,H,B):  B=true/false/unknown is the truth value of P at history H 
+% -- eval(P,H,B):  B=true/false/unknown is the truth value of P at history H
 %
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
@@ -27,16 +27,16 @@
 %
 % This software was developed by the Cognitive Robotics Group under the
 % direction of Hector Levesque and Ray Reiter.
-% 
+%
 %        Do not distribute without permission.
 %        Include this notice in any copy made.
-% 
-% 
+%
+%
 %         Copyright (c) 2000 by The University of Toronto,
 %                        Toronto, Ontario, Canada.
-% 
+%
 %                          All Rights Reserved
-% 
+%
 % Permission to use, copy, and modify, this software and its
 % documentation for non-commercial research purpose is hereby granted
 % without fee, provided that the above copyright notice appears in all
@@ -47,7 +47,7 @@
 % permission.  The University of Toronto makes no representations about
 % the suitability of this software for any purpose.  It is provided "as
 % is" without express or implied warranty.
-% 
+%
 % THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
 % SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
 % FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
@@ -61,7 +61,7 @@
 % This file provides the following:
 %
 % -- eval(P, H, B)  (MAIN PREDICATE, used by the transition system)
-%           B is the truth value of P at history H 
+%           B is the truth value of P at history H
 %
 % SYSTEM TOOLS (used by the top-level cycle)::
 %
@@ -69,18 +69,18 @@
 %           initialize the projector
 % -- finalizeDB/0
 %           finalize the projector
-% -- can_roll(+H1) 
+% -- can_roll(+H1)
 %       check if the DB CAN roll forward
-% -- must_roll(+H1) 
+% -- must_roll(+H1)
 %       check if the DB MUST roll forward
-% -- roll_db(+H1,-H2) 
+% -- roll_db(+H1,-H2)
 %       perform roll forward with current history H1 and new history H2
-% -- handle_sensing(+A, +H, +S, -H2) 
+% -- handle_sensing(+A, +H, +S, -H2)
 %           H2 is H plus action A with sensing result S
 % -- debug(+A, +H, -S)
 %           perform debug tasks with current action A, sensing outcome S,
 %           and history H
-% -- system_action(+A)       
+% -- system_action(+A)
 %           action A is an action used by the system (e.g., action outcomes e(_,_))
 %
 %
@@ -91,19 +91,19 @@
 % -- sensed(+A, +S, +H)
 %           action A, when executed at history H, got sensing result S
 % -- inconsistent(+H)
-%           last action turned history H inconsistent, i.e., impossible 
-% -- domain(-V, +D)       
+%           last action turned history H inconsistent, i.e., impossible
+% -- domain(-V, +D)
 %           object V is an element of domain D
-% -- rdomain(-V, +D)       
+% -- rdomain(-V, +D)
 %           object V is an element of domain D (random)
-% -- getdomain(+D, -L)   
+% -- getdomain(+D, -L)
 %            L is the list representing domain D
-% -- calc_arg(+A1, -A2, +H)  
+% -- calc_arg(+A1, -A2, +H)
 %           action A2 is action A1 with its arguments replaced wrt history H
 % -- before(+H1, +H2)
 %           history H1 is a previous history of H2
-% -- assume(+F, +V, +H1, -H2) 
-%           H2 is the history resulting from assuming fluent F to 
+% -- assume(+F, +V, +H1, -H2)
+%           H2 is the history resulting from assuming fluent F to
 %           have value V at history H1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -169,24 +169,24 @@
 %               or causes_false(clean(C),  painted(C), true).
 %
 % -- sort-name(domain_of_sort).      : defines a sort
-%        e.g., color([blue, green, yellow, red]).       
+%        e.g., color([blue, green, yellow, red]).
 %              temperature([-30..45]).
 %
 %
 % A high-level program-controller is described with:
 %
-% -- proc(name,P): for each procedure P 
+% -- proc(name,P): for each procedure P
 % -- simulator(N,P): P is the N exogenous action simulator
 %
 % The interface for real-world execution is described with:
 %
-% -- actionNum(action, num)  
+% -- actionNum(action, num)
 %         action has RCX code num
 % -- simulateSensing(action)
 %         sensing result for action should be asked to the user
-% -- translateSensing(action, sensorValue, sensorResult) 
+% -- translateSensing(action, sensorValue, sensorResult)
 %         translate the sensorValue of action to sensorResult
-% -- translateExogAction(codeAction, action) 
+% -- translateExogAction(codeAction, action)
 %         translateSensing action name into codeAction and vice-versa
 %
 % Requirements:
@@ -210,10 +210,10 @@
 %%            inconsistent/1,
 %%            assume/4
 %%           ]).
-%% 
+%%
 %% :- use_module(library(quintus)).
 
-:- dynamic 
+:- dynamic
    currently/2,	% Used to store the actual initial fluent values
    simulator/2,	% There may be no simulator
    senses/2,
@@ -234,11 +234,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    /* Move initially(-,-) to currently(-,-) and clear exog actions  */
-initializeDB:- 
-	retractall(currently(_,_)), 
+initializeDB:-
+	retractall(currently(_,_)),
 	initially(F,V),
 	assert(currently(F,V)),
-	clean_cache,	
+	clean_cache,
 	fail.
 initializeDB.
 
@@ -251,7 +251,7 @@ eval(P,H,true):- holds(P,H).
 
 % Change the history H to encode the sensing result of action A at H
 %handle_sensing(A,H,Sr,[e(F,Sr)|H]):- senses(A,F). (OLD WAY)
-handle_sensing(A,H,Sr,[e(A,Sr)|H]). 
+handle_sensing(A,H,Sr,[e(A,Sr)|H]).
 
 
 % clean_cache: remove all has_valc/3
@@ -261,7 +261,7 @@ clean_cache :- retractall(has_valc(_,_,_)).
 assume(F,V,H,[e(F,V)|H]).
 
 % system_action/1 defines actions that are used by the projector for managment
-system_action(e(_,_)). 
+system_action(e(_,_)).
 
 % Action A is a sensing action
 sensing(A,_):- senses(A,_) ; senses(A, _, _, _, _).
@@ -270,7 +270,7 @@ sensing(A,_):- senses(A,_) ; senses(A, _, _, _, _).
 sensed(A,V,[e(F,V2)|_]):- senses(A,F), !, V=V2.
 sensed(A,V,[_|H])      :- sensed(A,V,H).
 
-% domain/2: assigns a user-defined domain to a variable. 
+% domain/2: assigns a user-defined domain to a variable.
 domain(V, D)  :- getdomain(D, L), member(V, L).
 rdomain(V, D) :- getdomain(D, L), shuffle(L,L2), !, member(V, L2).
 
@@ -278,10 +278,10 @@ rdomain(V, D) :- getdomain(D, L), shuffle(L,L2), !, member(V, L2).
 getdomain(D, L) :- is_list(D) -> L=D ; (P =.. [D,L], call(P)).
 
 % Computes the arguments of an action or a fluent P
-% Action/Fluent P1 is action/fluent P with all arguments evaluated 
+% Action/Fluent P1 is action/fluent P with all arguments evaluated
 calc_arg(P,P1,H):- (is_an_action(P) ; prim_fluent(P)),
 	(atomic(P)-> P1=P ;
-                    (P =..[Function|LArg], subfl(LArg,LArg2,H), 
+                    (P =..[Function|LArg], subfl(LArg,LArg2,H),
                      P1=..[Function|LArg2])).
 
 % History H1 is a previous history of H2
@@ -333,7 +333,7 @@ update_cache(_).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % kwhether(F,H): fluent F is known true or false in H
 % Assumes that after sensing F, F may change but it will remain known
-% We may probably want to add some "forgeting" mechanism.. either by a 
+% We may probably want to add some "forgeting" mechanism.. either by a
 %      state condition or special actions
 holds(kwhether(F),[])     :- !, initially(F,_).
 holds(kwhether(F),[Act|_]):- (senses(Act,F) ; Act=e(F,_)), !.
@@ -394,6 +394,8 @@ has_valo(F,V,H)  :- has_val(F,V,H).  % F is a fluent with NO cache
 has_val(F,V,[])		:- currently(F,V).
 has_val(F,V,[A|H])	:- sets_val(A,F,V,H).
 has_val(F,V,[A|H])	:- \+ forget(A,H,F), has_value(F,V,H), \+ sets_val(A,F,_,H).
+has_val(F,V,[set(F)|_])  :- !, V=true.
+has_val(F,V,[unset(F)|_]):- !, V=false.
 
 sets_val(e(F,V),F,V,_)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_,_)
 sets_val(e(A,V),F,V,_)	:- senses(A,F).	% Action A sets F directly
@@ -408,8 +410,6 @@ prim_action(set(_)).
 prim_action(unset(_)).
 poss(set(F), ground(F)).
 poss(unset(F), ground(F)).
-has_val(F,V,[set(F)|_])  :- !, V=true.
-has_val(F,V,[unset(F)|_]):- !, V=false.
 
 
 
@@ -424,7 +424,7 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %     N: the length of the tail of the history to be preserved
 %	If clause is missing, then no roll forward
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- dynamic 
+:- dynamic
 	temp/2,
 	roll_parameters/3.         % Temporal predicate used for rolling forward
 
@@ -438,9 +438,9 @@ must_roll(H) :- \+ protectHistory(_), roll_parameters(_,M,_), length(H,L1), L1 >
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
 % H3 is the tail of H1 that is going to be dropped
-roll_db(H1,H2) :- 
-	roll_parameters(_,_,N), 	
-	split(N,H1,H2,H3), 
+roll_db(H1,H2) :-
+	roll_parameters(_,_,N),
+	split(N,H1,H2,H3),
 	preserve(H3),
 	update_cache(H3).	    % Update the cache wrt the preserved history H3
 
@@ -450,9 +450,9 @@ split(N,[A|H],[A|H1],H2) :- N > 0, N1 is N-1, split(N1,H,H1,H2).
 
 % preserve(H) : rolls forward the initial database from [] to H
 preserve([]).
-preserve([A|H]) :- 
-	preserve(H), 
-	roll_action(A), 
+preserve([A|H]) :-
+	preserve(H),
+	roll_action(A),
 	update_cache([A]).
 
 % roll_action(A): roll currently/2 database with respect to action A
@@ -474,7 +474,7 @@ roll_action(_).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DEBUG ROUTINES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% debug(+Action, +History, -SensingResult): 
+% debug(+Action, +History, -SensingResult):
 % If Action=debug then a snapshot of the system is printed out
 % Otherwise, the sendRcxActionNumber/2
 %     predicate failed (RCX panicked or there was a problem with the
@@ -506,11 +506,11 @@ errorRecoveryData(History) :-
 printFluentValues([], _).
 
 printFluentValues([Hf | FluentList], History) :-
-    (has_value(Hf, Hv, History),    % Print all instances of Hf 
+    (has_value(Hf, Hv, History),    % Print all instances of Hf
      write('    PRIMITIVE FLUENT '),
      write(Hf),
      write(' HAS VALUE '),
-     write(Hv), nl, fail) ; 
+     write(Hv), nl, fail) ;
     printFluentValues(FluentList, History). % Continue with other fluents
 
 % errorRecoveryProc: What to do in case of error. In this case, ask the user
