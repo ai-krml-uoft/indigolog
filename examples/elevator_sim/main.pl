@@ -30,19 +30,15 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Any port available would be ok for the EM.
+server_host(localhost).  % this is the default anyways...
 server_port(_).
-server_host('localhost').  % this is the default anyways...
 
 
 % Load simulator, RCX and internet environments
 :- dir(dev_managers, F), consult(F).
-load_dev(simulator, swi).
 
-load_device(Env, Command, Address) :-
-	findall((Name, Type), load_dev(Name, Type), Dev),
-        member((Env,Type), Dev),
-        (var(Address) -> (Host = null, Port = null) ; Address = [Host, Port]),
-        device_manager(Env, Type, Command, [Host, Port]).
+load_device(simulator, Address, CMD) :-
+    device_manager(simulator, Address, CMD).
 
 
 
@@ -81,7 +77,7 @@ main :-
 main(C) :- assert(controller(C)), indigolog(C).
 
 
-:- set_option(log_level, 0).
+:- set_option(log_level, 5).
 :- set_option(wait_step, 3).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

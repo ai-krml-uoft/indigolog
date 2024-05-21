@@ -46,8 +46,6 @@
 	   split_atom/4,
 	   proc_term/1,            % Check if process is terminated
 	   proc_exists/1,          % Check if process exists
-	   send_data_socket/2,
-	   receive_list_data_socket/2,
 	   receive_data_socket/2,
 	   report_message/2,
            get_argument/2,

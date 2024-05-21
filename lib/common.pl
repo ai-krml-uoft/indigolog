@@ -373,15 +373,15 @@ set_option(log_level, N) :-
 
 
 logging(T, M) :- logging(T, M, []).
-logging(T, _, _) :- T =.. [_, Level], debug_level(N), N < Level, !.
+logging(T, _, _) :- T =.. [_, Level|_], number(Level), debug_level(N), N < Level, !.
 logging(T, M, L) :- \+ is_list(M), !, logging(T, [M], L).
 logging(T, M, L) :-
         is_list(M), !,
-        maplist(term_string, M, MS),
+        maplist(any_to_string, M, MS),
         id_logging(T, T2),
         format(atom(Header), "~w:", [T2]),
 	atomics_to_string([Header|MS], " ", Message),
-        format(Message, L).
+        format(Message, L), nl.
 
 id_logging(T, TS) :-
         term_string(T, T2),

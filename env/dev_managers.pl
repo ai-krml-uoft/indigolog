@@ -62,48 +62,31 @@
 :- discontiguous device_manager/4.
 
 
-%% build_call(Platform,Host,Port,File,Options,Type,Command)
-%% 		Command is the command line to execute File using Prolog
-%%		Platform (swi, eclispe); connecting to the EM at Port:host
-%%		and passing the extra Options.
-%%		The Type may be xterm (display terminal) or silent (background)
-build_call(Platform,ManagerHost,ManagerPort,File,Options,xterm,Command) :-
-	build_call2(Platform,ManagerHost,ManagerPort,File,Options,Command2),
-    executable_path(xterm, Exterm),
-	concat_atom([Exterm, ' -e ', Command2], Command).
-
-build_call(Platform,ManagerHost,ManagerPort,File,Options,silent,Command) :-
-	build_call2(Platform,ManagerHost,ManagerPort,File,Options,Command2),
-%	concat_atom([Command2, ' 1>/dev/null 2>/dev/null'], Command).
-	concat_atom([Command2, ' 1>debug.txt 2>debug.txt'], Command).
-
-
-build_call2(eclipse,ManagerHost,ManagerPort,File,Options,Command) :-
-        executable_path(eclipse, Eeclipse),
-        concat_atom([Eeclipse, ' -g 10M host=', ManagerHost,
-                     ' port=', ManagerPort,
-                     ' -b ', File, ' -e ', ' start ', Options], Command).
-build_call2(swi,ManagerHost,ManagerPort,File,Options,Command) :-
-        executable_path(swi, Eswi),
-        concat_atom([Eswi, ' -t ', ' start',
-                    ' -f ', File,
-		 		    ' host=', ManagerHost,
-		 		    ' port=', ManagerPort,' ', Options], Command).
-
-
-
+% build_call(ID, Host:Port, File, Options, CMD)
+% 	Build the command CMD to load SWI File manager connecting to EM at Host:Port
+build_call(xterm, Host:Port, File, Options, CMD) :-
+    executable_path(swi, Bin1),
+    atomic_list_concat([Bin1, ' -f ', File, ' -t ', ' start', 
+        ' host=', Host, ' port=', Port, ' ' | Options], CMD1),
+    (member(silent, Options) ->
+        CMD = [CMD1, ' 1>debug.txt 2>debug.txt']
+        ;
+        (executable_path(xterm, Bin2), concat_atom([Bin2, ' -e ', CMD1], CMD))
+    ).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
 % SIMULATOR DEVICE
-%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(simulator, Platform, Command, [Host, Port]):-
-        main_dir(Dir),
-        concat_atom([Dir,'Env/env_sim.pl'], File),
-		build_call(Platform,Host,Port,File,'',xterm,Command).
+device_manager(simulator, AddressEM, CMD):-
+    root_indigolog(Dir),
+    directory_file_path(Dir, 'env/env_sim.pl', File),
+    build_call(xterm, AddressEM, File, [], CMD).
 
+device_manager(simulator_silent, AddressEM, CMD):-
+    root_indigolog(Dir),
+    directory_file_path(Dir, 'env/env_sim.pl', File),
+    build_call(xterm, AddressEM, File, [silent], CMD).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -113,8 +96,8 @@ device_manager(simulator, Platform, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(rcx, eclipse, Command, [Host, Port]):-
         main_dir(Dir),
-        concat_atom([Dir,'Env/env_rcx.pl'], File),
-		build_call(eclipse,Host,Port,File,'',xterm,Command).
+        concat_atom([Dir, 'Env/env_rcx.pl'], File),
+		build_call(eclipse, Host, Port, File, '', xterm, Command).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -124,8 +107,8 @@ device_manager(rcx, eclipse, Command, [Host, Port]):-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(internet, Platform, Command, [Host, Port]):-
         main_dir(Dir),
-        concat_atom([Dir,'Env/env_int.pl'], File),
-		build_call(Platform,Host,Port,File,'',xterm,Command).
+        concat_atom([Dir, 'Env/env_int.pl'], File),
+		build_call(Platform, Host, Port, File, '', xterm, Command).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -154,12 +137,12 @@ device_manager(internet, Platform, Command, [Host, Port]):-
 device_manager(er1, swi, Command, [Host, Port]):-
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
-        concat_atom([Dir,'Env/env_er1.pl'], File),
+        concat_atom([Dir, 'Env/env_er1.pl'], File),
 			% Use this if not debugging
 %        concat_atom([' iper1=', IPER1, ' porter1=', PORTER1], Options),
 			% Use this instead if you want debugging mode
-        concat_atom(['debug=4 ',' iper1=', IPER1, ' porter1=', PORTER1], Options),
-		build_call(swi,Host,Port,File,Options,xterm,Command).
+        concat_atom(['debug=4 ', ' iper1=', IPER1, ' porter1=', PORTER1], Options),
+		build_call(swi, Host, Port, File, Options, xterm, Command).
 
 % This is the address of the ER1 server
 er1_location('er1.cs.toronto.edu', 9000).
@@ -177,31 +160,31 @@ wumpus_location('127.0.0.1', 9002).
 device_manager(virtual_wumpus, swi, Command, [Host, Port]):-
         main_dir(Dir),
         wumpus_location(IPW, PORTW),
-        wumpus_config(TIDRun,Size,PPits,NoGolds,TIDScenario),
+        wumpus_config(TIDRun, Size, PPits, NoGolds, TIDScenario),
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
-        concat_atom([Dir,'Env/env_wumpus.pl'], File),
+        concat_atom([Dir, 'Env/env_wumpus.pl'], File),
         concat_atom([' debug=1',
                      ' ipwumpus=', IPW, ' portwumpus=', PORTW,
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
-                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
+                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario, '\''
                      ], Options),
-		build_call(swi,Host,Port,File,Options,xterm,Command).
+		build_call(swi, Host, Port, File, Options, xterm, Command).
 
 % Without terminal
 device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
         main_dir(Dir),
         wumpus_location(IPW, PORTW),
-        wumpus_config(TIDRun,Size,PPits,NoGolds,TIDScenario),
+        wumpus_config(TIDRun, Size, PPits, NoGolds, TIDScenario),
         term_to_atom(TIDRun, IDRun),
         term_to_atom(TIDScenario, IDScenario),
-        concat_atom([Dir,'Env/env_wumpus.pl'], File),
+        concat_atom([Dir, 'Env/env_wumpus.pl'], File),
         concat_atom([' debug=1',
                      ' ipwumpus=', IPW, ' portwumpus=', PORTW,
                      ' ppits=', PPits, ' nogolds=', NoGolds, ' size=', Size,
-                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario,'\''
+                     ' idrun=\'', IDRun, '\' idscenario=\'', IDScenario, '\''
                      ], Options),
-		build_call(swi,Host,Port,File,Options,silent,Command).
+		build_call(swi, Host, Port, File, Options, silent, Command).
 
 
 
@@ -215,7 +198,7 @@ device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         clima_agentID(TAgentName, TAgentPass),
         term_to_atom(TAgentName, AgentName),
         term_to_atom(TAgentPass, AgentPass),
-        concat_atom([Dir,'Env/env_clima.pl'], File),
+        concat_atom([Dir, 'Env/env_clima.pl'], File),
 	(member(debug(Debug), LOptions) -> true ; Debug=3),
 		% Build the set of arguments
 	concat_atom(['host=', HostEM], ArgHost),
@@ -225,18 +208,18 @@ device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 	concat_atom(['portsim=', PORTCLIMA], ArgPortCLIMA),
 	concat_atom(['agentLogin=', AgentName], ArgAgentLog),
 	concat_atom(['agentPass=', AgentPass], ArgAgentPass),
-       	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPCLIMA,ArgPortCLIMA,
-				ArgAgentLog,ArgAgentPass],
+       	LPrologArgs=['-t', 'start', '-f', File, ArgHost, ArgPort, ArgDebug, ArgIPCLIMA, ArgPortCLIMA,
+				ArgAgentLog, ArgAgentPass],
 		% Now build the final pair of (Command, LArgs)
     executable_path(swi, Eswi),
     executable_path(xterm, Exterm),
 	(member(quiet, LOptions) ->
-        	append(LPrologArgs,[' >/dev/null 2>/dev/null'],LPrologArgs2),
-		join_atom([Eswi|LPrologArgs2], ' ',Arg),
+        	append(LPrologArgs, [' >/dev/null 2>/dev/null'], LPrologArgs2),
+		join_atom([Eswi|LPrologArgs2], ' ', Arg),
 		LArgs=['-c', Arg],
 		Command=sh
 	;
-        	join_atom([Eswi|LPrologArgs], ' ',Arg),
+        	join_atom([Eswi|LPrologArgs], ' ', Arg),
 		LArgs=['-e', Arg],
 		Command=Exterm
 	).
@@ -258,7 +241,7 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         mess_location(IPMESS, PORTMESS),
         agentID(TAgentName),
         term_to_atom(TAgentName, AgentName),
-        concat_atom([Dir,'Env/env_mess.pl'], File),
+        concat_atom([Dir, 'Env/env_mess.pl'], File),
 	(member(debug(Debug), LOptions) -> true ; Debug=3),
 		% Build the set of arguments
 	concat_atom(['host=', HostEM], ArgHost),
@@ -267,18 +250,18 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 	concat_atom(['ipmess=', IPMESS], ArgIPMESS),
 	concat_atom(['portmess=', PORTMESS], ArgPortMESS),
 	concat_atom(['agentLogin=', AgentName], ArgAgent),
-       	LPrologArgs=['-t','start','-f',File,ArgHost,ArgPort,ArgDebug,ArgIPMESS,ArgPortMESS,ArgAgent],
+       	LPrologArgs=['-t', 'start', '-f', File, ArgHost, ArgPort, ArgDebug, ArgIPMESS, ArgPortMESS, ArgAgent],
 		% Now build the final pair of (Command, LArgs)
     executable_path(swi, Eswi),
     executable_path(xterm, Exterm),
 	(member(quiet, LOptions) ->
-        	append(LPrologArgs,[' >/dev/null 2>/dev/null'],LPrologArgs2),
-		join_atom([Eswi|LPrologArgs2], ' ',Arg),
+        	append(LPrologArgs, [' >/dev/null 2>/dev/null'], LPrologArgs2),
+		join_atom([Eswi|LPrologArgs2], ' ', Arg),
 		LArgs=['-c', Arg],
 		Command=sh
 	;
-        	join_atom([Eswi|LPrologArgs], ' ',Arg),
-		LArgs=['-e',Arg],
+        	join_atom([Eswi|LPrologArgs], ' ', Arg),
+		LArgs=['-e', Arg],
 		Command=Exterm
 	).
 
@@ -303,7 +286,7 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 device_manager(javaswing, swi, Command, [Host, Port]):-
     main_dir(Dir),
 	swing_location(IPSW, PORTSW),
-    concat_atom([Dir,'Env/env_java_swing.pl'], File),
+    concat_atom([Dir, 'Env/env_java_swing.pl'], File),
     concat_atom([' ipswing=', IPSW, ' portswing=', PORTSW], Options),
  	build_call(swi, Host, Port, File, Options, xterm, Command).
 
@@ -318,8 +301,8 @@ device_manager(javaswing, swi, Command, [Host, Port]):-
 device_manager(javaswings(Id), swi, Command, [Host, Port]):-
     main_dir(Dir),
 	swing_location(IPSW, PORTSW, Id),
-    concat_atom([Dir,'Env/env_java_swing_id.pl'], File),
-    concat_atom([' ipswing=', IPSW, ' portswing=', PORTSW,' id=',Id], Options),
+    concat_atom([Dir, 'Env/env_java_swing_id.pl'], File),
+    concat_atom([' ipswing=', IPSW, ' portswing=', PORTSW, ' id=', Id], Options),
  	build_call(swi, Host, Port, File, Options, xterm, Command).
 
 
