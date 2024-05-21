@@ -107,7 +107,7 @@
  -- turn_on_gc             : turns on the automatic garbage collector
  -- turn_off_gc            : turns off the automatic garbage collector
  -- garbage_collect        : perform garbage collection (now)
- -- report_message(+T, +M) : report message M of type T
+ -- logging(+T, +M) : report message M of type T
  -- set_debug_level(+N)    : set debug level to N
 */
 :- dynamic sensing/2,   	% There may be no sensing action
@@ -143,8 +143,7 @@
 % set_option/2 is the actual definition of the parameter configuration
 
 set_option :-
-	writeln('set_option(Option, V):
-		 sets Option to value V, where Options may be:'),
+	writeln('set_option(Option, V): sets Option to value V, where Options may be:'),
 	nl,
 	set_option(X),
 	tab(1),
@@ -156,23 +155,16 @@ set_option.
 set_option('wait_step : pause V seconds after each prim. action execution.').
 set_option(wait_step, N) :- wait_step(N).
 
-wait_step(S) :-
-	S==0,
-	report_message(system(0), '** Wait-at-action disabled'),
+wait_step(0) :-
+	logging(system(0), '** Wait-at-action disabled'),
 	retractall(wait_at_action(_)).
 wait_step(S) :-
 	number(S),
-	report_message(system(0), ['** Wait-at-action enable to ',S, ' seconds.']),
+	logging(system(0), ['** Wait-at-action enable to ',S, ' seconds.']),
 	retractall(wait_at_action(_)),
 	assert(wait_at_action(S)).
 wait_step(_) :-
-	report_message(warning, 'Wait-at-action cannot be set!').
-
-
-set_option('debug_level : set debug level to V.').
-set_option(debug_level, N) 	:-
-	set_debug_level(N),
-	report_message(system(0), ['** System debug level set to ',N]).
+	logging(warning, 'Wait-at-action cannot be set!').
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -206,21 +198,21 @@ exog_action(start_exec).		% Start the execution of the program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :-
 %	set_option(debug_level,3),
-	report_message(system(0),'Starting ENVIRONMENT MANAGER...'),
-	initializeEM,    	  	% Initialization of environment
-	report_message(system(0),'ENVIRONMENT MANAGER was started successfully.'),
-	report_message(system(0),'Starting PROJECTOR...'),
+	logging(system(0),'Starting ENVIRONMENT MANAGER...'),
+	initialize(env_manager),    	  	% Initialization of environment
+	logging(system(0),'ENVIRONMENT MANAGER was started successfully.'),
+	logging(system(0),'Starting PROJECTOR...'),
 	initializeDB,             	% Initialization of projector
-	report_message(system(0),'PROJECTOR was started successfully.'),
+	logging(system(0),'PROJECTOR was started successfully.'),
 	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
 
 fin  :-
-	report_message(system(0),'Finalizing PROJECTOR...'),
+	logging(system(0),'Finalizing PROJECTOR...'),
 	finalizeDB,               	% Finalization of projector
-	report_message(system(0),'PROJECTOR was finalized successfully.'),
-	report_message(system(0),'Finalizing ENVIRONMENT MANAGER...'),
+	logging(system(0),'PROJECTOR was finalized successfully.'),
+	logging(system(0),'Finalizing ENVIRONMENT MANAGER...'),
 	finalizeEM,      		% Finalization of environment
-	report_message(system(0),'ENVIRONMENT MANAGER was finalized successfully.').
+	logging(system(0),'ENVIRONMENT MANAGER was finalized successfully.').
 
 
 % Clean all exogenous actions and set the initial now/1 situation
@@ -243,11 +235,11 @@ reset_indigolog_dbs(_).
 indigolog(E) :-		% Used to require a program, now we start proc. main always (March 06)
 	(var(E) -> proc(main, E) ; true),
 	init,
-	report_message(system(0), 'Starting to execute main program'),
+	logging(system(0), 'Starting to execute main program'),
 	indigolog(E, []), !,
-	report_message(system(0), 'Execution finished. Closing modules...'),
+	logging(system(0), 'Execution finished. Closing modules...'),
 	fin, !,
-	report_message(system(0), 'Everything finished - HALTING TOP-LEVEL CONTROLLER').
+	logging(system(0), 'Everything finished - HALTING TOP-LEVEL CONTROLLER').
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
@@ -259,9 +251,9 @@ indigolog(E, H) :-
 	mayEvolve(E, H3, E4, H4, S), !,	% Compute next configuration evolution
 	wrap_up_step,					% Finish step
 	(S=trans -> indigolog(H3, E4, H4) ;
-	 S=final -> report_message(program,  'Success.') ;
-	 S=exog  -> (report_message(program, 'Restarting step.'), indigolog(E, H3)) ;
-	 S=failed-> report_message(program,  'Program fails.')
+	 S=final -> logging(program,  'Success.') ;
+	 S=exog  -> (logging(program, 'Restarting step.'), indigolog(E, H3)) ;
+	 S=failed-> logging(program,  'Program fails.')
 	).
 
 %%
@@ -280,26 +272,26 @@ indigolog(H,E,[wait|H])   :- !,
 	doWaitForExog(H1,H2),
 	indigolog(E,H2).
 indigolog(_,E,[debug_exec|H]) :- !,
-	report_message(system(0), 'Request for DEBUGGING'),
+	logging(system(0), 'Request for DEBUGGING'),
 	debug(debug, H, null),
 	delete(H,debug,H2),
 	length(H2,LH2),
 	assert(debuginfo(E,H2,LH2)), !,
 	indigolog(E,H2).
 indigolog(_,_,[halt_exec|H]) :- !,
-	report_message(system(0), 'Request for TERMINATION of the program'),
+	logging(system(0), 'Request for TERMINATION of the program'),
 	indigolog([], H).
 indigolog(_,_,[abort_exec|H]) :- !,
-	report_message(system(0), 'Request for ABORTION of the program'),
+	logging(system(0), 'Request for ABORTION of the program'),
 	indigolog([?(false)], H).
 indigolog(_,E,[break_exec|H]) :- !,
-	report_message(system(0), 'Request for PAUSE of the program'),
+	logging(system(0), 'Request for PAUSE of the program'),
 	writeln(E),
 	break,		% BREAK POINT (CTRL+D to continue execution)
 	delete(H,pause,H2),
 	indigolog(E,H2).
 indigolog(_,_,[reset_exec|_]) :- !,
-	report_message(system(0), 'Request for RESETING agent execution'),
+	logging(system(0), 'Request for RESETING agent execution'),
 	finalizeDB,
 	initializeDB,
 	proc(main, E),		% obtain main agent program
@@ -322,7 +314,7 @@ system_action(reset_exec).	% Reset agent execution from scratch
 
 % Wait continously until an exogenous action occurrs
 doWaitForExog(H1,H2):-
-        report_message(system(2), 'Waiting for exogenous action to happen'),
+        logging(system(2), 'Waiting for exogenous action to happen'),
         repeat,
         handle_exog(H1,H2),
         (H2=H1 -> fail ; true).
@@ -448,14 +440,14 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
         update_now(H2).
 indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         type_action(Act, sensing), !,
-        report_message(system(1), ['Sending sensing Action *',Act,'* for execution']),
+        logging(system(1), ['Sending sensing Action *',Act,'* for execution']),
         execute_action(Act, H, sensing, IdAct, S), !,
 	(S=failed ->
-		report_message(error, ['Action *', Act, '* FAILED to execute at history: ',H]),
+		logging(error, ['Action *', Act, '* FAILED to execute at history: ',H]),
 		H2 = [abort,failed(Act)|H],	% Request abortion of program
 	        update_now(H2)
 	;
-                report_message(action,
+                logging(action,
                 	['Action *', (Act, IdAct),'* EXECUTED SUCCESSFULLY with sensing outcome: ', S]),
 	        wait_if_neccessary,
 		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME!
@@ -463,14 +455,14 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         type_action(Act, nonsensing), !,
-        report_message(system(1), ['Sending nonsensing action *',Act,'* for execution']),
+        logging(system(1), ['Sending nonsensing action *',Act,'* for execution']),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S=failed ->
-		report_message(error, ['Action *', Act, '* could not be executed at history: ',H]),
+		logging(error, ['Action *', Act, '* could not be executed at history: ',H]),
 		H2 = [abort,failed(Act)|H],
 	        update_now(H2)
 	;
-                report_message(action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
+                logging(action, ['Action *',(Act, IdAct),'* COMPLETED SUCCESSFULLY']),
 		wait_if_neccessary,
                 H2 = [Act|H],
 		update_now(H2)
@@ -479,18 +471,18 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
 % Simulated pause between execution of actions if requested by user
 wait_if_neccessary :-
         wait_at_action(Sec), !,   % Wait Sec numbers of seconds
-        report_message(system(2),['Waiting at step ',Sec,' seconds']),
+        logging(system(2),['Waiting at step ',Sec,' seconds']),
         sleep(Sec).
 wait_if_neccessary.
 
 % Updates the current history to H
 update_now(H):-
-        %report_message(system(2),['Updating now history to: ',H]),
+        %logging(system(2),['Updating now history to: ',H]),
         %write(H),
         retract(now(_)) -> assert(now(H)) ; assert(now(H)).
 
 action_failed(Action, H) :-
-	report_message(error,['Action *', Action, '* could not be executed',
+	logging(error,['Action *', Action, '* could not be executed',
 	                      ' at history: ',H]),
 	halt.
 
@@ -536,7 +528,7 @@ exists_pending_exog_event :- indi_exog(_).
 exog_action_occurred([]) :- doing_step -> abortStep ; true.
 exog_action_occurred([ExoAction|LExoAction]) :-
         assert(indi_exog(ExoAction)),
-        report_message(exogaction, ['Exog. Action *',ExoAction,'* occurred']),
+        logging(exogaction, ['Exog. Action *',ExoAction,'* occurred']),
 	exog_action_occurred(LExoAction).
 
 
@@ -560,10 +552,10 @@ pause_or_roll(H1,H1).
 
 
 roll(H1, H2) :-
-        report_message(system(0),'Rolling down the river (progressing the database).......'),
+        logging(system(0),'Rolling down the river (progressing the database).......'),
 	roll_db(H1, H2),
-        report_message(system(0), 'done progressing the database!'),
-        report_message(system(3), ['New History: ', H2]),
+        logging(system(0), 'done progressing the database!'),
+        logging(system(3), ['New History: ', H2]),
 	update_now(H2), 			% Update the current history
 	append(H2,HDropped,H1),	% Extract what was dropped from H1
 	retract(rollednow(HO)),		% Update the rollednow/1 predicate to store all that has been rolled forward
@@ -581,11 +573,11 @@ pasthist(H):- now(ActualH), before(H,ActualH).
 
 % Deal with an unknown configuration (P,H)
 error(M):-
-        report_message(error, M),
-        report_message(error,'Execution will be aborted!'), abort.
+        logging(error, M),
+        logging(error,'Execution will be aborted!'), abort.
 
 warn(M):-
-        report_message(warning, M).
+        logging(warning, M).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF

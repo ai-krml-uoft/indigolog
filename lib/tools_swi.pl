@@ -27,8 +27,6 @@
            % OTHER TOOLS
            turn_on_gc/0,
            turn_off_gc/0,
-           set_backquoted_string/0,
-           reset_backquoted_string/0,
 	       catch_fail/2,
     	   catch_succ/2,
            %
@@ -41,7 +39,6 @@
 	   extract_option/3,
        any_to_number/2,
        any_to_string/2,
-	   lany_to_string/2,
  	   emptyString/1,
 	   build_string/2,
 	   string_replace/4,
@@ -150,12 +147,6 @@ file_exists(File) :- exists_file(File).
 % Turn on/off the automatic garbage collector
 turn_on_gc  :- set_prolog_flag(gc, true).
 turn_off_gc :- set_prolog_flag(gc, false).
-
-% Set string construct to be ` to the calling module
-:- module_transparent set_backquoted_string/0.
-set_backquoted_string :- set_prolog_flag(backquoted_string, true). 
-:- module_transparent reset_backquoted_string/0.
-reset_backquoted_string :- set_prolog_flag(backquoted_string, false). 
 
 
 

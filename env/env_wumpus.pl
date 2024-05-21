@@ -542,7 +542,7 @@ fixed_wumpus_world(IDScenario,[Size,PPits,NoGolds],IGrid) :-
 % Send Command to WUMPUS and wait for Response from WUMPUS
 send_command_to_wumpus(_, ok) :- \+ wumpusAppletOn, !.
 send_command_to_wumpus(Command, Response) :-
-	any_to_string(Command, SCommand),
+	term_string(Command, SCommand),
 	write(comm_wumpus, SCommand),
 	nl(comm_wumpus),
 	flush(comm_wumpus), !, Response=ok.

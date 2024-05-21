@@ -12,17 +12,17 @@
 
 main_dir(Path):- root_indigolog(Path).
 
+:- ['lib/common.pl'].
 
-% This is the initialization needed for each type of Prolog used
 :- 	root_indigolog(Dir),
    	directory_file_path(Dir, 'lib', LibDir),
    	assert(library_directory(LibDir)),
-	use_module(library(eclipse_swi)), init_eclipse_lib, % ECLIPSE Compat lib
-	use_module(library(tools_swi)),
+	% use_module(library(eclipse_swi)), init_eclipse_lib, % ECLIPSE Compat lib
+	% use_module(library(tools_swi)),
+	use_module(library(utils)),
 	use_module(library(time)),	% for call_with_time_limit/2
-	style_check(-discontiguous),
-	set_prolog_flag(optimise, true),
-	set_backquoted_string.
+	% style_check(-discontiguous),
+	set_prolog_flag(optimise, true).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

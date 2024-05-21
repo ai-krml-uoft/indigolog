@@ -34,7 +34,6 @@ server_port(_).
 server_host('localhost').  % this is the default anyways...
 
 
-
 % Load simulator, RCX and internet environments
 :- dir(dev_managers, F), consult(F).
 load_dev(simulator, swi).
@@ -79,10 +78,10 @@ main :-
 	format('Executing controller: *~w*\n', [S]), !,
     main(Ctrl).
 
-main(C) :- assert(controller(C)), indigolog.
+main(C) :- assert(controller(C)), indigolog(C).
 
 
-:- set_option(debug_level, 0).
+:- set_option(log_level, 0).
 :- set_option(wait_step, 3).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
