@@ -2,8 +2,6 @@
         join_to_string/2,
         join_to_string/3,
         any_to_string/2,
-        logging/2,
-        logging/3,
         % 3 - OS TOOLS
         exec/2,
         exec/3,

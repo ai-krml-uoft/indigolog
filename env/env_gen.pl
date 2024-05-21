@@ -49,8 +49,21 @@
   -- handle_steam/1          : as needed
   -- listen_to/3             : as needed
 */
+
+% :- initialization(start, main).
+
 :- dynamic terminate/0,    % To signal when the environment should quit
            listen_to/3.    % Streams and Sockets to look after
+
+% https://www.swi-prolog.org/pldoc/man?section=optparse
+:- use_module(library(optparse)).
+opts_spec(env_gen,
+        [ [opt(host), shortflags([h]), longflags(['host']), type(atom),
+                help('Host of the environment manager')],
+        [opt(port), shortflags([p]), longflags(['port']), type(integer),
+                help('Port of the environment manager')],
+        [opt(debug), shortflags([d]), longflags(['debug']), type(integer), default(100),
+                help('Debug level')]], []).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS and main_dir/1 definintion
@@ -59,92 +72,65 @@
 wait_until_close(5). % how many seconds to wait until closing the device manager
 
 
-% Close a stream and always succeed
-safe_close(StreamId) :-
-        catch_succ(myclose(StreamId), ["Could not close socket ", StreamId]).
-myclose(Id) :- close(Id).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% START OF STANDARD SECTION %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-start :- catch_fail(start2, "Main cycle for device manager got exception").
 start :-
-	logging(error, "For some reason the environment has stopped"),
-	halt_device.
-
+        current_prolog_flag(argv, Argsv),
+        opts_spec(env_gen, OptsSpec, PositionalArgs),
+        opt_parse(OptsSpec, Argsv, Opts, PositionalArgs, [output_functor(cli_args)]), !,
+        writeln(Opts),
+        maplist(assert, Opts),
+        catch_call(start2, "Main cycle for device manager got exception", fail).
+start :- logging(error, "For some reason the environment has stopped"), halt_device.
 
 % Run at the beginning of the environment setting
 % It initializes the communication with the environment manager and
 % it initializes every source of input (rcx, tcl/tk, etc.)
 start2 :-
         name_dev(EnvId),
-    	    logging(system(1), ["Initializing environment ", EnvId]),
-               % 1 - Obtain Host and Port number of env. manager from command
-        get_argument(host, SHost),
-        get_argument(port, SPort),
-        string_to_atom(SHost, Host),
-        string_to_number(SPort, Port),
-        assert(env_manager(Host, Port)),  % Store info about manager
-               % 2 - Set debug level if appropiate option was given
-        (get_argument(debug, SDebugLevel) ->
-		string_to_number(SDebugLevel, DebugLevel),
-		set_debug_level(DebugLevel),
-	        logging(system(1), ["Setting debug level to ", DebugLevel])
-	;
-	        true
-	),
-               % 3 - Setup stream socket with environment manager
-	        logging(system(1), "Setting socket connection with env. manager"),
+        logging(system(1), "Initializing environment ~w", [EnvId]),
+        % 1 - Obtain Host and Port number of env. manager from command
+        cli_args(host, Host),
+        cli_args(port, Port),
+        assert(env_manager(Host, Port)),
+        % 2 - Set debug level
+        cli_args(debug, DebugLevel),
+        set_option(log_level, DebugLevel),
+        logging(system(1), "Setting log level to ~d", [DebugLevel]),
+        % 3 - Setup streams with environment manager to talk to
+        logging(system(1), "Setting socket connection with EM"),
         sleep(3),  % Give time to environment manager to wait for us
-        catch_fail(socket(internet, stream, env_manager), "Cannot open socket"),
-        catch_fail(connect(env_manager, Host/Port), "Cannot connect to EM"),
-               % 4- We should listen to env_manager
-        assert(listen_to(socket, env_manager, env_manager)),
-               % 5 - Initialize different interfaces
-	         % The manager may have been called with special arguments
-	         % Example: the IP and Port of the robot plataform
-	         % Then we read all command line arguments into CLArg
-        get_list_arguments(CLArgs),
+        catch_call(tcp_connect(Host:Port, StreamPair, []), "Cannot connect to EM", fail),
+        stream_pair(StreamPair, StreamRead, StreamWrite),
+        assert(env_manager(Host:Port, StreamRead, StreamWrite)),
+        assert(listen_to(StreamRead)),
+        % 4 - Initialize different interfaces
         logging(system(1), "Initializing required interfaces..."),
-        initializeInterfaces(CLArgs),   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-               % 6 - Run the main cycle
-        	logging(system(1), "Starting main cycle"), !,
+        initializeInterfaces,   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
+        % 6 - Run the main cycle
+        logging(system(1), "Starting main cycle"), !,
         main_cycle,
-               % 7 - Terminate environment
-    	    logging(system(1), "Finalizing domain interfaces..."), !,
-        finalize(CLArgs),
-	        logging(system(1), "Device manager totally finished; about to halt..."),
-	    halt_device.
+        % 7 - Terminate interfaces
+        logging(system(1), "Finalizing domain interfaces..."), !,
+        finalizeInterfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
+        logging(system(1), "Device manager totally finished; about to halt..."),
+        close(StreamRead),
+        close(StreamWrite),
+        halt_device.
 
 halt_device :-
-		(wait_until_close(Seconds) -> true ; Seconds = 5),
-		sleep(Seconds), 		% Hold for Seconds and then close
-		halt.
-
-
-% Run when the environment is closed.
-% It should close all sockets, streams, pipes opened
-finalize(CLArgs) :-
-        logging(system(3), "Start closing device...."),
-        finalizeInterfaces(CLArgs),  %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-        close_all_sockets.	    % Close all interfaces that were opened
-
+        (wait_until_close(Seconds) -> true ; Seconds = 5),
+        sleep(Seconds), 		% Hold for Seconds and then close
+        halt.
 
 % halt device after waiting for some seconds (so that one can read debug info)
 break_device :-
         logging(system(1), "Device manager breaking.."),
 	break.
-
-
-% Close all sockets for which there is a listen_to/3 entry
-close_all_sockets :-
-        retract(listen_to(socket, _, X)),
-        safe_close(X),
-		fail.
-close_all_sockets.
-
 
 
 % MAIN CYCLE: Wait for data to arrive from data comming from the
@@ -155,15 +141,13 @@ close_all_sockets.
 % listen_to(Type, Id, X) means that X should be checked at every cycle
 main_cycle :-
         repeat,
-           % Make a set LStreams with all sockets and streams with data
-        findall(Stream, listen_to(stream, _, Stream), LStreams1),
-        findall(Stream, listen_to(socket, _, Stream), LStreams2),
-        append(LStreams1, LStreams2, LStreams),
-        logging(system(3), ["Waiting the following streams: "|LStreams]),
-        stream_select(LStreams, block, ReadyStreams),   % Wait for input (block)
-           % Handle all the streams that have data
-        logging(system(3), ["Streams ready: "|ReadyStreams]),
-        handle_streams(ReadyStreams),
+        % Make a set LStreams with all sockets and streams with data
+        findall(Stream, listen_to(Stream), LStreams),
+        logging(system(3), "Waiting the following streams: ~w", [LStreams]),
+        wait_for_input(LStreams, ReadyList, infinite),
+        % Handle all the streams that have data
+        logging(system(3), "Streams ready: ~w", [ReadyStreams]),
+        maplist(handle_streams, ReadyStreams),
         (terminate -> true ; fail).
 
 % order termination of the device manager
@@ -175,12 +159,8 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % This section implements how each stream is handled when input arrives
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic handle_stream/1.  % NEEDED BECAUSE IT MAY BE DEFINED IN 2 FILES!
-
-% Handle a list of streams where there is info waiting
-handle_streams([]).
-handle_streams([S|LS]) :-
-        handle_stream(S), !,
-        handle_streams(LS).
+:- discontiguous handle_stream/1.
+:- multifile(handle_stream/1).
 
 % Standard handler for the event manager stream:
 % called when the environment manager sent something

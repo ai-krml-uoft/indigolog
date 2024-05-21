@@ -13,7 +13,6 @@
 :- module(tools_swi,[
            % STRINGS
            string_to_term/2,
-           string_to_number/2,
            replace_char_string/4,
            % OS TOOLS
            thread_kill/1,
@@ -68,7 +67,6 @@
 % 2 - STRINGS
 %
 % -- string_to_term(?String, ?Term)
-% -- string_to_number(?String, ?Term)
 % -- replace_char_string(+String, +E1, +E2, -String2) 
 %       String2 is string String with all chars E1 replaced by E2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -76,17 +74,10 @@
 
 % string_to_term/2 
 string_to_term(S, T):- var(T), !,    % S ---> T
-                       string_to_atom(S, A), term_to_atom(T, A). 
+                       atom_string(A, S), term_to_atom(T, A). 
 string_to_term(S, T):- \+ var(T),    % T ---> S
-                       term_to_atom(T, A), string_to_atom(S, A).
+                       term_to_atom(T, A), atom_string(A, S).
 
-% string_to_number/2 
-string_to_number(S, N):- ground(N),
-                         number_chars(N, L), string_to_list(S, L).
-string_to_number(S, N):- ground(S),
-                         string_to_atom(S, A), 
-                         atom_codes(A, CA), 
-                         number_codes(N, CA).
 
 % replace_char_string/4
 replace_char_string(S, E1, E2, S2) :- 
@@ -126,41 +117,6 @@ thread_wait(ThreadId, Status) :-
 proc_kill(Pid)    :- kill(Pid, 9).
 proc_wait(Pid, S) :- repeat, wait(Pid, S).
 file_exists(File) :- exists_file(File).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 4 - OTHER TOOLS
-%
-% -- turn_on_gc/0
-% -- turn_off_gc/0
-%       Turn on/off garbage collection
-% -- set_backquoted_string/0
-%       Set the backquoted_string flag to true (transparent predicate)
-% -- catch_succ(+Call,+Message)
-% -- catch_fail(+Call,+Message)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% Turn on/off the automatic garbage collector
-turn_on_gc  :- set_prolog_flag(gc, true).
-turn_off_gc :- set_prolog_flag(gc, false).
-
-
-
-% Perform a call catching it if there is an exception
-% If so, print message and then either fail or succeed
-catch_fail(Call, Message) :-
-	catch(Call,E,
-		(report_message(warning,[Message, ' ---> ', E]),
-	     fail)
-	    ).
-catch_succ(Call, Message) :-
-	catch(Call,E,
-		(report_message(warning,[Message, ' ---> ', E]),
-	     true)
-	    ).
-
 
 
 

@@ -1,111 +1,72 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-% FILE: Env/env_sim.pl
-%
-%  Author    : Sebastian Sardina
-%  Time-stamp: <03/12/19 10:51:50 ssardina>
-%  email     : ssardina@cs.toronto.edu
-%  WWW       : www.cs.toronto.edu/~ssardina
-%  TESTED    : SWI Prolog 5.0.10 http://www.swi-prolog.org
-%	       ECLiPSe 5.3 on RedHat Linux 6.2-7.2
-%  TYPE CODE : system independent predicates
-%
-% This files provides a *simulted* environment interface with which
-% it is possible to set exogenous events in an asynchronous ways using
-% a TCL/TK application, type sensing outcome for actions
-%
-%   The interface to enter exogenous events from the keyboard is
-%     achieved with a simple TCL/TK program where exogenous action can
-%     be typed at any time. 
-%
-%
-% This environment is self-contained (automatically it loads the required
-%  libraries). It should be called as follows:
-%
-%   eclipse host=<HOST> port=<PORT> -b env_sim.pl -e start
-%   pl host=<HOST> port=<PORT> -b env_sim.pl -e start
-%
-% where HOST/PORT is the address of the environment manager socket.
-%
-% Written for ECLiPSe Prolog (http://www.icparc.ic.ac.uk/eclipse/)
-% and SWI Prolog (http://www.swi-prolog.org) running under Linux 6.2-8.0
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%                             March 22, 2003
-%
-% This software was developed by the Cognitive Robotics Group under the
-% direction of Hector Levesque and Ray Reiter.
-%
-%        Do not distribute without permission.
-%        Include this notice in any copy made.
-%
-%
-%         Copyright (c) 2000 by The University of Toronto,
-%                        Toronto, Ontario, Canada.
-%
-%                          All Rights Reserved
-%
-% Permission to use, copy, and modify, this software and its
-% documentation for non-commercial research purpose is hereby granted
-% without fee, provided that the above copyright notice appears in all
-% copies and that both the copyright notice and this permission notice
-% appear in supporting documentation, and that the name of The University
-% of Toronto not be used in advertising or publicity pertaining to
-% distribution of the software without specific, written prior
-% permission.  The University of Toronto makes no representations about
-% the suitability of this software for any purpose.  It is provided "as
-% is" without express or implied warranty.
-% 
-% THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
-% SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
-% FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
-% SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER
-% RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF
-% CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
-% CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-% 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-% This file assumes that the following is defined in env_gen.pl:
-%
-% -- start/0     : initialization of the environment (called when loaded)
-% -- finalize/0  : finalization of the environment (called when exiting)
-% -- main_dir/1  : obtain the root IndiGolog directory
-% -- report_exog_event(A, M): 
-%                  report exogenous event A with message M to the
-%                  environment manager
-% -- All compatibility libraries depending on the architecture such us:
-%    -- compat_swi/compat_ecl compatibility libraries providing:
-%
-% -- The following two dynamic predicates should be available:
-%    -- listen_to(Type, Name, Channel) 
-%            listen to Channel of Type (stream/socket) with Name
-%    -- terminate/0
-%            order the termination of the application
-%
-%
-% -- The following should be implemented here:
-%
-%  -- name_dev/1              : mandatory *
-%  -- initializeInterfaces(L) : mandatory *
-%  -- finalizeInterfaces(L)   : mandatory *
-%  -- execute/4               : mandatory *
-%  -- handle_steam/1          : as needed
-%  -- listen_to/3             : as needed
-%
-% FROM PROLOG DEPENDENT USER LIBRARY (SWI, ECLIPSE, LIBRARY):
-%
-% -- call_to_exec(+System, +Command, -Command2)
-%      Command2 executes Command in plataform System
-%
-%
-% Also, this device manager requires:
-%
-%    -- wish for running TCL/TK applications
-%    -- exog.tcl TCL/TK script
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#!/usr/bin/env swipl
+/*
+
+        Elevator Simulator Environment
+
+        @author Sebastian Sardina (2003) - ssardina@gmail.com
+
+ This files provides a *simulted* environment interface with which
+ it is possible to set exogenous events in an asynchronous ways using
+ a TCL/TK application, type sensing outcome for actions
+
+   The interface to enter exogenous events from the keyboard is
+     achieved with a simple TCL/TK program where exogenous action can
+     be typed at any time.
+
+
+ This environment is self-contained (automatically it loads the required
+  libraries). It should be called as follows:
+
+   eclipse host=<HOST> port=<PORT> -b env_sim.pl -e start
+   pl host=<HOST> port=<PORT> -b env_sim.pl -e start
+
+ where HOST/PORT is the address of the environment manager socket.
+
+
+ This file assumes that the following is defined in env_gen.pl:
+
+ -- start/0     : initialization of the environment (called when loaded)
+ -- finalize/0  : finalization of the environment (called when exiting)
+ -- main_dir/1  : obtain the root IndiGolog directory
+ -- report_exog_event(A, M):
+                  report exogenous event A with message M to the
+                  environment manager
+ -- All compatibility libraries depending on the architecture such us:
+    -- compat_swi/compat_ecl compatibility libraries providing:
+
+ -- The following two dynamic predicates should be available:
+    -- listen_to(Type, Name, Channel)
+            listen to Channel of Type (stream/socket) with Name
+    -- terminate/0
+            order the termination of the application
+
+
+ -- The following should be implemented here:
+
+  -- name_dev/1              : mandatory *
+  -- initializeInterfaces(L) : mandatory *
+  -- finalizeInterfaces(L)   : mandatory *
+  -- execute/4               : mandatory *
+  -- handle_steam/1          : as needed
+  -- listen_to/3             : as needed
+
+ FROM PROLOG DEPENDENT USER LIBRARY (SWI, ECLIPSE, LIBRARY):
+
+ -- call_to_exec(+System, +Command, -Command2)
+      Command2 executes Command in plataform System
+
+
+ Also, this device manager requires:
+
+    -- wish for running TCL/TK applications
+    -- exog.tcl TCL/TK script
+*/
+
+
 :- include(env_gen).      % INCLUDE THE CORE OF THE DEVICE MANAGER
+:- ['../lib/common.pl'] .	% Load system library
+:- use_module('../lib/utils.pl').
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS TO BE USED
@@ -116,10 +77,10 @@
 % Name of the environment: <SIMULATOR>
 % Set name of the environment here.
 % THIS CONSTANT IS MANDATORY, DO NOT DELETE!
-name_dev(simulator). 
+name_dev(simulator).
 
 % Set verbose debug level
-:- set_debug_level(3).
+:- set_option(log_level, 3).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % A - INITIALIZATION AND FINALIZATION OF INTERFACES
@@ -141,13 +102,13 @@ finalizeInterfaces(_)   :- finalizeExog(tcltk).
 % If an exogenous event arrives via the keyboard, it is handled as soon
 % as possible by calling handle_event/1
 %
-% -- initializeExog(virtual): 
+% -- initializeExog(virtual):
 %                    perform any initialization of other sources of
 %                    exogenous actions that is required
 % -- finalizeExog(virtual):
 %                    things to do for other sources of exogenous actions
 %                    at end of program
-% -- checkOtherExog(virtual,-ExogList): 
+% -- checkOtherExog(virtual,-ExogList):
 %                    check whether a request has been entered via keyboard
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -159,11 +120,11 @@ finalizeInterfaces(_)   :- finalizeExog(tcltk).
 %  the program exog.tcl writes each exogenous action entered to a special pipe.
 % At that time, a sigio signal is assigned to such pipe so that whenever data
 % arrives to the pipe an interrupt is triggered which can be cached
-%  by the main cycle to handle the exog action entered.
+%  by the main cycle to handle thestart exog action entered.
 tcltk_exog_file(File):- main_dir(Dir),
                         concat_atom([Dir,'Env/exog.tcl'], File).
 
-initializeExog(tcltk) :- 
+initializeExog(tcltk) :-
         printKbInstructions,
 	        % Run the command as a child and send its *output* to pipe "tcltk"
         tcltk_exog_file(File),
@@ -176,23 +137,23 @@ initializeExog(tcltk) :-
 
 % finalizeExog: Things to do for sources of exogenous actions from the
 %               virtual interface
-finalizeExog(tcltk) :- 
+finalizeExog(tcltk) :-
 	listen_to(stream, tcltk, tcltk), !,	% tcltk is still open
-        report_message(system(1), 'Closing Tcl/Tk interface.'), 
+        report_message(system(1), 'Closing Tcl/Tk interface.'),
         retract(listen_to(stream, tcltk, tcltk)),	% de-register interface
-        retract(exog_proc(P)), 
+        retract(exog_proc(P)),
         (proc_kill(P) -> true ; true).
 finalizeExog(tcltk).	% It was already down
 
 % printKbInstructions: Print instructions on how to enter keyboard input
 printKbInstructions :-
-    writeln('*********************************************************'), 
-    writeln('* NOTE: This is the SIMULATOR environment'), 
-    writeln('*   You can enter exogenous actions using the TCL/TK window.'), 
-    writeln('*   Action execution will be printed here and sensing '), 
-    writeln('*   outcome will be asked to the user'), 
-    writeln('*   Actions that are not executed in any other device are'), 
-    writeln('*   executed here.'), 
+    writeln('*********************************************************'),
+    writeln('* NOTE: This is the SIMULATOR environment'),
+    writeln('*   You can enter exogenous actions using the TCL/TK window.'),
+    writeln('*   Action execution will be printed here and sensing '),
+    writeln('*   outcome will be asked to the user'),
+    writeln('*   Actions that are not executed in any other device are'),
+    writeln('*   executed here.'),
     writeln('*********************************************************'), nl.
 
 
@@ -204,7 +165,7 @@ printKbInstructions :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Handle tcl/tk stream: called when there is data comming from the tcl/tk app
-handle_stream(tcltk) :- 
+handle_stream(tcltk) :-
         read(tcltk, A),
         (A=end_of_file ->
              true          % Tcl/Tk finished
@@ -220,15 +181,15 @@ handle_stream(tcltk) :-
 %
 % execute(Action, Type, N, Sensing) : execute Action of Type and return Sensing
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Simulate the execution of Action. 
+% Simulate the execution of Action.
 % SensingResult is the sensing outcome of Action
-execute(Action, T, _, Sensing) :- 
-	member(T, [sensing, simsensing]), !,
+execute(Action, T, _, Sensing) :-
+	member(T, [sensing, simsenstartsing]), !,
         report_message(action, ['Executing sensing action: *',Action,'*']),
         write('    ------------> Enter Sensing value, terminate with ".": '),
         read(Sensing), nl.
 
-execute(Action, _, _, ok) :- 
+execute(Action, _, _, ok) :-
         report_message(action, ['Executing non-sensing action: *',Action,'*']).
 
 
@@ -236,9 +197,6 @@ execute(Action, _, _, ok) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%% OTHER CODE %%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- type_prolog(ecl) -> 
-	set_event_handler(170, my_system_error_handler/2) ; true.
-
 my_system_error_handler(E, Goal) :-
         (
             errno_id(`Interrupted system call`),
@@ -285,26 +243,26 @@ view(F) :-
         send(new(V, view(F)), open),
         send(V, load(F)).
 
-	
+
 
 %:- pce_autoload(file_item, library(file_item)).
- 
+
 
 edit_file_dialog :-
         new(D, dialog('Exogenous Events')),
-        send(D, append, new(E, text_item(exog, @default, 
+        send(D, append, new(E, text_item(exog, @default,
 						and(message(@prolog, reportTea, @arg1),
 					    	    message(@receiver,clear))
 					))),
-        send(D, append, button(send, 
+        send(D, append, button(send,
 				and(message(@prolog, reportTea, E?selection),
 				    message(E,clear))
 			)),
         send(D, append, button(cancel, message(D, destroy))),
         send(D, append, button(halt,   message(@prolog, terminateTea))),
-        send(D, open).	
+        send(D, open).
 
-	
+
 reportTea(E) :- report_message(action, ['Executing non-sensing action: *',E,'*']).
 terminateTea :- report_message(action, terminate).
 
@@ -315,10 +273,10 @@ terminateTea :- report_message(action, terminate).
 	%	entered a name.  Pressing cancel makes this predicate fail.
 	%	Prompt is a long string, giving explanation; Label is a short
 	%	label displayed for the text entry field.
-	
-	
+
+
 	:- pce_global(@name_prompter, make_name_prompter).
-	
+
 	make_name_prompter(P) :-
 		new(P, dialog),
 		send(P, kind, transient),
@@ -328,8 +286,8 @@ terminateTea :- report_message(action, terminate).
 				 message(P?ok_member, execute)))),
 		send(P, append, button(ok, message(P, return, TI?selection))),
 		send(P, append, button(cancel, message(P, return, @nil))).
-	
-	
+
+
 	ask_name(Prompt, Label, Name) :-
 		send(@name_prompter?prompt_member, selection, Prompt),
 		send(@name_prompter?name_member, label, Label),
@@ -338,12 +296,12 @@ terminateTea :- report_message(action, terminate).
 		send(@name_prompter, show, @off),
 		RawName \== @nil,
 		Name = RawName.
-	
+
 	ask_name :-
 		ask_name('Street', name, Street),
 		writeln(Street).
-	
-		
+
+
 create_fill_pattern_dialog :-
 	new(Dialog, dialog('Fill Patterns')),
 	send(Dialog, append,
@@ -356,11 +314,11 @@ create_fill_pattern_dialog :-
 			, menu_item(grey50, @default, opcion4)
 			]),
 	send(Dialog, open).
-		
+
 */
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF:  Env/env_sim.pl
+% EOF
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

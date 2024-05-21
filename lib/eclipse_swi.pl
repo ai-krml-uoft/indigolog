@@ -334,7 +334,7 @@ substring(String, Start, Length, SubString):-
 substring(String, Start, Length, Sub):-
 	string_length(String, LString),
 	LString\=0,
-        string_to_atom(Sub, SubAtom),
+        atom_string(SubAtom, Sub),
         sub_string(String, Start, Length, _, SubAtom).
 
 substring(String, Before, Length, After, SubString) :-
@@ -508,7 +508,7 @@ argc(N) :-
 argv(N, SA) :-
         current_prolog_flag(argv, L),
         nth1(N, L, A),
-        string_to_atom(SA, A).
+        atom_string(A, SA).
 
 
 % min(+L,?X)/max(+L,?X) : minimum/maximum number in a list of numbers

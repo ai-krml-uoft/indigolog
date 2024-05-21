@@ -1,4 +1,4 @@
-/* 
+/*
 
 	Environment Manager for the IndiGolog interpreter
 
@@ -102,7 +102,8 @@ initialize(env_manager) :-
 	(server_host(Host) ; Host = localhost),
 	Address = Host:Port,
 	tcp_bind(Socket, Address),
-	assert(em_socket(Socket, Address)),
+	tcp_open_socket(SocketId, StreamPair),
+	assert(em_socket(Socket, Address, StreamPair)),
 	logging(system(1, em), "3 - Loading required devices..."),
     findall(X, load_device(X, Address, _), LEnv),
     (LEnv = [] ->
@@ -112,7 +113,7 @@ initialize(env_manager) :-
 	),
     length(LEnv, N),
     tcp_listen(Socket, N),
-    start_env(LEnv), !, % Start each of the devices used (LEnv)
+    maplist(start_dev, LEnv), !, % Start each of the devices used (LEnv)
     logging(system(2, em), "4 - Start EM cycle..."),
 	start_env_cycle.   % Start the env. manager main cycle
 
@@ -122,10 +123,10 @@ initialize(env_manager) :-
 %	2 - Terminate EM cycle
 %	3 - Close EM server socket em_socket
 %	4 - Report the number of actions that were executed
-finalizeEM :-
+finalize(env_manager) :-
     	logging(system(2), "(EM) 1 - Closing all device managers..."),
-    setof(Dev, X^Y^env_data(Dev, X, Y), LDev), % Get all current open devices
-	close_dev(LDev), 	% Close all the devices found
+    setof(Dev, X^Y^dev_data(Dev, X, Y), LDev), % Get all current open devices
+	maplist(close_dev, LDev), 	% Close all the devices found
 	sleep(3), 			% Wait to give time to devices to finish cleanly
 		!, logging(system(2), "(EM) 2 - Terminating EM cycle..."),
 	catch(wait_for_children, _, true),
@@ -169,7 +170,7 @@ start_env_cycle :-
 log_start_env_scycle(finish) :- logging(system(2, em), "EM cycle finished successfully"), !.
 log_start_env_scycle(E) :-	logging(error(em), ["Thread Error:", E]).
 
-em_cycle_thread :- em_one_cycle(block), !, em_cycle_thread.
+em_cycle_thread :- em_one_cycle(infinite), !, em_cycle_thread.
 em_cycle_thread :-	 % if em_one_cycle/1 has nothing to wait, then just terminate
 	 	logging(system(5, em), "Cycle finished, no more streams to wait for...").
 
@@ -191,21 +192,20 @@ finish_env_cycle(thread) :-
 % C - em_one_cycle/1 : THIS IS THE MOST IMPORTANT PREDICATE FOR THE EM CYCLE
 %
 % 	em_one_cycle(HowToWait) does 1 iteration of the waiting cycle and
-%	waits HowMuchToWait (seconds) for incoming data from the devices
-% 	If HowMuchToWait=block then it will BLOCK waiting... (good for threads)
-em_one_cycle(HowMuchToWait) :-
-	logging(system(5), "(EM) Waiting data to arrived at env. manager (block)"),
+%	waits WaitTimeOut (seconds) for incoming data from the devices
+% 	If WaitTimeOut=block then it will BLOCK waiting... (good for threads)
+em_one_cycle(WaitTimeOut) :-
+	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
 	% Get all the read-streams of the environments sockets
-	setof(Socket, X^Y^env_data(X, Y, Socket), ListSockets),
+	setof(Socket, X^Y^dev_data(Dev, stream_in, StreamIn), LStreamIn),
 	% Check which of these streams have data waiting, i.e., the "ready" ones
-	logging(system(5), ["(EM) Blocking on environments:: "|ListSockets]),
-	stream_select(ListSockets, HowMuchToWait, ListSocketsReady),   !, % BLOCK or wait?
+	logging(system(5, em), "Blocking on environments: ~w", [LStreamIn]),
+	wait_for_input(LStreamIn, LStreamInReady, WaitTimeOut),   !, % BLOCK or wait?
 	% Get back the name of the environments of these "ready" streams
-	setof(Env, S^X^(member(S, ListSocketsReady),
-			env_data(Env, X, S)), ListEnvR),
-	logging(system(5), ["(EM) Handling messages in devices:: "|ListEnvR]),
+	setof(Env, S^X^(member(S, LStreamInReady), dev_data(Env, stream_in, S)), LEnvReady),
+	logging(system(5, em), "Handling messages in devices:: ~w", [LEnvReady]),
 	% Next, read all the events waiting from these devices
-	get_events_from_env(ListEnvR, ListEvents),
+	get_events_from_env(LEnvReady, ListEvents),
 	% Finally, handle all these events
 	handle_levents(ListEvents).
 
@@ -213,7 +213,7 @@ em_one_cycle(HowMuchToWait) :-
 % collect all the data from them
 get_events_from_env([], []).
 get_events_from_env([Env|LEnv], TotalListEvents) :-
-        env_data(Env, _, SocketEnv),
+        dev_data(Env, _, SocketEnv),
         receive_list_data_socket(SocketEnv, LEventsEnv),
         get_events_from_env(LEnv, RestEvents),
         append(LEventsEnv, RestEvents, TotalListEvents).
@@ -287,7 +287,7 @@ handle_event([_, [exog_action, CodeAction]]):-
 	               ["(EM) Exogenous action occurred:: ", (CodeAction, Action)]).
 
 handle_event([socket(Socket), [_, end_of_file]]) :- !,  % Env has been closed!
-        env_data(Env, _, Socket),                        % remove it
+        dev_data(Env, _, Socket),                        % remove it
         logging(system(2), ["(EM) Device ", Env, " has reported termination!"]),
         delete_dev(Env).
 
@@ -305,43 +305,33 @@ handle_event(Data):-                         % The event is completely unknown
 % START AND CLOSE DEVICE MANAGERS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% start_env(LEnv, Address) : starts a list of device managers
+% start_dev(LEnv, Address) : starts a list of device managers
 %
 %  each device is started in a separate xterm window. We pass the
 %  Address so that the device knows where to send its data
 %  Also we receive from the device its address to know where to
 %  send data to it.
 %  env_data/3 stores the Pid and Address of each device started
-start_env([]).
-start_env([Env|LEnv]) :-
-	em_socket(SocketEM, AddressEM),
+start_dev(Env) :-
+	em_socket(SocketEM, AddressEM, _),
 	load_device(Env, AddressEM, CMD),	% provided by application
-	logging(system(5, em), ["Command to initialize device", Env, ":", CMD]),
+	logging(system(5, em), "Command to initialize device ~w: ~w", [Env, CMD]),
 	exec_group(sh('-c', CMD), [], Pid),
-	tcp_accept(SocketEM, From, Env), 	% Wait until the device connects to socket em_socket
-	logging(system(1), ["(EM) Device ", Env, " initialized at: ", From]),
-	assert(env_data(Env, Pid, Env)),
-	start_env(LEnv, AddressEM).
+	tcp_accept(SocketEM, SocketFrom, IP), 	% Wait until the device connects...
+	tcp_open_socket(SocketFrom, StreamPair),
+	logging(system(1, em), "Device ~w initialized at ~w with socket ~w", [Env, IP, From]),
+	assert(dev_data(Env, Pid, SocketFrom, StreamPair)).
 
 % Tell each device to terminate
-close_dev([]).
-close_dev([Env|LEnv]) :-
-        send_data_socket(Env, [terminate]), % Tell device to terminate
-        % (delete_dev(Env) -> true ; true),   % not needed, will be deleted automatically
-        close_dev(LEnv).
-
-% Delete all information wrt device Env.
-% delete_dev/1 is called automatically when the device has reported to be terminated
-delete_dev(Env) :-
-        retract(env_data(Env, Pid, SocketEnv)),
-        %catch((wait(Pid, S) -> true ; true), E, true),
-	(ground(S) -> true ; S=free),
-       	logging(system(3), ["(EM) Environment *", Env, "* deleted!",
-       				  " - Waiting result: ", (Pid, S)]),
-        safe_close(SocketEnv).	% Disconnect server socket
+close_dev(Env) :- send_data_socket(Env, [terminate]).
 
 
-
+dev_data(Env, pid, Pid) :- dev_data(Env, Pid, _, _).
+dev_data(Env, socket, Socket) :- dev_data(Env, _, Socket, _).
+dev_data(Env, stream_in, InStream) :-
+		dev_data(Env, _, _, StreamPair), stream_pair(StreamPair, InStream, _).
+dev_data(Env, stream_out, OutStream) :-
+		dev_data(Env, _, _, SreamPair), stream_pair(StreamPair, _, OutStream).
 
 
 
@@ -364,7 +354,7 @@ execute_action(Action, H, Type, N2, Outcome) :-
 		% Send "execute" message to corresponding device
 	logging(system(2),
 		["(EM) Start to execute the following action: ", (N2, Action, Env, Code)]),
-	env_data(Env, _, SocketEnv),
+	dev_data(Env, _, SocketEnv),
 	send_data_socket(SocketEnv, [execute, N2, Type, Code]),
 	logging(system(3),
 		["(EM) Action ", N2, " sent to device ", Env, " - Waiting for sensing outcome to arrive"]), !,
@@ -381,9 +371,9 @@ execute_action(_, _, _, N, failed) :- counter_actions(N).
 % Find an adequate device manager that can execute Action and it is active
 map_execution(Action, Env, Code) :-
         how_to_execute(Action, Env, Code),
-        env_data(Env, _, _), !.  % The device is running
+        dev_data(Env, _, _), !.  % The device is running
 % Otherwise, try to run Action in the simulator device
-map_execution(Action, simulator, Action) :- env_data(simulator, _, _), !.
+map_execution(Action, simulator, Action) :- dev_data(simulator, _, _), !.
 
 % Otherwise, try to run Action in the simulator device
 map_execution(Action, _, _) :-

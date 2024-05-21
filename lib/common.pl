@@ -41,10 +41,6 @@
 %
 %  -- subv(+X1,+X2,+T1,-T2)
 %        T2 is T1 with X1 replaced by X2
-%  -- get_argument(?Name, ?Value)
-%        Value is the value of argument name Name. (i.e., Name=Value in call)
-%  -- get_list_arguments(-L)
-%        L is a list of arguments of the form [Name, Value]
 %  -- replace_element_list(+List,+E1,+E2,-List2)
 %        List2 is List with element E1 replaced by element E2
 %  -- sublist(?SubList, +List)
@@ -63,37 +59,6 @@ subvl(_,_,[],[]).
 subvl(X1,X2,[T1|L1],[T2|L2]) :- subv(X1,X2,T1,T2), subvl(X1,X2,L1,L2).
 
 
-% Command line argument Name has Value
-% Name can be a symbolic name when the argument is of the form "Name=Value"
-% or the number of the argument
-% OBS: Value is always a string, Name is an atom
-get_argument(Name, Value) :-
-        get_list_arguments(L),
-        member([Name, Value], L).
-
-% Obtain the list of command line arguments
-% L is a list of [Name, Value] where Name is the value of the argument
-% and Value is its value when the argument has the form Name=Value
-% (e.g., port=2134). Otherwise, if the argument does not have that form,
-% Name is the number of the argument (e.g., [3, "notime"])
-% OBS: Value is always a string, Name is an atom
-get_list_arguments(L) :-
-        argc(N),
-        N2 is N-1,
-        (N2 > 0 -> collect_all_arguments(N2, L) ; L=[]).
-
-collect_all_arguments(0, []) :- !.
-collect_all_arguments(N, [[Name,Value]|L]) :-
-        argv(N, SArgN),
-        (split_string(SArgN, `=`, ``, [SName, Value]),
-         string_to_atom(SName, Name) ->
-             true
-        ;
-             Name=N,
-             Value=SArgN
-        ),
-        N2 is N-1,
-        collect_all_arguments(N2, L).
 
 
 % -- replace_element_list(+List,+E1,+E2,-List2)
@@ -388,6 +353,37 @@ id_logging(T, TS) :-
         string_upper(T2, TS).
 
 
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: lib/common.pl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 4 - OTHER TOOLS
+%
+% -- turn_on_gc/0
+% -- turn_off_gc/0
+%       Turn on/off garbage collection
+% -- set_backquoted_string/0
+%       Set the backquoted_string flag to true (transparent predicate)
+% -- catch_succ(+Call,+Message)
+% -- catch_fail(+Call,+Message)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Turn on/off the automatic garbage collector
+turn_on_gc  :- set_prolog_flag(gc, true).
+turn_off_gc :- set_prolog_flag(gc, false).
+
+
+
+% Perform a call catching it if there is an exception
+catch_call(Goal, Message) :- catch_call(Goal, Message, true).
+catch_call(Goal, Message, Goal2) :-
+	catch(Goal, E, (logging(warning, "~w ---> ~w", [Message, E]), Goal2)).
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
