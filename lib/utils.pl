@@ -1,17 +1,21 @@
 :- module(utils, [
-        join_to_string/2,
-        join_to_string/3,
-        any_to_string/2,
-        % 3 - OS TOOLS
-        exec/2,
-        exec/3,
-        exec_group/3,
-        set_interrupt_handler/2,
-        current_interrupt/2,
-        get_interrupt_handler/3,
-        stime/1,
-        cputime/1
+     % 1 - TOOLS
+     % 2 - STRINGS
+     join_to_string/2,
+     join_to_string/3,
+     any_to_string/2,
+     % 3 - OS TOOLS
+     exec/2,
+     exec/3,
+     exec_group/3,
+     set_interrupt_handler/2,
+     current_interrupt/2,
+     get_interrupt_handler/3,
+     stime/1,
+     cputime/1
           ]).
+
+
 
 
 % join_to_string(+List, +Sep, -String):

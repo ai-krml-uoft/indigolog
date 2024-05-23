@@ -1,11 +1,13 @@
-/*
-
-	Environment Manager for the IndiGolog interpreter
-
-	This code coordinates the exchanges among the various device managers and the main IndiGolog interpreter. It is responsible for the execution of actions and the handling of sensing outcomes and exogenous actions. It does so via TCP/IP sockets.
+/*  Environment Manager for the IndiGolog interpreter
 
 	@author Sebastian Sardina 2004 - ssardina@gmail.com
 
+	This code coordinates the exchanges among the various device managers and the main IndiGolog interpreter. It is responsible for the execution of actions and the handling of sensing outcomes and exogenous actions. It does so via TCP/IP sockets.
+
+
+	This file needs to be consulted in the context of an IndiGolog configuration file:
+
+		$ swipl config.pl examples/elevator_sim/main.pl env/env_man.pl
 
  The following system independent predicates are provided:
 
@@ -56,7 +58,6 @@
 	translateExogAction/2,
 	translateSensing/3, % Translates sensing outcome to high-level sensing
 	how_to_execute/3,   % Defines how to execute each high-level action
-	type_manager/1,     % Defines the implementation type of the manager
 	server_port/1,
 	server_host/1.	    % Host and port for the environment manager
 
@@ -66,25 +67,6 @@
 
 name_env(manager).   % We are the "environment manager"
 counter_actions(0).  % Counter for (executed) actions
-
-set_option("type_em : set type of environment manager: thread or signal").
-set_option(type_em, T) 	:-
-	set_type_manager(T),
-	logging(system(0), ["** EM fixed to ", T]).
-
-
-% Set the type of the environment manager: thread or signal based
-set_type_manager(T) :-
-	atom(T),
-	member(T, [thread, signal]),
-        logging(system(2),
-                       ["(EM) Setting environment manager type to: ", T]),
-        retractall(type_manager(_)),
-        assert(type_manager(T)).
-set_type_manager(_) :-
-        logging(warning, "(EM) Type of env. manager cannot be set!").
-
-type_manager(thread). % Default execution for the env. manager
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,15 +84,11 @@ initialize(env_manager) :-
 	(server_host(Host) ; Host = localhost),
 	Address = Host:Port,
 	tcp_bind(Socket, Address),
-	tcp_open_socket(SocketId, StreamPair),
+	tcp_open_socket(Socket, StreamPair),
 	assert(em_socket(Socket, Address, StreamPair)),
 	logging(system(1, em), "3 - Loading required devices..."),
     findall(X, load_device(X, Address, _), LEnv),
-    (LEnv = [] ->
-               	logging(warning(em), "No devices defined to load!")
-	;
-				logging(system(2, em), ["Devices to load:"|LEnv])
-	),
+	logging(system(2, em), "\tDevices to load: ~w", [LEnv]),
     length(LEnv, N),
     tcp_listen(Socket, N),
     maplist(start_dev, LEnv), !, % Start each of the devices used (LEnv)
@@ -124,26 +102,22 @@ initialize(env_manager) :-
 %	3 - Close EM server socket em_socket
 %	4 - Report the number of actions that were executed
 finalize(env_manager) :-
-    	logging(system(2), "(EM) 1 - Closing all device managers..."),
-    setof(Dev, X^Y^dev_data(Dev, X, Y), LDev), % Get all current open devices
+	logging(system(2, em), "1 - Closing all device managers..."),
+    findall(Dev, dev_data(Dev, _, _, _), LDev), % Get all current open devices
 	maplist(close_dev, LDev), 	% Close all the devices found
-	sleep(3), 			% Wait to give time to devices to finish cleanly
-		!, logging(system(2), "(EM) 2 - Terminating EM cycle..."),
-	catch(wait_for_children, _, true),
-    type_manager(Type),
-	finish_env_cycle(Type),   	% Terminate main env. manager cycle
-		!, logging(system(2), "(EM) 3 - Closing EM server socket..."),
+	sleep(3), !, 			% Wait to give time to devices to finish cleanly
+	logging(system(2, em), "2 - Terminating EM cycle..."),
+	catch(wait_for_children, _, true), !,
+	logging(system(2, em), "3 - Closing EM server socket..."),
     safe_close(em_socket), 		% Disconnect server socket
-		!, logging(system(2), "(EM) 4 - All finished..."),
+	logging(system(2, em), "4 - All finished..."),
     counter_actions(N),
-    logging(system(1),
-       	["(EM) Finalization of EM completed with *", N, "* executed actions."]).
+    logging(system(1, em), "EM completed with *~d* executed actions", [N]).
 
 
-wait_for_children :-
-	wait(PId, S), !,
+wait_for_children :- wait(PId, S), !,
 	(ground(S) -> true ; S=free),
-        logging(system(3), ["(EM) Successful proccess waiting: ", (PId, S)]),
+	logging(system(3, em), "Successful proccess waiting: (~w, ~w)", [PId, S]),
 	wait_for_children.
 wait_for_children.
 
@@ -165,27 +139,20 @@ myclose(Id) :- close(Id).
 %	 There is a separated thread to handle incoming data. The thread
 %	 should BLOCK waiting for data to arrive
 start_env_cycle :-
-	thread_create(catch(em_cycle_thread, E, log_start_env_scycle(E), [alias(em_thread)])).
-
-log_start_env_scycle(finish) :- logging(system(2, em), "EM cycle finished successfully"), !.
-log_start_env_scycle(E) :-	logging(error(em), ["Thread Error:", E]).
-
-em_cycle_thread :- em_one_cycle(infinite), !, em_cycle_thread.
-em_cycle_thread :-	 % if em_one_cycle/1 has nothing to wait, then just terminate
-	 	logging(system(5, em), "Cycle finished, no more streams to wait for...").
-
-
-finish_env_cycle(thread) :-
-	(current_thread(em_thread, running) ->
-		% Signal thread explicitly to finish!
-		thread_signal(em_thread, throw(finish))
-	;
-		% The thread has already finished (because all devices were closed)
-		true
+	thread_create(catch(em_cycle_thread, E, log_thread(start_env_cycle, E)), em_thread, [alias(em_thread)]).
+finish_env_cycle :-
+	(	current_thread(em_thread, running)
+	-> 	thread_signal(em_thread, throw(finish)) % Signal thread to finish!
+	;	true % Already finished (because all devices were closed)
 	),
 	thread_join(em_thread, _),
 	logging(system(3, em), "Environment cycle (thread) finished").
 
+log_thread(start_env_cycle, finish) :- logging(system(2, em), "EM cycle finished successfully"), !.
+log_thread(start_env_cycle, E) :-	logging(error(em), "EM thread Error: ~w", [E]).
+
+em_cycle_thread :- em_one_cycle(infinite), !, em_cycle_thread.
+em_cycle_thread :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
 
 
 
@@ -197,26 +164,25 @@ finish_env_cycle(thread) :-
 em_one_cycle(WaitTimeOut) :-
 	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
 	% Get all the read-streams of the environments sockets
-	setof(Socket, X^Y^dev_data(Dev, stream_in, StreamIn), LStreamIn),
+	findall(Dev, dev_data(Dev, stream_in, StreamIn), LDev),
 	% Check which of these streams have data waiting, i.e., the "ready" ones
-	logging(system(5, em), "Blocking on environments: ~w", [LStreamIn]),
+	logging(system(5, em), "Blocking on environments: ~w", [LDev]),
+	setof(StreamIn, X^dev_data(X, stream_in, StreamIn), LStreamIn),
 	wait_for_input(LStreamIn, LStreamInReady, WaitTimeOut),   !, % BLOCK or wait?
 	% Get back the name of the environments of these "ready" streams
-	setof(Env, S^X^(member(S, LStreamInReady), dev_data(Env, stream_in, S)), LEnvReady),
-	logging(system(5, em), "Handling messages in devices:: ~w", [LEnvReady]),
+	setof(Dev, S^(member(S, LStreamInReady), dev_data(Dev, stream_in, S)), LDevReady),
+	logging(system(5, em), "Handling messages in devices:: ~w", [LDevReady]),
 	% Next, read all the events waiting from these devices
-	get_events_from_env(LEnvReady, ListEvents),
+	maplist(get_events_from_env, LDevReady, LLEvents),
+	flatten(LLEvents, LEvents), % Flatten the list of lists of events
 	% Finally, handle all these events
-	handle_levents(ListEvents).
+	handle_levents(LEvents).
 
 % Given a list of devices that have information on their sockets
 % collect all the data from them
-get_events_from_env([], []).
-get_events_from_env([Env|LEnv], TotalListEvents) :-
-        dev_data(Env, _, SocketEnv),
-        receive_list_data_socket(SocketEnv, LEventsEnv),
-        get_events_from_env(LEnv, RestEvents),
-        append(LEventsEnv, RestEvents, TotalListEvents).
+get_events_from_env(Env, LEvents) :-
+	dev_data(Env, stream_in, StreamIn),
+	receive_list_data_stream(StreamIn, LEvents).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -314,12 +280,15 @@ handle_event(Data):-                         % The event is completely unknown
 %  env_data/3 stores the Pid and Address of each device started
 start_dev(Env) :-
 	em_socket(SocketEM, AddressEM, _),
-	load_device(Env, AddressEM, CMD),	% provided by application
+	load_device(Env, AddressEM, CMD, ARGS),	% provided by application
 	logging(system(5, em), "Command to initialize device ~w: ~w", [Env, CMD]),
+	process_create(CMD, ARGS, [stdout(pipe(OutStream)), stdin(pipe(InStream)), process(PID)]),
+	set_stream(OutStream, alias(Env)),
+
 	exec_group(sh('-c', CMD), [], Pid),
 	tcp_accept(SocketEM, SocketFrom, IP), 	% Wait until the device connects...
 	tcp_open_socket(SocketFrom, StreamPair),
-	logging(system(1, em), "Device ~w initialized at ~w with socket ~w", [Env, IP, From]),
+	logging(system(1, em), "Device ~w initialized at ~w", [Env, IP]),
 	assert(dev_data(Env, Pid, SocketFrom, StreamPair)).
 
 % Tell each device to terminate
@@ -331,7 +300,7 @@ dev_data(Env, socket, Socket) :- dev_data(Env, _, Socket, _).
 dev_data(Env, stream_in, InStream) :-
 		dev_data(Env, _, _, StreamPair), stream_pair(StreamPair, InStream, _).
 dev_data(Env, stream_out, OutStream) :-
-		dev_data(Env, _, _, SreamPair), stream_pair(StreamPair, _, OutStream).
+		dev_data(Env, _, _, StreamPair), stream_pair(StreamPair, _, OutStream).
 
 
 

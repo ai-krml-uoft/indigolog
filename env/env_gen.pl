@@ -42,12 +42,12 @@
 
  In order to complete a device manager the user should implement:
 
-  -- name_dev/1              : mandatory *
-  -- initializeInterfaces(L) : mandatory *
-  -- finalizeInterfaces(L)   : mandatory *
-  -- execute/4               : mandatory *
-  -- handle_steam/1          : as needed
-  -- listen_to/3             : as needed
+  -- name_dev/1                 : mandatory
+  -- initialize_interfaces      : mandatory
+  -- finalize_interfaces        : mandatory
+  -- execute/4                  : mandatory
+  -- handle_steam/1             : as needed
+  -- listen_to/3                : as needed
 */
 
 % :- initialization(start, main).
@@ -93,30 +93,30 @@ start :- logging(error, "For some reason the environment has stopped"), halt_dev
 start2 :-
         name_dev(EnvId),
         logging(system(1), "Initializing environment ~w", [EnvId]),
-        % 1 - Obtain Host and Port number of env. manager from command
+        % 1 - Set debug level
+        cli_args(debug, DebugLevel),
+        set_option(log_level, DebugLevel),
+        logging(system(1), "Set log level to ~d", [DebugLevel]),
+        % 2 - Obtain Host and Port number of env. manager from command
+        logging(system(1), "Setting socket connection with EM"),
         cli_args(host, Host),
         cli_args(port, Port),
         assert(env_manager(Host, Port)),
-        % 2 - Set debug level
-        cli_args(debug, DebugLevel),
-        set_option(log_level, DebugLevel),
-        logging(system(1), "Setting log level to ~d", [DebugLevel]),
-        % 3 - Setup streams with environment manager to talk to
-        logging(system(1), "Setting socket connection with EM"),
-        sleep(3),  % Give time to environment manager to wait for us
+        sleep(3),  % Give time to EM to wait for us
         catch_call(tcp_connect(Host:Port, StreamPair, []), "Cannot connect to EM", fail),
         stream_pair(StreamPair, StreamRead, StreamWrite),
-        assert(env_manager(Host:Port, StreamRead, StreamWrite)),
-        assert(listen_to(StreamRead)),
+        assert(env_manager(Host:Port, StreamPair, InStreamRead, StreamWrite)),
+        set_stream(StreamRead, alias(env_manager)),
+        assert(listen_to(env_manager, [stdin(InStream)])),
         % 4 - Initialize different interfaces
         logging(system(1), "Initializing required interfaces..."),
-        initializeInterfaces,   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
+        initialize_interfaces,   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
         % 6 - Run the main cycle
         logging(system(1), "Starting main cycle"), !,
         main_cycle,
         % 7 - Terminate interfaces
         logging(system(1), "Finalizing domain interfaces..."), !,
-        finalizeInterfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
+        finalize_interfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
         logging(system(1), "Device manager totally finished; about to halt..."),
         close(StreamRead),
         close(StreamWrite),
@@ -139,16 +139,14 @@ break_device :-
 %             Here we wait for the tcl/tk pipe and the env_manager socket
 %
 % listen_to(Type, Id, X) means that X should be checked at every cycle
+main_cycle :- terminate, !.
 main_cycle :-
-        repeat,
-        % Make a set LStreams with all sockets and streams with data
-        findall(Stream, listen_to(Stream), LStreams),
+        findall(Stream, listen_to(Stream, _), LStreams),
         logging(system(3), "Waiting the following streams: ~w", [LStreams]),
-        wait_for_input(LStreams, ReadyList, infinite),
-        % Handle all the streams that have data
+        wait_for_input(LStreams, ReadyStreams, infinite),
         logging(system(3), "Streams ready: ~w", [ReadyStreams]),
-        maplist(handle_streams, ReadyStreams),
-        (terminate -> true ; fail).
+        maplist(handle_stream, ReadyStreams),
+        main_cycle.
 
 % order termination of the device manager
 order_device_termination :- terminate -> true ; assert(terminate).
@@ -206,7 +204,7 @@ handle_stream(env_manager) :-
 % Message is a message that should be printed in the device manager output.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 report_exog_event(A, Message) :- var(Message), !,
-        logging(exogaction, ["Exogenous action ", A, " occurred"]),
+        logging(exogaction, "Exogenous action ~w occurred", [A]),
         send_data_socket(env_manager, [exog_action, A]).
 report_exog_event(A, Message) :-
         logging(exogaction, Message),

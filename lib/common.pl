@@ -222,29 +222,29 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Process Pid exists if it's listed by <ps -f pid>
-proc_exists(Pid):-
-        concat_atom(['ps -f ',Pid], Command),
-        call_to_exec(unix, Command, Command2), % Select right command for exec
-        exec(Command2, [null, streamout]),
-        (read_string(streamout, end_of_line, _, _),
-         read_string(streamout, end_of_line, _, _) ->
-             close(streamout)
-        ;
-             close(streamout),fail).
+% proc_exists(Pid):-
+%         concat_atom(['ps -f ',Pid], Command),
+%         call_to_exec(unix, Command, Command2), % Select right command for exec
+%         exec(Command2, [null, streamout]),
+%         (read_string(streamout, end_of_line, _, _),
+%          read_string(streamout, end_of_line, _, _) ->
+%              close(streamout)
+%         ;
+%              close(streamout),fail).
 
-% Process Pid is finished if it's listed with status Z with <ps -f pid>
-% (SWI does not provide that)
-proc_term(Pid):-
-        concat_atom(['ps -f ',Pid], Command),
-        call_to_exec(unix, Command, Command2), % Select right command for exec
-        exec(Command2,[null, streamout], _),
-        (read_string(streamout, end_of_line, _, _),
-         read_string(streamout, end_of_line, _, S) ->
-             close(streamout),
-             string_to_atom(Z, 'Z'),
-             substring(S, Z, _)
-        ;
-             close(streamout), fail).
+% % Process Pid is finished if it's listed with status Z with <ps -f pid>
+% % (SWI does not provide that)
+% proc_term(Pid):-
+%         concat_atom(['ps -f ',Pid], Command),
+%         call_to_exec(unix, Command, Command2), % Select right command for exec
+%         exec(Command2,[null, streamout], _),
+%         (read_string(streamout, end_of_line, _, _),
+%          read_string(streamout, end_of_line, _, S) ->
+%              close(streamout),
+%              string_to_atom(Z, 'Z'),
+%              substring(S, Z, _)
+%         ;
+%              close(streamout), fail).
 
 % Kill process PID by sending signal 9 (MOST PROLOG'S PROVIDE THIS)
 %proc_kill(Pid):-
@@ -294,19 +294,17 @@ send_data_socket(Socket, Data) :-
         flush(Socket).
 
 % Receive a list of [Env, Data] where Env is the id of the sender
-receive_list_data_socket(Socket, []) :-
-        stream_select([Socket], 0, []), !.      % Wait almost nothing
-receive_list_data_socket(Socket, [Data|L]) :-
-        receive_data_socket(Socket, Data),
+receive_list_data_stream(Socket, [Data|L]) :-
+        receive_list_data_stream(Socket, Data),
         (Data = [_, [_, end_of_file]] ->
              L=[]
         ;
              receive_list_data_socket(Socket, L)
         ).
 
-receive_data_socket(Socket, TData) :-
-         read_term(Socket, TRead, []),
-         decode_data(Socket, TRead, TData).
+receive_data_socket(Stream, TData) :-
+         read_term(Stream, TRead, []),
+         decode_data(Stream, TRead, TData).
 
 % decode_data(Socket, Data, CodifiedData)
 %      Codify Data as as CodifiedData to send via socket S
@@ -381,6 +379,13 @@ catch_call(Goal, Message, Goal2) :-
 	catch(Goal, E, (logging(warning, "~w ---> ~w", [Message, E]), Goal2)).
 
 
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% OTHER TOOLS
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

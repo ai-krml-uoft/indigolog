@@ -31,13 +31,18 @@
 
 % Any port available would be ok for the EM.
 server_host(localhost).  % this is the default anyways...
-server_port(_).
+server_port(8000).
 
 
 % Load simulator, RCX and internet environments
 :- dir(dev_managers, F), consult(F).
 
 load_device(simulator, Address, CMD) :-
+    root_indigolog(Dir),
+    directory_file_path(Dir, 'env/env_sim.pl', File),
+    CMD = path(xterm),
+    Args = ['-e', 'swipl', '-f', File, '--host', Host, '--port', Port].
+
     device_manager(simulator, Address, CMD).
 
 

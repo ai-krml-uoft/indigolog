@@ -78,10 +78,11 @@ build_call(xterm, Host:Port, File, Options, CMD) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % SIMULATOR DEVICE
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(simulator, AddressEM, CMD):-
+device_manager(simulator, Host:Port, CMD, Args):-
     root_indigolog(Dir),
     directory_file_path(Dir, 'env/env_sim.pl', File),
-    build_call(xterm, AddressEM, File, [], CMD).
+    CMD = path(xterm),
+    Args = ['-e', 'swipl', '-f', File, '--host', Host, '--port', Port].
 
 device_manager(simulator_silent, AddressEM, CMD):-
     root_indigolog(Dir),

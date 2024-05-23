@@ -42,10 +42,15 @@ dir(eval_bat, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "eval/eval_bat.pl", F).
 
-
 dir(dev_managers, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "env/dev_managers", F).
+
+dir(exog_tcltk_, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "env/exog.tcl", F).
+
+:- dir(indigolog, F), consult(F).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

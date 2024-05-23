@@ -1,38 +1,24 @@
 #!/usr/bin/env swipl
-/*
-
-        Elevator Simulator Environment
-
+/*      Elevator Simulator Environment
         @author Sebastian Sardina (2003) - ssardina@gmail.com
 
- This files provides a *simulted* environment interface with which
- it is possible to set exogenous events in an asynchronous ways using
- a TCL/TK application, type sensing outcome for actions
+This files provides a *simulated* environment interface with which it is possible to set exogenous events in an asynchronous ways using a TCL/TK application, type sensing outcome for actions
 
-   The interface to enter exogenous events from the keyboard is
-     achieved with a simple TCL/TK program where exogenous action can
-     be typed at any time.
+The interface to enter exogenous events from the keyboard is achieved with a simple TCL/TK program where exogenous action can be typed at any time.
 
 
  This environment is self-contained (automatically it loads the required
   libraries). It should be called as follows:
 
-   eclipse host=<HOST> port=<PORT> -b env_sim.pl -e start
-   pl host=<HOST> port=<PORT> -b env_sim.pl -e start
+  $ swipl config.pl env/env_sim.pl --host=localhost --port=8000 --debug=2
 
- where HOST/PORT is the address of the environment manager socket.
-
-
- This file assumes that the following is defined in env_gen.pl:
+ The generic interface for environment device managers is in env_gen.pl:
 
  -- start/0     : initialization of the environment (called when loaded)
  -- finalize/0  : finalization of the environment (called when exiting)
- -- main_dir/1  : obtain the root IndiGolog directory
  -- report_exog_event(A, M):
                   report exogenous event A with message M to the
                   environment manager
- -- All compatibility libraries depending on the architecture such us:
-    -- compat_swi/compat_ecl compatibility libraries providing:
 
  -- The following two dynamic predicates should be available:
     -- listen_to(Type, Name, Channel)
@@ -69,9 +55,7 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% CONSTANTS TO BE USED
-%
-% name_dev/1 : state the name of the device manager (e.g., simulator, rcx)
+% CONSTANTS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Name of the environment: <SIMULATOR>
@@ -82,68 +66,33 @@ name_dev(simulator).
 % Set verbose debug level
 :- set_option(log_level, 3).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% A - INITIALIZATION AND FINALIZATION OF INTERFACES
-%     initializeInterfaces/1 and finalizeInterfaces/1
-%
-% HERE YOU SHOULD INITIALIZE AND FINALIZE EACH OF THE INTERFACES TO BE USED
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-initializeInterfaces(_) :- initializeExog(tcltk).
-finalizeInterfaces(_)   :- finalizeExog(tcltk).
+/* A - INITIALIZATION AND FINALIZATION OF INTERFACES
 
+TCL/TK EXOGENOUS ACTIONS  GENERATOR - from keyboard via Tcl/Tk interface
 
+This part implements a keyboard interface to enter exogenous events in an asynchronous manner.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% TCL/TK EXOGENOUS ACTIONS  GENERATOR - from keyboard via Tcl/Tk interface
-%
-% This part implements a keyboard interface to enter exogenous events
-% in an asynchronous manner.
-%
-% If an exogenous event arrives via the keyboard, it is handled as soon
-% as possible by calling handle_event/1
-%
-% -- initializeExog(virtual):
-%                    perform any initialization of other sources of
-%                    exogenous actions that is required
-% -- finalizeExog(virtual):
-%                    things to do for other sources of exogenous actions
-%                    at end of program
-% -- checkOtherExog(virtual,-ExogList):
-%                    check whether a request has been entered via keyboard
-%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+An TCL/TK independent process is initiated to read exogenous events the program exog.tcl writes each exogenous action entered to a special pipe. At that time, a sigio signal is assigned to such pipe so that whenever data arrives to the pipe an interrupt is triggered which can be cached by the main cycle to handle thestart exog action entered.
+*/
+initialize_interfaces :- initialize_exog(tcltk).
+initialize_interfaces :- finalize_exog(tcltk).
 
-% initializeExog(tcltk): initialization for sources of exogenous actions from
-%                        virtual interface
-%
-% An TCL/TK independent process is initiated to read exogenous events
-%  the program exog.tcl writes each exogenous action entered to a special pipe.
-% At that time, a sigio signal is assigned to such pipe so that whenever data
-% arrives to the pipe an interrupt is triggered which can be cached
-%  by the main cycle to handle thestart exog action entered.
-tcltk_exog_file(File):- main_dir(Dir),
-                        concat_atom([Dir,'Env/exog.tcl'], File).
-
-initializeExog(tcltk) :-
+initialize_exog(tcltk) :-
         printKbInstructions,
-	        % Run the command as a child and send its *output* to pipe "tcltk"
-        tcltk_exog_file(File),
-        concat_atom(['wish ', File], Command),
-	call_to_exec(unix, Command, Command2),
-        exec_group(Command2, [null, tcltk, null], P),
+        dir(exog_tcltk_, TclFile),
+        % Run the TCLK window as a child and send its *output* to pipe "tcltk"
+        process_create(path(wish), [TclFile], [stdout(pipe(OutStream)), process(PID)]),
+        set_stream(OutStream, alias(tcltk)),
         sleep(2),    % Give time to TCL/TK program to appear
-        assert(exog_proc(P)),     % Store child pid for later
-        assert(listen_to(stream, tcltk, tcltk)).  % listen to tcltk
-
-% finalizeExog: Things to do for sources of exogenous actions from the
-%               virtual interface
-finalizeExog(tcltk) :-
-	listen_to(stream, tcltk, tcltk), !,	% tcltk is still open
-        report_message(system(1), 'Closing Tcl/Tk interface.'),
-        retract(listen_to(stream, tcltk, tcltk)),	% de-register interface
-        retract(exog_proc(P)),
-        (proc_kill(P) -> true ; true).
-finalizeExog(tcltk).	% It was already down
+        assert(exog_proc(PID)),
+        assert(listen_to(tcltk, [read(OutStream), pid(PID)])).  % listen to tcltk
+finalize_exog(tcltk) :-
+	listen_to(tcltk, L), % tcltk is still open
+        logging(system(1), 'Closing TCL-TK interface.'),
+        close(tcltk),
+        member(pid(PID), L),
+        process_kill(PID).
+finalize_exog(tcltk).	% It was already down
 
 % printKbInstructions: Print instructions on how to enter keyboard input
 printKbInstructions :-
@@ -166,11 +115,10 @@ printKbInstructions :-
 
 % Handle tcl/tk stream: called when there is data comming from the tcl/tk app
 handle_stream(tcltk) :-
-        read(tcltk, A),
-        (A=end_of_file ->
-             true          % Tcl/Tk finished
-        ;
-             report_exog_event(A, ['Exogenous action *',A,'* received from TCL/TK'])
+        read(tcltk, T),
+        (       T = end_of_file
+        ->      true          % Tcl/Tk finished
+        ;       report_exog_event(A, ['Exogenous action *', A, '* received from TCL/TK'])
         ).
 
 
@@ -185,12 +133,12 @@ handle_stream(tcltk) :-
 % SensingResult is the sensing outcome of Action
 execute(Action, T, _, Sensing) :-
 	member(T, [sensing, simsenstartsing]), !,
-        report_message(action, ['Executing sensing action: *',Action,'*']),
+        logging(action, ['Executing sensing action: *',Action,'*']),
         write('    ------------> Enter Sensing value, terminate with ".": '),
         read(Sensing), nl.
 
 execute(Action, _, _, ok) :-
-        report_message(action, ['Executing non-sensing action: *',Action,'*']).
+        logging(action, ['Executing non-sensing action: *',Action,'*']).
 
 
 
@@ -206,7 +154,7 @@ my_system_error_handler(E, Goal) :-
             call(Goal)
         ;
             errno_id(M),
-            report_message(error, M),
+            logging(error, M),
             read(_),
             error(default(E), Goal)
         ).
@@ -263,8 +211,8 @@ edit_file_dialog :-
         send(D, open).
 
 
-reportTea(E) :- report_message(action, ['Executing non-sensing action: *',E,'*']).
-terminateTea :- report_message(action, terminate).
+reportTea(E) :- logging(action, ['Executing non-sensing action: *',E,'*']).
+terminateTea :- logging(action, terminate).
 
 
 
