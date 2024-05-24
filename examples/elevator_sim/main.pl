@@ -16,6 +16,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % (2,3) CONSULT NECESSARY FILES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+:- ['../../config.pl'].
+
 
 % Consult the top-level interpreter, environent manager and projector
 :- dir(indigolog, F), consult(F).
@@ -37,13 +39,15 @@ server_port(8000).
 % Load simulator, RCX and internet environments
 :- dir(dev_managers, F), consult(F).
 
-load_device(simulator, Address, CMD) :-
+load_devices([simulator]).
+
+% start env_sim.pl tcl/tk interaction interface
+load_device(simulator, Host:Port, [pid(PID)]) :-
     root_indigolog(Dir),
     directory_file_path(Dir, 'env/env_sim.pl', File),
-    CMD = path(xterm),
-    Args = ['-e', 'swipl', '-f', File, '--host', Host, '--port', Port].
-
-    device_manager(simulator, Address, CMD).
+    ARGS = ['-e', 'swipl', File, '-t', 'start', '--host', Host, '--port', Port],
+    logging(system(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
+    process_create(path(xterm), ARGS, [process(PID)]).
 
 
 

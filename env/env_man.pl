@@ -87,11 +87,11 @@ initialize(env_manager) :-
 	tcp_open_socket(Socket, StreamPair),
 	assert(em_socket(Socket, Address, StreamPair)),
 	logging(system(1, em), "3 - Loading required devices..."),
-    findall(X, load_device(X, Address, _), LEnv),
-	logging(system(2, em), "\tDevices to load: ~w", [LEnv]),
-    length(LEnv, N),
+    load_devices(LDevices),
+	logging(system(2, em), "\tDevices to load: ~w", [LDevices]),
+    length(LDevices, N),
     tcp_listen(Socket, N),
-    maplist(start_dev, LEnv), !, % Start each of the devices used (LEnv)
+    maplist(start_dev, LDevices), !, % Start each of the devices used
     logging(system(2, em), "4 - Start EM cycle..."),
 	start_env_cycle.   % Start the env. manager main cycle
 
@@ -280,28 +280,19 @@ handle_event(Data):-                         % The event is completely unknown
 %  env_data/3 stores the Pid and Address of each device started
 start_dev(Env) :-
 	em_socket(SocketEM, AddressEM, _),
-	load_device(Env, AddressEM, CMD, ARGS),	% provided by application
-	logging(system(5, em), "Command to initialize device ~w: ~w", [Env, CMD]),
-	process_create(CMD, ARGS, [stdout(pipe(OutStream)), stdin(pipe(InStream)), process(PID)]),
-	set_stream(OutStream, alias(Env)),
-
-	exec_group(sh('-c', CMD), [], Pid),
+	load_device(Env, AddressEM, InfoEnv),	% PROVIDED BY APPLICATION!
 	tcp_accept(SocketEM, SocketFrom, IP), 	% Wait until the device connects...
-	tcp_open_socket(SocketFrom, StreamPair),
+	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
 	logging(system(1, em), "Device ~w initialized at ~w", [Env, IP]),
-	assert(dev_data(Env, Pid, SocketFrom, StreamPair)).
+	assert(dev_data(Env, [socket(SocketFrom), stream(StreamPair)|InfoEnv])).
 
 % Tell each device to terminate
-close_dev(Env) :- send_data_socket(Env, [terminate]).
+close_dev(Env) :-
+	dev_stream(Env, S),
+	write(S, [terminate]).
 
 
-dev_data(Env, pid, Pid) :- dev_data(Env, Pid, _, _).
-dev_data(Env, socket, Socket) :- dev_data(Env, _, Socket, _).
-dev_data(Env, stream_in, InStream) :-
-		dev_data(Env, _, _, StreamPair), stream_pair(StreamPair, InStream, _).
-dev_data(Env, stream_out, OutStream) :-
-		dev_data(Env, _, _, StreamPair), stream_pair(StreamPair, _, OutStream).
-
+dev_stream(Env, Stream) :- dev_data(Env, L), member(stream(Stream), L).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

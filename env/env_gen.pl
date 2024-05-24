@@ -49,7 +49,6 @@
   -- handle_steam/1             : as needed
   -- listen_to/3                : as needed
 */
-
 % :- initialization(start, main).
 
 :- dynamic terminate/0,    % To signal when the environment should quit
@@ -66,7 +65,7 @@ opts_spec(env_gen,
                 help('Debug level')]], []).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% CONSTANTS and main_dir/1 definintion
+% CONSTANTS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 wait_until_close(5). % how many seconds to wait until closing the device manager
@@ -94,32 +93,28 @@ start2 :-
         name_dev(EnvId),
         logging(system(1), "Initializing environment ~w", [EnvId]),
         % 1 - Set debug level
-        cli_args(debug, DebugLevel),
+        (cli_args(debug, DebugLevel) -> true ; DebugLevel = 10),
         set_option(log_level, DebugLevel),
         logging(system(1), "Set log level to ~d", [DebugLevel]),
         % 2 - Obtain Host and Port number of env. manager from command
         logging(system(1), "Setting socket connection with EM"),
         cli_args(host, Host),
         cli_args(port, Port),
-        assert(env_manager(Host, Port)),
         sleep(3),  % Give time to EM to wait for us
-        catch_call(tcp_connect(Host:Port, StreamPair, []), "Cannot connect to EM", fail),
-        stream_pair(StreamPair, StreamRead, StreamWrite),
-        assert(env_manager(Host:Port, StreamPair, InStreamRead, StreamWrite)),
-        set_stream(StreamRead, alias(env_manager)),
-        assert(listen_to(env_manager, [stdin(InStream)])),
-        % 4 - Initialize different interfaces
+        tcp_connect(Host:Port, StreamPair, []),
+        assert(env_manager(Host:Port, StreamPair)),
+        assert(listen_to(env_manager, StreamPair)),
+        % 3 - Initialize different interfaces
         logging(system(1), "Initializing required interfaces..."),
         initialize_interfaces,   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-        % 6 - Run the main cycle
+        % 4 - Run the main cycle
         logging(system(1), "Starting main cycle"), !,
         main_cycle,
-        % 7 - Terminate interfaces
+        % 5 - Terminate interfaces
         logging(system(1), "Finalizing domain interfaces..."), !,
         finalize_interfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
         logging(system(1), "Device manager totally finished; about to halt..."),
-        close(StreamRead),
-        close(StreamWrite),
+        close(StreamPair),
         halt_device.
 
 halt_device :-

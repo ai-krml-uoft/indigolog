@@ -62,32 +62,6 @@
 :- discontiguous device_manager/4.
 
 
-% build_call(ID, Host:Port, File, Options, CMD)
-% 	Build the command CMD to load SWI File manager connecting to EM at Host:Port
-build_call(xterm, Host:Port, File, Options, CMD) :-
-    executable_path(swi, Bin1),
-    atomic_list_concat([Bin1, ' -f ', File, ' -t ', ' start', 
-        ' host=', Host, ' port=', Port, ' ' | Options], CMD1),
-    (member(silent, Options) ->
-        CMD = [CMD1, ' 1>debug.txt 2>debug.txt']
-        ;
-        (executable_path(xterm, Bin2), concat_atom([Bin2, ' -e ', CMD1], CMD))
-    ).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SIMULATOR DEVICE
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-device_manager(simulator, Host:Port, CMD, Args):-
-    root_indigolog(Dir),
-    directory_file_path(Dir, 'env/env_sim.pl', File),
-    CMD = path(xterm),
-    Args = ['-e', 'swipl', '-f', File, '--host', Host, '--port', Port].
-
-device_manager(simulator_silent, AddressEM, CMD):-
-    root_indigolog(Dir),
-    directory_file_path(Dir, 'env/env_sim.pl', File),
-    build_call(xterm, AddressEM, File, [silent], CMD).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
