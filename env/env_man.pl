@@ -1,53 +1,49 @@
 /*  Environment Manager for the IndiGolog interpreter
 
-	@author Sebastian Sardina 2004 - ssardina@gmail.com
+    @author Sebastian Sardina 2004 - ssardina@gmail.com
 
-	This code coordinates the exchanges among the various device managers and the main IndiGolog interpreter. It is responsible for the execution of actions and the handling of sensing outcomes and exogenous actions. It does so via TCP/IP sockets.
+ This code coordinates the exchanges among the various device managers
+ and the main IndiGolog interpreter. It is responsible for the execution
+ of actions and the handling of sensing outcomes and exogenous actions.
+ It does so via TCP/IP sockets.
 
 
-	This file needs to be consulted in the context of an IndiGolog configuration file:
+ This file needs to be consulted in the context of an IndiGolog
+ configuration file:
 
-		$ swipl config.pl examples/elevator_sim/main.pl env/env_man.pl
+    $ swipl config.pl examples/elevator_sim/main.pl env/env_man.pl
 
  The following system independent predicates are provided:
 
- -- initialize_EnvManager
- -- finalize_EnvManager
- -- execute_action(A, H, T, S) : execute action A of type T at history H
-                                 and resturn sensing outcome S
- -- exog_occurs(LA)		: return a list LA of exog. actions that
-				  have occurred (synchronous)
- -- indi_exog(Action)          : asserted whenever exog Action occurred
- -- set_type_manager(+T)       : set the implementation type of the env manager
+ -- initialize_EnvManager -- finalize_EnvManager -- execute_action(A, H,
+ T, S) : execute action A of type T at history H and resturn sensing
+ outcome S -- exog_occurs(LA)     : return a list LA of exog. actions
+ that have occurred (synchronous) -- indi_exog(Action)          :
+ asserted whenever exog Action occurred -- set_type_manager(+T)       :
+ set the implementation type of the env manager
 
 
  The following code is required:
 
  FROM THE INDIGOLOG MAIN CYCLE:
 
- -- doing_step : IndiGolog is thinking a step
- -- abortStep  : abort the computation of the current step
- -- exog_action_occurred(LExoAction)
-               : to report a list of exog. actions LExogAction to the top-level
+ -- doing_step : IndiGolog is thinking a step -- abortStep  : abort the
+ computation of the current step -- exog_action_occurred(LExoAction) : to
+ report a list of exog. actions LExogAction to the top-level
 
  FROM THE DOMAIN DESCRIPTOR:
 
- -- server_port(Port)
-	Port to set up the environment manager
- -- load_device(Env, Command, Options)
-     	for each environemnt to be loaded
- -- how_to_execute(Action, Env, Code)
-       Action should be executed in environment Env with using code Code
- -- translateExogAction(Code, Action)
-	Code is action Action
- -- exog_action(Action)
-	Action is an exogenous action
+ -- server_port(Port) Port to set up the environment manager --
+    load_device(Env, Command, Options) for each environemnt to be loaded
+    -- how_to_execute(Action, Env, Code) Action should be executed in
+    environment Env with using code Code -- translateExogAction(Code,
+    Action) Code is action Action -- exog_action(Action) Action is an
+    exogenous action
 
  ELSEWHERE:
 
- -- logging(T, M)       : report messsage M of type T
- -- send_data_socket/2
- -- receive_list_data_socket/2
+ -- logging(T, M)       : report messsage M of type T --
+ send_data_socket/2 -- receive_list_data_socket/2
 */
 :- dynamic
 	got_sensing/2,      % stores sensing outcome for executed actions
@@ -57,90 +53,138 @@
 	executing_action/3, % Stores the current action being executed
 	translateExogAction/2,
 	translateSensing/3, % Translates sensing outcome to high-level sensing
-	how_to_execute/3,   % Defines how to execute each high-level action
-	server_port/1,
-	server_host/1.	    % Host and port for the environment manager
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% CONSTANTS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	how_to_execute/3.   % Defines how to execute each high-level action
 
 name_env(manager).   % We are the "environment manager"
 counter_actions(0).  % Counter for (executed) actions
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% INITIALIZATION AND FINALIZATION PART
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/* A - INITIALIZATION OF DEVICES
 
-% A - Initialize environment manager
+ 1. Create a TCP socket for the Environment Manager (EM) (saved in
+    em_address/1)
+ 2. Store EM socket info (including pair stream) in em_data/3
+ 2. Start each application device (via load_devices/1 and load_device/3)
+ 3. Start the main cycle of the EM (start_env_cycle)
+
+ When each device is started, we wait for them to connect to the EM and
+ store its information, including the stream to send/receive data from
+ it, in predicate dev_data/2.
+*/
+
 initialize(env_manager) :-
-	logging(system(2, em), "1 - Resetting the number of actions..."),
 	retractall(counter_actions(_)),
 	assert(counter_actions(0)),
-	logging(system(1, em), "2 - Openinig EM server socket..."),
+	load_devices(LDevices),	% get devices to load and how many
+    length(LDevices, NoDevices),
+	logging(system(1, em), "Openinig EM server socket..."),
 	tcp_socket(Socket),
-    server_port(Port),
-	(server_host(Host) ; Host = localhost),
+    em_address(Host, Port),
 	Address = Host:Port,
 	tcp_bind(Socket, Address),
-	tcp_open_socket(Socket, StreamPair),
-	assert(em_socket(Socket, Address, StreamPair)),
-	logging(system(1, em), "3 - Loading required devices..."),
-    load_devices(LDevices),
-	logging(system(2, em), "\tDevices to load: ~w", [LDevices]),
-    length(LDevices, N),
-    tcp_listen(Socket, N),
+    tcp_listen(Socket, NoDevices),
+	tcp_open_socket(Socket, StreamPair),	% stream use for tcp_accept/3
+	assert(em_data(Socket, Address, StreamPair)),
+	logging(system(2, em), "Loading the following devices: ~w", [LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
     logging(system(2, em), "4 - Start EM cycle..."),
 	start_env_cycle.   % Start the env. manager main cycle
 
+/* Start device manager environment E
 
-% The finalization of the EM involves:
-%	1 - Close all the open device managers
-%	2 - Terminate EM cycle
-%	3 - Close EM server socket em_socket
-%	4 - Report the number of actions that were executed
+   The device manager should be loaded with load_device/3 provided by aplication
+   and the information about the device should be stored with dev_data/2.
+
+	A stream pair will be used to send and receive data from the device manager.
+*/
+start_dev(E) :-
+	em_data(SocketEM, AddressEM, _),
+	load_device(E, AddressEM, InfoEnv),	% PROVIDED BY APPLICATION!
+	tcp_accept(SocketEM, SocketFrom, IP), 		% Wait until the device connects...
+	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
+	logging(system(1, em), "Device ~w initialized at ~w", [E, IP]),
+	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])).
+
+% get the stream pair of the device
+dev_stream(Env, Stream) :- dev_data(Env, L), member(stream(Stream), L).
+
+
+/* A - FINALIZATION OF DEVICES
+
+	1 - Close all the open device managers
+	2 - Terminate EM cycle
+	3 - Close EM server socket em_socket
+	4 - Report the number of actions that were executed
+*/
 finalize(env_manager) :-
 	logging(system(2, em), "1 - Closing all device managers..."),
-    findall(Dev, dev_data(Dev, _, _, _), LDev), % Get all current open devices
+    findall(Dev, dev_data(Dev, _), LDev), % Get all current open devices
 	maplist(close_dev, LDev), 	% Close all the devices found
-	sleep(3), !, 			% Wait to give time to devices to finish cleanly
+	sleep(3), !, 				% Wait to give time to devices to finish cleanly
 	logging(system(2, em), "2 - Terminating EM cycle..."),
+	em_data(_, _, StreamPair),
+	close(StreamPair),
 	catch(wait_for_children, _, true), !,
 	logging(system(2, em), "3 - Closing EM server socket..."),
-    safe_close(em_socket), 		% Disconnect server socket
-	logging(system(2, em), "4 - All finished..."),
+    close(StreamPair), 		% Disconnect server socket
     counter_actions(N),
     logging(system(1, em), "EM completed with *~d* executed actions", [N]).
 
-
+% keep waiting for all children to finish
+% https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
+% TODO: maybe send to each env a "exit" and wait for it to finish?
 wait_for_children :- wait(PId, S), !,
-	(ground(S) -> true ; S=free),
 	logging(system(3, em), "Successful proccess waiting: (~w, ~w)", [PId, S]),
 	wait_for_children.
 wait_for_children.
 
-% Close a stream and always succeed
-safe_close(StreamId) :-
-        catch_succ(myclose(StreamId), ["Could not close socket ", StreamId]).
-myclose(Id) :- close(Id).
+% Tell each device to terminate
+close_dev(Env) :-
+	dev_stream(Env, S),
+	write(S, [terminate]).
 
 
 
-% B - Initialization and Finalization of the environment manager main cycle
-%		start_env_cycle/0  : starts EM cycle
-%		finish_env_cycle/0 : terminates EM cycle
-%       The EM cycle basically waits for data arriving to any of the open
-%       connections to the device managers. When it receives a message
-%	(e.g., sensing outcome, exog. action, closing message) it hanldes it.
 
-% B.1 THREAD IMPLEMENTATION (multithreading Prologs like SWI)
-%	 There is a separated thread to handle incoming data. The thread
-%	 should BLOCK waiting for data to arrive
+/*
+ We start a thread on em_cycle/1 that waits for data arriving to any of
+ the open connections to the device managers. When it receives a message
+ (e.g., sensing outcome, exog. action, closing message) it hanldes it.
+*/
 start_env_cycle :-
-	thread_create(catch(em_cycle_thread, E, log_thread(start_env_cycle, E)), em_thread, [alias(em_thread)]).
-finish_env_cycle :-
+	thread_create(catch(em_cycle, E,
+			(	E = finish
+			->	logging(system(2, em), "EM cycle finished successfully")
+			;	logging(error(em)
+			), "EM thread Error: ~w", [E])), em_thread, [alias(em_thread)]).
+
+em_cycle :-
+	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
+		% Get all the read-streams of the environments sockets
+	findall(Dev, dev_data(Dev, stream_in, StreamIn), LDev),
+		% Check which of these streams have data waiting, i.e., the "ready" ones
+	logging(system(5, em), "Blocking on environments: ~w", [LDev]),
+	setof(StreamIn, X^dev_data(X, stream_in, StreamIn), LStreamIn),
+	wait_for_input(LStreamIn, LStreamInReady, infinite),   !, % BLOCK!
+		% Get back the name of the environments of these "ready" streams
+	setof(Dev, S^(member(S, LStreamInReady), dev_data(Dev, stream_in, S)), LDevReady),
+	logging(system(5, em), "Handling messages in devices:: ~w", [LDevReady]),
+		% Next, read all the events waiting from these devices
+	maplist(get_events_from_env, LDevReady, LLEvents), !,
+	flatten(LLEvents, LEvents),  % Flatten the list of lists of events
+		% Finally, handle all these events
+	handle_levents(LEvents), !,
+	em_cycle.
+em_cycle :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
+
+% Collecte data pending in ready environments
+get_events_from_env(Env, [Term]) :-
+	dev_data(Env, stream, Stream),
+	read(Stream, Term), !.
+	% receive_list_data_stream(StreamIn, LEvents).
+
+
+end_env_cycle :-
 	(	current_thread(em_thread, running)
 	-> 	thread_signal(em_thread, throw(finish)) % Signal thread to finish!
 	;	true % Already finished (because all devices were closed)
@@ -148,41 +192,7 @@ finish_env_cycle :-
 	thread_join(em_thread, _),
 	logging(system(3, em), "Environment cycle (thread) finished").
 
-log_thread(start_env_cycle, finish) :- logging(system(2, em), "EM cycle finished successfully"), !.
-log_thread(start_env_cycle, E) :-	logging(error(em), "EM thread Error: ~w", [E]).
 
-em_cycle_thread :- em_one_cycle(infinite), !, em_cycle_thread.
-em_cycle_thread :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
-
-
-
-% C - em_one_cycle/1 : THIS IS THE MOST IMPORTANT PREDICATE FOR THE EM CYCLE
-%
-% 	em_one_cycle(HowToWait) does 1 iteration of the waiting cycle and
-%	waits WaitTimeOut (seconds) for incoming data from the devices
-% 	If WaitTimeOut=block then it will BLOCK waiting... (good for threads)
-em_one_cycle(WaitTimeOut) :-
-	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
-	% Get all the read-streams of the environments sockets
-	findall(Dev, dev_data(Dev, stream_in, StreamIn), LDev),
-	% Check which of these streams have data waiting, i.e., the "ready" ones
-	logging(system(5, em), "Blocking on environments: ~w", [LDev]),
-	setof(StreamIn, X^dev_data(X, stream_in, StreamIn), LStreamIn),
-	wait_for_input(LStreamIn, LStreamInReady, WaitTimeOut),   !, % BLOCK or wait?
-	% Get back the name of the environments of these "ready" streams
-	setof(Dev, S^(member(S, LStreamInReady), dev_data(Dev, stream_in, S)), LDevReady),
-	logging(system(5, em), "Handling messages in devices:: ~w", [LDevReady]),
-	% Next, read all the events waiting from these devices
-	maplist(get_events_from_env, LDevReady, LLEvents),
-	flatten(LLEvents, LEvents), % Flatten the list of lists of events
-	% Finally, handle all these events
-	handle_levents(LEvents).
-
-% Given a list of devices that have information on their sockets
-% collect all the data from them
-get_events_from_env(Env, LEvents) :-
-	dev_data(Env, stream_in, StreamIn),
-	receive_list_data_stream(StreamIn, LEvents).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -265,34 +275,6 @@ handle_event([Sender, [Type, Message]]):- !, % The event is unknown but with for
 handle_event(Data):-                         % The event is completely unknown
         logging(system(5), ["(EM) UNKNOWN and UNSTRUCTURED MESSAGE!:: ", Data]).
 
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% START AND CLOSE DEVICE MANAGERS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% start_dev(LEnv, Address) : starts a list of device managers
-%
-%  each device is started in a separate xterm window. We pass the
-%  Address so that the device knows where to send its data
-%  Also we receive from the device its address to know where to
-%  send data to it.
-%  env_data/3 stores the Pid and Address of each device started
-start_dev(Env) :-
-	em_socket(SocketEM, AddressEM, _),
-	load_device(Env, AddressEM, InfoEnv),	% PROVIDED BY APPLICATION!
-	tcp_accept(SocketEM, SocketFrom, IP), 	% Wait until the device connects...
-	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
-	logging(system(1, em), "Device ~w initialized at ~w", [Env, IP]),
-	assert(dev_data(Env, [socket(SocketFrom), stream(StreamPair)|InfoEnv])).
-
-% Tell each device to terminate
-close_dev(Env) :-
-	dev_stream(Env, S),
-	write(S, [terminate]).
-
-
-dev_stream(Env, Stream) :- dev_data(Env, L), member(stream(Stream), L).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

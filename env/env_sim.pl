@@ -1,4 +1,4 @@
-#!/usr/bin/env swipl
+% #!/usr/bin/env swipl
 /*      Elevator Simulator Environment
         @author Sebastian Sardina (2003) - ssardina@gmail.com
 
@@ -47,10 +47,10 @@ The interface to enter exogenous events from the keyboard is achieved with a sim
     -- wish for running TCL/TK applications
     -- exog.tcl TCL/TK script
 */
-
-
 :- include(env_gen).      % INCLUDE THE CORE OF THE DEVICE MANAGER
-:- ['../lib/common.pl'] .	% Load system library
+
+:- ['../config.pl'].	% Load system library
+:- ['../lib/common.pl'].	% Load system library
 :- use_module('../lib/utils.pl').
 
 
@@ -66,6 +66,8 @@ name_dev(simulator).
 % Set verbose debug level
 :- set_option(log_level, 3).
 
+
+
 /* A - INITIALIZATION AND FINALIZATION OF INTERFACES
 
 TCL/TK EXOGENOUS ACTIONS  GENERATOR - from keyboard via Tcl/Tk interface
@@ -74,16 +76,17 @@ This part implements a keyboard interface to enter exogenous events in an asynch
 
 An TCL/TK independent process is initiated to read exogenous events the program exog.tcl writes each exogenous action entered to a special pipe. At that time, a sigio signal is assigned to such pipe so that whenever data arrives to the pipe an interrupt is triggered which can be cached by the main cycle to handle thestart exog action entered.
 */
-initialize_interfaces :- initialize_exog(tcltk).
-initialize_interfaces :- finalize_exog(tcltk).
+initialize_interfaces :- initialize_exog(tcltk), !.
+
+finalize_interfaces :- finalize_exog(tcltk).
 
 initialize_exog(tcltk) :-
         printKbInstructions,
         dir(exog_tcltk_, TclFile),
-        % Run the TCLK window as a child and send its *output* to pipe "tcltk"
+        % run the TCLK window as a child and send its *output* to pipe "tcltk"
         process_create(path(wish), [TclFile], [stdout(pipe(OutStream)), process(PID)]),
         set_stream(OutStream, alias(tcltk)),
-        sleep(2),    % Give time to TCL/TK program to appear
+        sleep(2),    % give time to TCL/TK program to appear
         assert(exog_proc(PID)),
         assert(listen_to(tcltk, [read(OutStream), pid(PID)])).  % listen to tcltk
 finalize_exog(tcltk) :-
@@ -92,7 +95,7 @@ finalize_exog(tcltk) :-
         close(tcltk),
         member(pid(PID), L),
         process_kill(PID).
-finalize_exog(tcltk).	% It was already down
+finalize_exog(tcltk).	% already down
 
 % printKbInstructions: Print instructions on how to enter keyboard input
 printKbInstructions :-

@@ -1,43 +1,48 @@
+/*  Elevator Simulator Application MAIN file
+    @author Sebastian Sardina - ssardina@gmail.com
+
+    This file is the main file for the elevator simulator application. It loads the necessary files and starts the application.
+
+    The application is a simple elevator simulator that is controlled by an IndiGolog program. A TCL/TK interface can be used to issue exogenous events/actions.
+
+    To run applciation:
+
+    $ swipl examples/elevator_sim/main.pl
+*/
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% SET GLOBAL PARAMETERS AND GLOBAL VARIABLES/CONSTANTS USED
+% CONSULT INDIGOLOG FRAMEWORK
 %
-%  These may be options to improve performance and variables/constants used
-%  around the whole arquitecture
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- dynamic controller/1.	% Stores the user decision on the controller to run
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (1) LOAD/COMPILE/IMPORT LIBRARIES, MODULES, ETC that may be required.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%:- reset_backquoted_string.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (2,3) CONSULT NECESSARY FILES
+%    Configuration files
+%    Interpreter
+%    Environment manager
+%    Evaluation engine/Projector
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- ['../../config.pl'].
 
-
-% Consult the top-level interpreter, environent manager and projector
 :- dir(indigolog, F), consult(F).
 :- dir(env_manager, F), consult(F).
 :- dir(eval_bat, F), consult(F).
 
-% Consult application
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% CONSULT APPLICATION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 :- [elevator].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (4,5) ENVIRONMENTS TO LOAD
+% SPECIFY ADDRESS OF ENVIRONMENT MANAGER
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Any port available would be ok for the EM.
-server_host(localhost).  % this is the default anyways...
-server_port(8000).
+em_address(localhost, 8000).
 
 
-% Load simulator, RCX and internet environments
-:- dir(dev_managers, F), consult(F).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% ENVIRONMENTS/DEVICES TO LOAD
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 load_devices([simulator]).
 
@@ -45,7 +50,7 @@ load_devices([simulator]).
 load_device(simulator, Host:Port, [pid(PID)]) :-
     root_indigolog(Dir),
     directory_file_path(Dir, 'env/env_sim.pl', File),
-    ARGS = ['-e', 'swipl', File, '-t', 'start', '--host', Host, '--port', Port],
+    ARGS = ['-e', 'swipl', '-t', 'start', File, '--host', Host, '--port', Port],
     logging(system(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
     process_create(path(xterm), ARGS, [process(PID)]).
 
@@ -58,15 +63,17 @@ load_device(simulator, Host:Port, [pid(PID)]) :-
 how_to_execute(Action, simulator, Action).
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION
+%
 %          translateExogAction(Code, Action)
 %          translateSensing(Action, Outcome, Value)
+%
 % OBS: If not present, then the translation is 1-1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 translateExogAction(CodeAction, Action) :- actionNum(Action, CodeAction).
 translateSensing(_, SensorValue, SensorValue).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MAIN PREDICATE - evaluate this to run demo

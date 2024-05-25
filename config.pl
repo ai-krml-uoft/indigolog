@@ -1,10 +1,9 @@
-/*
-	IndiGolog configuration file
+/* 	IndiGolog configuration file
 
 	This file contains various wide-system configuration variables and options
 	such as location of files/modules, libraries, constants, etc.
 
-	@author ssardina - 2002-2024
+	@author ssardina 2002-2024 - ssardina@cs.toronto.edu
 */
 
 % asserts root_indigolog/1 with the path to the IndiGolog root folder
@@ -61,5 +60,11 @@ executable_path(eclipse, '/opt/bin/eclipse-pl').  % if available
 executable_path(tcltk, '/usr/bin/wish').
 executable_path(xterm, '/usr/bin/xterm').
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
