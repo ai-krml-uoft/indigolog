@@ -45,6 +45,8 @@
  -- logging(T, M)       : report messsage M of type T --
  send_data_socket/2 -- receive_list_data_socket/2
 */
+:- ensure_loaded('../lib/utils.pl').
+
 :- dynamic
 	got_sensing/2,      % stores sensing outcome for executed actions
 	got_exogenous/1,    % stores occurred exogenous actions
@@ -108,7 +110,7 @@ start_dev(E) :-
 	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])),
 	add_stream_to_pool(StreamPair, handle_device(E)).	% register to listen to this stream
 
-
+dev_stream(E, Stream) :- dev_data(E, L), member(stream(Stream), L).
 
 /* A - FINALIZATION OF DEVICES
 
@@ -153,8 +155,10 @@ close_dev(Env) :-
  the open connections to the device managers. When it receives a message
  (e.g., sensing outcome, exog. action, closing message) it hanldes it.
 */
+
 % this can be used for debugging the EM
-start_env_cycle :- stream_pool_main_loop, !.
+% start_env_cycle :- stream_pool_main_loop, !.
+
 start_env_cycle :-
 	thread_create(catch(stream_pool_main_loop, E,
 			(logging(system(2, em), "EM cycle received exception to finish: ~w", [E]),
@@ -167,30 +171,6 @@ end_env_cycle :-
 	),
 	thread_join(em_thread, _),
 	logging(system(1, em), "EM cycle (thread) finished").
-
-
-
-% start_env_cycle :-
-% 	thread_create(catch(em_cycle, E,
-% 			(	E = finish
-% 			->	logging(system(2, em), "EM cycle finished successfully")
-% 			;	logging(error(em)
-% 			), "EM thread Error: ~w", [E])), em_thread, [alias(em_thread)]).
-
-% em_cycle :-
-% 	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
-% 		% Get all the read-streams of the environments sockets
-% 	findall(Dev, dev_data(Dev, _), LDevices),
-% 		% Check which of these streams have data waiting, i.e., the "ready" ones
-% 	logging(system(5, em), "Blocking on environments: ~w", [LDevices]),
-% 	trace,
-% 	wait_for_input(LDevices, LDevicesReady, infinite),   !, % BLOCK!
-% 		% Get back the name of the environments of these "ready" streams
-% 	logging(system(5, em), "Handling messages in device(s): ~w", [LDevicesReady]), !,
-% 		% Next, read all the events waiting from these devices
-% 	maplist(handle_device, LDevicesReady), !,
-% 	em_cycle.
-% em_cycle :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
 
 % Collect data pending in ready environments
 handle_device(Device) :-
@@ -303,25 +283,25 @@ handle_event(Data):-                         % The event is completely unknown
 execute_action(Action, H, Type, N2, Outcome) :-
 		% Increment action counter by 1 and store action information
 	retract(counter_actions(N)),
-	N2 is N+1,
+	N2 is N + 1,
 	assert(counter_actions(N2)), 	% Update action counter
 	assert(executing_action(N2, Action, H)), % Store new action to execute
 		% Learn how Action should be executed (Env, Code of action)
 	map_execution(Action, Env, Code),   % From domain spec
 		% Send "execute" message to corresponding device
-	logging(system(2),
-		["(EM) Start to execute the following action: ", (N2, Action, Env, Code)]),
-	dev_data(Env, _, SocketEnv),
-	send_data_socket(SocketEnv, [execute, N2, Type, Code]),
-	logging(system(3),
-		["(EM) Action ", N2, " sent to device ", Env, " - Waiting for sensing outcome to arrive"]), !,
+	logging(system(2, em),
+		"Start to execute the following action: ~w", [N2, Action, Env, Code]),
+	dev_stream(Env, StreamEnv),
+	send_term(StreamEnv, [execute, N2, Type, Code]),
+	logging(system(3, em),
+		"Action ~w sent to device ~w (waiting for sensing outcome)", [N2, Env]), !,
 		% Busy waiting for sensing outcome to arrive (ALWAYS)
 	repeat,
 	got_sensing(N2, Outcome),
 	retract(executing_action(N2, _, _)),
 	retract(got_sensing(N2, _)), !,
-	logging(system(2),
-		["(EM) Action *", (N2, Action, Env, Code), "* completed with outcome: ", Outcome]).
+	logging(system(2, em), 
+		"Action ~w completed with outcome: ~w", [[N2, Action, Env, Code], Outcome]).
 execute_action(_, _, _, N, failed) :- counter_actions(N).
 
 

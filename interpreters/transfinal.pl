@@ -96,20 +96,6 @@
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% mfinal/2 and mtrans/4: meta-versions of final/2 and trans/4
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-mfinal(E,H) :- final(E,H).
-mtrans(E,H,E2,H2) :-
-	trans(E,H,E3,H3),
-	(H3 = [atomic(EA)|H2] ->
-		append(EA,E3,E2)
-	;
-		E2=E3,
-		H2=H3
-	).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                            TRANS and FINAL
 %% Trans(E,H,E1,H1) ->  One execution step of program E from history H

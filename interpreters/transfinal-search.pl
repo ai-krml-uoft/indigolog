@@ -136,7 +136,7 @@ trans(followpath(E,_),H,E1,H1) :- trans(search(E),H,E1,H1). /* redo search */
 trans(searchn(E,LOptions),H,mnt(E,H,followpath(E1,L),LOptions),H1) :-
         trans(E,H,E1,H1),
         findpathn(E1, H1, L, LOptions),
-        assert(protectHistory(H)).
+        assert(protect_history(H)).
 final(searchn(E,opt(_)),H) :- final(E,H).
 
 findpathn(E,H,[E,H],_LOpt) :- final(E,H).
@@ -161,9 +161,9 @@ add_assumptions(A, LAssumptions, Exog, _Test) :-
 
 %% Semantics of mnt(EOriginal,HOriginal,EFollow,LPlanningOptions)
 %%
-final(mnt(_,HO,followpath(E,[E,H]),_),H) :- !, retractall(protectHistory(HO)).
+final(mnt(_,HO,followpath(E,[E,H]),_),H) :- !, retractall(protect_history(HO)).
 final(mnt(_,HO,followpath(E,_),_),H) :-
-	final(E,H), retractall(protectHistory(HO)).  /* off path; check again */
+	final(E,H), retractall(protect_history(HO)).  /* off path; check again */
 
 
 trans(mnt(EO,HO,followpath(E,[E,_,E1,H1|L]),LOpt),H,mnt(EO,HO,followpath(E1,[E1,H1|L]),LOpt),H) :-

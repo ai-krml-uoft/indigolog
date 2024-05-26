@@ -146,26 +146,26 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % called when the environment manager sent something
 % usually, there is no need to modify it, one should implement execute/3
 handle_stream(env_manager) :-
-        logging(system(3, gen), "Handling data from EMenv_manager"),
-        read(env_manager, Data),
-	( member(Data, [finish, end_of_file])
-        ->      logging(system(1, gen), "Termination requested from EM: ~w", [Data]),
-                close_stream_pool
-        ;       Data = [execute, N, Type, Action]  ->
-	        change_action_state(Action, N, orderExecution, null, []),
-	        logging(system(3, gen), ["About to execute *", (Action, N), "*"]),
-                (execute(Action, Type, N, S) ->
-		        logging(system(3, gen), ["Action *", (Action, N), "* executed with outcome: ", S])
-	        ;
-		        logging(error, ["Action *", (Action, N), "* could not execute (assumed failed)"]),
-		        S=failed
-	        ),
-%	        change_action_state(Action, N, finalExecution, S, []),
-                % Report the sensing if it was not "null" (null=not available yet)
-                % If it was null, then the user should make sure that the
-                % sensing outcome will be eventually reported to the manager
-                (S \=null -> report_sensing(Action, N, S, _) ; true)
-        ).
+        logging(system(3, gen), "Handling data from EM"),
+        read(em_read_stream, Data),
+        logging(system(3, gen), "Received data from EM: ~w", [Data]),
+        handle_data(Data).
+
+handle_data(Data) :-
+        member(Data, [finish, end_of_file]),
+        logging(system(1, gen), "Termination requested from EM: ~w", [Data]),
+        close_stream_pool.
+handle_data([execute, N, Type, Action]) :-
+        change_action_state(Action, N, orderExecution, null, []),
+        logging(system(3, gen), ["About to execute *", (Action, N), "*"]),
+        (       execute(Action, Type, N, S)     % actual execution!
+        ->      logging(system(3, gen), "Action ~w executed with outcome: ", [[Action, N], S]),
+                (S \= null -> report_sensing(A, N, S) ; true)
+        ;       logging(error, "Action ~w failed to execute (assumed failed)", [Action, N]),
+                S = failed
+        ),
+        change_action_state(Action, N, finalExecution, S, []).
+
 
 
 
@@ -184,13 +184,11 @@ handle_stream(env_manager) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 report_exog(A) :-
         logging(exogaction, "Exogenous action occurred: ~w", [A]),
-        write_term(em_write_stream, [exog_action, A], [quoted(false), fullstop(true), nl(true)]),
-        flush_output(em_write_stream).
+        send_term(em_write_stream, [exog_action, A]).
 
 report_sensing(A, N, S) :-
         logging(sensing, ["Sending sensing to manager: ", (A, N, S)]),
-        write_term(env_manager, [sensing, N, S], [quoted(false), fullstop(true), nl(true)]),
-        flush_output(em_write_stream).
+        send_term(env_manager, [sensing, N, S]).
 
 
 

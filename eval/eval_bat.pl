@@ -228,23 +228,23 @@
 :- multifile(causes_false/3).
 :- multifile(exog_action/1).
 :- multifile(poss/2).
+:- multifile(initialize/1).
+:- multifile(finalize/1).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  PREDICATES TO BE EXPORTED
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-   /* Move initially(-, -) to currently(-, -) and clear exog actions  */
-initializeDB:-
-	retractall(currently(_, _)),
-	initially(F, V),
-	assert(currently(F, V)),
-	clean_cache,
-	fail.
-initializeDB.
+   /* Move initially(-, -) to currently(-, -) and clear cache  */
+initialize(evaluator) :-
+	retractall(currently(_, _)), !,
+	forall(initially(F, V), assert(currently(F, V))),
+	clean_cache.
 
   /* Clean all the currently(-.-) predicates */
-%finalizeDB:-  retractall(currently(_, _)), clean_cache.
-finalizeDB.
+finalize(evaluator) :-  retractall(currently(_, _)), clean_cache.
+% finalizeDB.
 
 % eval(P, H, B): this is the interface of the projector
 eval(P, H, true):- holds(P, H).
@@ -252,7 +252,6 @@ eval(P, H, true):- holds(P, H).
 % Change the history H to encode the sensing result of action A at H
 %handle_sensing(A, H, Sr, [e(F, Sr)|H]):- senses(A, F). (OLD WAY)
 handle_sensing(A, H, Sr, [e(A, Sr)|H]).
-
 
 % clean_cache: remove all has_valc/3
 clean_cache :- retractall(has_valc(_, _, _)).
@@ -267,7 +266,7 @@ system_action(e(_, _)).
 sensing(A, _):- senses(A, _) ; senses(A, _, _, _, _).
 
 % sensed(+A, ?V, +H): action A got sensing result V w.r.t. history H
-sensed(A, V, [e(F, V2)|_]):- senses(A, F), !, V=V2.
+sensed(A, V, [e(F, V2)|_]):- senses(A, F), !, V = V2.
 sensed(A, V, [_|H])      :- sensed(A, V, H).
 
 % domain/2: assigns a user-defined domain to a variable.
@@ -275,12 +274,12 @@ domain(V, D)  :- getdomain(D, L), member(V, L).
 rdomain(V, D) :- getdomain(D, L), shuffle(L, L2), !, member(V, L2).
 
 % L is the list-domain associated to name D
-getdomain(D, L) :- is_list(D) -> L=D ; (P =.. [D, L], call(P)).
+getdomain(D, L) :- is_list(D) -> L = D ; (P  =.. [D, L], call(P)).
 
 % Computes the arguments of an action or a fluent P
 % Action/Fluent P1 is action/fluent P with all arguments evaluated
 calc_arg(P, P1, H):- (is_an_action(P) ; prim_fluent(P)),
-	(atomic(P)-> P1=P ;
+	(atomic(P)-> P1 = P ;
                     (P =..[Function|LArg], subfl(LArg, LArg2, H),
                      P1=..[Function|LArg2])).
 
@@ -321,11 +320,8 @@ checkgr(P):- ground(P)-> true ; once(warn(['CWA applied to formula: ', P])).
 
 % Update the cache information by stripping out the subhistory H
 update_cache(H) :-
-	retract(has_valc(F, V, H2)),
-	append(H1, H, H2),
-	assert(has_valc(F, V, H1)),
-	fail.
-update_cache(_).
+	retract(has_valc(F, V, H2)), !,
+	forall(append(H1, H, H2), assert(has_valc(F, V, H1))).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -336,11 +332,11 @@ update_cache(_).
 % We may probably want to add some "forgeting" mechanism.. either by a
 %      state condition or special actions
 holds(kwhether(F), [])     :- !, initially(F, _).
-holds(kwhether(F), [Act|_]):- (senses(Act, F) ; Act=e(F, _)), !.
+holds(kwhether(F), [Act|_]):- (senses(Act, F) ; Act = e(F, _)), !.
 holds(kwhether(F), [_|H])  :- holds(kwhether(F), H).
 
 % know(F): Fluent F evaluates to something
-holds(know(F), H)     :- !, holds(F=_, H).
+holds(know(F), H)     :- !, holds(F = _, H).
 
 % holds(P, H): P holds in H
 holds(and(P1, P2), H)	:- !, holds(P1, H), holds(P2, H).
@@ -394,8 +390,8 @@ has_valo(F, V, H)  :- has_val(F, V, H).  % F is a fluent with NO cache
 has_val(F, V, [])		:- currently(F, V).
 has_val(F, V, [A|H])	:- sets_val(A, F, V, H).
 has_val(F, V, [A|H])	:- \+ forget(A, H, F), has_value(F, V, H), \+ sets_val(A, F, _, H).
-has_val(F, V, [set(F)|_])  :- !, V=true.
-has_val(F, V, [unset(F)|_]):- !, V=false.
+has_val(F, V, [set(F)|_])  :- !, V = true.
+has_val(F, V, [unset(F)|_]):- !, V = false.
 
 sets_val(e(F, V), F, V, _)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_, _)
 sets_val(e(A, V), F, V, _)	:- senses(A, F).	% Action A sets F directly
@@ -432,8 +428,8 @@ poss(unset(F), ground(F)).
 %roll_parameters(1, 1, 0).  % Never roll forward
 %roll_parameters(20, 40, 5). % can role after 20, must roll after 40, keep 5 actions
 
-can_roll(H) :-  \+ protectHistory(_), roll_parameters(L, _, _), length(H, L1), L1 > L.
-must_roll(H) :- \+ protectHistory(_), roll_parameters(_, M, _), length(H, L1), L1 > M.
+can_roll(H) :-  \+ protect_history(_), roll_parameters(L, _, _), length(H, L1), L1 > L.
+must_roll(H) :- \+ protect_history(_), roll_parameters(_, M, _), length(H, L1), L1 > M.
 
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
@@ -444,7 +440,7 @@ roll_db(H1, H2) :-
 	preserve(H3),
 	update_cache(H3).	    % Update the cache wrt the preserved history H3
 
-%% split(N, H, H1, H2) splits H = [H1|H2] (i.e., append(H1, H2, H)) such that length(H1)=N
+%% split(N, H, H1, H2) splits H = [H1|H2] (i.e., append(H1, H2, H)) such that length(H1) = N
 split(0, H, [], H).
 split(N, [A|H], [A|H1], H2) :- N > 0, N1 is N-1, split(N1, H, H1, H2).
 
@@ -457,25 +453,18 @@ preserve([A|H]) :-
 
 % roll_action(A): roll currently/2 database with respect to action A
 roll_action(A) :-
-	sets_val(A, F, V, []),
-	prim_fluent(F),
-	(\+ temp(F, V) -> assert(temp(F, V)) ; true),
-	fail.
-roll_action(_) :-
-	retract(temp(F, V)),
-	retractall(currently(F, _)),	% There should be just one currently/2 for F!
-	assert(currently(F, V)),
-	fail.
-roll_action(_).
-
-
+	forall( (sets_val(A, F, V, []), prim_fluent(F), \+ temp(F, V)),
+            assert(temp(F, V))),
+	forall(retract(temp(F, V)), 
+            (retractall(currently(F, _)),	% should just be one!
+	        assert(currently(F, V)))).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DEBUG ROUTINES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % debug(+Action, +History, -SensingResult):
-% If Action=debug then a snapshot of the system is printed out
+% If Action = debug then a snapshot of the system is printed out
 % Otherwise, the sendRcxActionNumber/2
 %     predicate failed (RCX panicked or there was a problem with the
 %     communication). This predicate attempts to provide some basic debug

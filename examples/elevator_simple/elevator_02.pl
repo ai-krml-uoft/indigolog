@@ -18,16 +18,16 @@ max_floor(3).
 
 fl(N) :- max_floor(M), between(1, M, N).    % the 6 elevator floors
 
-% Fluents
-prim_fluent(floor).             % the floor the elevator is on (1 to 6)
-prim_fluent(light(N)) :- fl(N). % call button of floor n (on or off)
+  /*  FLUENTS and CAUSAL LAWS */
+prim_fluent(floor).             % the floor the elevator is on
+prim_fluent(light(N)) :- fl(N). % call button of floor
 prim_fluent(lights).            % call buttons of ALL floors (as a list)
 
-prim_fluent(temp).               % the temperature in the elevator (number)
+prim_fluent(temp).               % the temperature in the elevator
 prim_fluent(fan).                % the fan (on or off)
 prim_fluent(alarm).              % the smoke alarm (on or off)
 
-% Actions (basics)
+  /*  ACTIONS and PRECONDITIONS*/
 prim_action(down).              % elevator down one floor
 prim_action(up).                % elevator up one floor
 prim_action(open).              % open elevator door
@@ -63,7 +63,7 @@ poss(look(_), true).
 poss(look, true).
 
 
-% Causal laws / SSA
+/* Causal laws / SSA */
 causes_val(up,   floor, N, N is floor + 1).
 causes_val(down, floor, N, N is floor - 1).
 causes_val(off(N), light(N), off, true).
@@ -82,30 +82,25 @@ causes_val(smoke, alarm, on,  true).
 causes_val(reset, alarm, off, true).
 
 
-% Initial state
+  /* Initial state  */
 initially(floor, 3).
 initially(temp, 2).
 initially(fan, off).
 initially(light(_), off).   % all lights off initially
 initially(alarm, off).
 
-% Definitions of complex conditions
+/* ABBREVIATIONS */
 proc(too_hot, temp > 2).
 proc(too_cold, -2 > temp).
-
-% Definitions of complex conditions
 proc(below_floor(N), floor < N).
 proc(above_floor(N), floor > N).
-
-
 proc(pending_floor(N), or(light(N) = on, nth1(N, lights, 1))).
 
 
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Definitions of complex actions
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Definitions of complex actions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % got to floor N
 proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).

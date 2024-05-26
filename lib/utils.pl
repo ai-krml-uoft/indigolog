@@ -5,14 +5,12 @@
      join_to_string/3,
      any_to_string/2,
      % 3 - OS TOOLS
-     exec/2,
-     exec/3,
-     exec_group/3,
      set_interrupt_handler/2,
      current_interrupt/2,
      get_interrupt_handler/3,
      stime/1,
-     cputime/1
+     cputime/1,
+     send_term/2
           ]).
 
 
@@ -97,128 +95,12 @@ set_interrupt_handler(Signal, N/0)        :- on_signal(Signal, _, N).
 current_interrupt(Id, Name)               :- current_signal(Name, Id, _).
 get_interrupt_handler(IntId, PredSpec, _) :- current_signal(_, IntId, PredSpec).
 
-
-% Implementation of exec/2, exec/3 and exec_group/3 (Compatible with ECLIPSE)
-%
-% A child process Command is forked. Its standard streams are connected to
-% [StdIn, StdOut, _] and its process ID is Pid.
-% (This is a partial implementation of ECLIPSE exec_group/3)
-% Differences: does not run Command in a different process group and it
-%              does not set the error channel
-
-% exec_group/3 from ECLIPSE to attach Streams and return Pid
-% NOTE: For now I cannot separate the child
-exec_group(C, Streams, Pid) :- exec(C, Streams, Pid).
-
-% exec/2: no return of Pid so we wait on process
-exec(Command, Streams) :-
- 	 exec(Command, Streams, Pid),
-	 wait(Pid, _).
-
-% exec/3: general case exec(Command, Streams, PiD)
-%  fork a child process Command, its standard streams are connected to Streams and its process ID is Pid.
-exec(Command, [], P) :- exec(Command, [null, null, null], P).
-exec(Command, [StreamOut], P) :- exec(Command, [StreamOut, null, null], P), wait(P, _).
-exec(Command, [StreamOut, StreamIn], P) :- exec(Command, [StreamOut, StreamIn, null], P).
-
-% Handle the case for sigio(S)
-exec(Command, [StreamOut, SIn, _], Pid) :-
-    \+ var(SIn), SIn = sigio(StreamIn), !,
-    exec(Command, [StreamOut, StreamIn2, _], Pid),
-    register_stream_sigio(StreamIn2, StreamIn3),
-    register_stream_name(StreamIn3, StreamIn).
-
-% Handle the general case
-exec(Command, [StreamOut, StreamIn, _], Pid) :-
-    (   StreamOut == null
-    ->  true
-    ;   pipe(CGIIn, StreamOut2), register_stream_name(StreamOut2, StreamOut)
-    ),
-    (   StreamIn == null
-    ->  true
-    ;   pipe(StreamIn2, CGIOut), register_stream_name(StreamIn2, StreamIn)
-    ),
-    fork(Pid),
-    (   Pid == child
-    ->  % detach_IO % may this work to detach the child ?
-        (   StreamOut == null
-        -> true
-        ; (close(StreamOut), dup(CGIIn, 0),  close(CGIIn))   % stdin
-        ),
-        (   StreamIn  == null
-        ->  true
-        ;
-            close(StreamIn), dup(CGIOut, 1), close(CGIOut)   % stdout
-        ),
-        % exec('/bin/sh '('-c', Command))
-        exec(Command)
-    ;   (StreamOut == null -> true ; close(CGIIn)),
-        (StreamIn  == null -> true ; close(CGIOut))
-    ).
-
-
 system(ShellCommand) :- shell(ShellCommand).
 sh(ShellCommand)     :- shell(ShellCommand).
 
 
 
-:- dynamic sigio/3.  % Stores streams that we are watching for IO
-                     % (Source, Intermediate, Destination)
-
-register_stream_sigio(Stream1, Stream2) :-
-        pipe(Stream2, W),
-        assert(sigio(Stream1, W, Stream2)),
-        (current_thread(stream_pool_main_loop, _) ->
-             delete_stream_from_pool(Stream1),  % just in case...
-             add_stream_to_pool(Stream1, sigio_action(signal))
-        ;
-             add_stream_to_pool(Stream1, sigio_action(signal)),
-             thread_create(stream_pool_main_loop, _, [detached(true)])).
-
-unregister_stream_sigio(Stream) :-
-%        sigio(Stream, _, _),  % Check stream is being watched
-        %delete_stream_from_pool(Stream),
-        %add_stream_to_pool(Stream, sigio_action(justcopy)),
-        retract(sigio(Stream, W, _)),
-        close(Stream),  % No use any more, no more data arriving to Stream
-        close(W).       % Intermediate step not use anymore
-
-
-register_stream_name(_, Name)      :- Name==user, !.
-register_stream_name(Stream, Name) :- atom(Name), !,
-				      set_stream(Stream, alias(Name)).
-register_stream_name(Stream, Stream).
-
-
-sigio_action(T) :-
-        findall(S, sigio(S,_,_), LS),
-        wait_for_input(LS, [RS|_], 0),
-        (at_end_of_stream(RS) ->           % Original read stream is EOF?
-             unregister_stream_sigio(RS)   % Then
-        ;
-             sigio(RS, W, _),          % Retrive intermediate stream W
-             copy_pipe(RS, W),         % Copy from RS ----> W
-             (T == signal ->
-                  current_prolog_flag(pid, Pid),
-                  current_signal(io, IdSignal, _),
-                  kill(Pid, IdSignal)
-             ;
-                  true)
-        ).
-
-% Copy all current data in input-pipe-stream In to output-pipe-stream Out
-copy_pipe(In, Out)   :-
-        wait_for_input([In],[],0.0000000001), !, % Nothing more on In
-        flush_output(Out).                       % Everything has been copied
-copy_pipe(In, Out) :-
-        get_char(In, CharCode),        % Get one char from stream
-        (CharCode=(-1) ->
-             true
-        ;
-             write(Out, CharCode)
-        ),
-        copy_pipe(In, Out).
-
-
-
+send_term(Stream, Term) :-
+     write_term(Stream, Term, [quoted(false), fullstop(true), nl(true)]),
+     flush_output(Stream).
 

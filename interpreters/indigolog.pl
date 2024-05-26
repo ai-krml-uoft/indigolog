@@ -110,13 +110,13 @@
  -- logging(+T, +M) : report message M of type T
  -- set_debug_level(+N)    : set debug level to N
 */
-:- dynamic sensing/2,   	% There may be no sensing action
+:- dynamic sensing/2,   % There may be no sensing action
 	indi_exog/1, 		% Stores exogenous events not managed yet
 	now/1,            	% Used to store the actual history
-	rollednow/1,           	% Part of now/1 that was already rolled fwd
+	rolled_history/1, 	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
 	doing_step/0, 		% A step is being calculated
-	protectHistory/1, 	% Protect a history to avoid rolling forward
+	protect_history/1, 	% Protect a history to avoid rolling forward
 	pause_step/0.     	% Pause the step being calculated
 
 
@@ -201,14 +201,14 @@ init :-
 	logging(system(0), "Starting ENVIRONMENT MANAGER..."),
 	initialize(env_manager),    	  	% Initialization of environment
 	logging(system(0), "ENVIRONMENT MANAGER was started successfully."),
-	logging(system(0), "Starting PROJECTOR..."),
-	initializeDB,             	% Initialization of projector
+	logging(system(0), "Starting PROJECTOR EVALUATOR..."),
+	initialize(evaluator),             	% Initialization of projector
 	logging(system(0), "PROJECTOR was started successfully."),
 	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
 
 fin  :-
 	logging(system(0), "Finalizing PROJECTOR..."),
-	finalizeDB,               	% Finalization of projector
+	finalize(evaluator),               	% Finalization of projector
 	logging(system(0), "PROJECTOR was finalized successfully."),
 	logging(system(0), "Finalizing ENVIRONMENT MANAGER..."),
 	finalize(env_manager),      		% Finalization of environment
@@ -219,11 +219,11 @@ fin  :-
 reset_indigolog_dbs(H) :-
 	retractall(doing_step),
 	retractall(indi_exog(_)),
-	retractall(protectHistory(_)),
-	retractall(rollednow(_)),
+	retractall(protect_history(_)),
+	retractall(rolled_history(_)),
 	retractall(now(_)),
 	update_now(H),
-	assert(rollednow([])),
+	assert(rolled_history([])),
 	assert((indi_exog(_) :- fail)),
 	fail.
 reset_indigolog_dbs(_).
@@ -232,7 +232,7 @@ reset_indigolog_dbs(_).
 %%
 %% (A) INTERFACE PREDICATE TO THE TOP LEVEL MAIN CYCLE
 %%
-indigolog(E) :-		% Used to require a program, now we start proc. main always (March 06)
+indigolog(E) :-		% Run program E
 	(var(E) -> proc(main, E) ; true),
 	init,
 	logging(system(0), "Starting to execute main program"),
@@ -247,14 +247,26 @@ indigolog(E) :-		% Used to require a program, now we start proc. main always (Ma
 indigolog(E, H) :-
 	handle_rolling(H, H2), !, 		% Must roll forward?
 	handle_exog(H2, H3),   !, 		% Handle pending exog. events
-	prepare_for_step,				% Prepare for step
-	mayEvolve(E, H3, E4, H4, S), !,	% Compute next configuration evolution
-	wrap_up_step,					% Finish step
-	(S=trans -> indigolog(H3, E4, H4) ;
-	 S=final -> logging(program,  "Success.") ;
-	 S=exog  -> (logging(program, "Restarting step."), indigolog(E, H3)) ;
-	 S=failed-> logging(program,  "Program fails.")
+	catch((assert(doing_step),
+			compute_step(E, H3, E4, H4, T),
+			retract(doing_step)),
+	 	exog_action, T = exog),
+	(T = trans -> indigolog(H3, E4, H4) ;
+	 T = final -> logging(program,  "Success final.") ;
+	 T = exog  -> (logging(program, "Restarting step."), indigolog(E, H3)) ;
+	 T = none-> logging(program,  "Program fails.")
 	).
+
+compute_step(E1, H1, E2, H2, T) :-
+	(exists_pending_exog_event -> throw(T) ; true),
+	(	final(E1, H1)
+	->	T = final
+	;	trans(E1, H1, E2, H2)
+	->	T = trans
+	;	T = none
+	).
+
+
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
@@ -313,75 +325,11 @@ system_action(break_exec).	% Action to break the agent execution to top-level Pr
 system_action(reset_exec).	% Reset agent execution from scratch
 
 % Wait continously until an exogenous action occurrs
-doWaitForExog(H1, H2):-
+doWaitForExog(H1, H2) :-
         logging(system(2), "Waiting for exogenous action to happen"),
         repeat,
         handle_exog(H1, H2),
-        (H2=H1 -> fail ; true).
-
-% Predicates to prepare everthing for the computation of the next
-% single step. Up to now, we just disable the GC to speed up the execution
-prepare_for_step :- turn_off_gc.              % Before computing a step
-wrap_up_step     :- retractall(doing_step),   % After computing a step
-		    turn_on_gc,
-		    garbage_collect.
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% mayEvolve(E1, H1, E2, H2, S): perform transition from (E1, S1) to (E2, H2) with
-%                        result S:
-%
-%                            trans = (E1, H1) performs a step to (E2, H2)
-%                            final = (E1, H1) is a terminating configuration
-%                            exog  = an exogenous actions occurred
-%                            failed= (E1, H1) is a dead-end configuration
-%                            system= system action transition
-%
-% There are two different implementations:
-%
-% * for Prolog's providing event handling (e.g., ECLIPSE, SWI)
-% * any vanilla Prolog
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% If the step is a system-action, then just propagate it
-%mayEvolve(E1, [A|H1], E1, [A|H1], system):- type_action(A, system), !.
-
-mayEvolve(E1, H1, E2, H2, S):-
-	type_prolog(T) -> mayEvolve(E1, H1, E2, H2, S, T) ;
-        		  mayEvolve(E1, H1, E2, H2, S, van).
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (1) - for Prologs with ISO exception handling. (e.g., ECLIPSE and SWI)
-%
-% Notice that if a catch/3 is left via an throw/1 call, all current
-% computations and bindings are lost (e.g., the bindings on E1, H1, S, E2, H2)
-%
-mayEvolve(E1, H1, E2, H2, S, T):- (T=ecl ; T=swi),
-	catch(  (assert(doing_step),	% Assert flag doing_step
-                 (exists_pending_exog_event -> abortStep(T) ; true),
-                 (final(E1, H1, T)       -> S=final ;
-                  trans(E1, H1, E2, H2, T) -> S=trans ;
-                                          S=failed),
-                 retract(doing_step)	% Retract flag doing_step
-%                 (repeat, \+ pause_step)
-                ), exog_action, (retractall(doing_step), S=exog) ).
-
-
-
-/* OBS: As it is, it is not working 100% because sometimes the execution
-is aborted and the following message is written:
-		ERROR: Unhandled exception: exog_action
-
-		This happens because the "exog_action" event was rised
-		outside the catch/3 clause!!!
-*/
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-% (2) - for "vanilla" Prolog
-%
-mayEvolve(E1, H1, E2, H2, S, van):-
-	final(E1, H1)       -> S=final ;
-	trans(E1, H1, E2, H2) -> S=trans ;  S=failed.
+        (H2 = H1 -> fail ; true).
 
 
 
@@ -391,36 +339,7 @@ mayEvolve(E1, H1, E2, H2, S, van):-
 %		be the case that thread main already retracted doing_step/0
 %		from the DB and that mayEvolve/6 is already finished. In that
 %		case the event should not be raised
-abortStep :-
-	type_prolog(T) -> abortStep(T) ; abortStep(van).
-abortStep(swi) :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
-abortStep(ecl) :- throw(exog_action).
-abortStep(van) :- true.  % No way of aborting a step in the vanilla version
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% trans/5 and final/3 wrappers for the real trans/4 and final/3
-%
-% The last argument of trans/4 and final/3 is used to distinghuish
-% trans and final under different plataforms: ECLPSE, SWI or vanilla Prolog
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- discontiguous trans/5, final/3.
-
-% ECLIPSE: execute trans/4 (final/2) and, then, grounds
-% all remaining free variables using the provided fix_term/2
-final(E, H, ecl)      :- mfinal(E, H),
-                       (fix_term((E, H)) -> true ; true).
-trans(E, H, E1, H1, ecl):- mtrans(E, H, E1, H1),
-                       (fix_term((E1, H1)) -> true ; true).
-
-% SWI: final/3 and trans/5 just reduce to final/2 and trans/4
-final(E, H, swi)      :- mfinal(E, H).
-trans(E, H, E1, H1, swi):- mtrans(E, H, E1, H1).
-
-% vanilla Prolog: final/3 and trans/5 just reduce to final/2 and trans/4
-final(E, H, van)      :- mfinal(E, H).
-trans(E, H, E1, H1, van):- mtrans(E, H, E1, H1).
-
+abort_step :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  EXECUTION OF ACTIONS
@@ -442,7 +361,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         type_action(Act, sensing), !,
         logging(system(1), ["Sending sensing Action *", Act, "* for execution"]),
         execute_action(Act, H, sensing, IdAct, S), !,
-	(S=failed ->
+	(S = failed ->
 		logging(error, ["Action *", Act, "* FAILED to execute at history: ", H]),
 		H2 = [abort, failed(Act)|H],	% Request abortion of program
 	        update_now(H2)
@@ -457,7 +376,7 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         type_action(Act, nonsensing), !,
         logging(system(1), ["Sending nonsensing action *", Act, "* for execution"]),
         execute_action(Act, H, nonsensing, IdAct, S), !,
-	(S=failed ->
+	(S = failed ->
 		logging(error, ["Action *", Act, "* could not be executed at history: ", H]),
 		H2 = [abort, failed(Act)|H],
 	        update_now(H2)
@@ -476,7 +395,7 @@ wait_if_neccessary :-
 wait_if_neccessary.
 
 % Updates the current history to H
-update_now(H):-
+update_now(H) :-
         %logging(system(2), ["Updating now history to: ", H]),
         %write(H),
         retract(now(_)) -> assert(now(H)) ; assert(now(H)).
@@ -558,9 +477,9 @@ roll(H1, H2) :-
         logging(system(3), ["New History: ", H2]),
 	update_now(H2), 			% Update the current history
 	append(H2, HDropped, H1),	% Extract what was dropped from H1
-	retract(rollednow(HO)),		% Update the rollednow/1 predicate to store all that has been rolled forward
-	append(HDropped, HO, HN),			% rollednow(H): H is the full system history
-	assert(rollednow(HN)),
+	retract(rolled_history(HO)),		% Update the rolled_history/1 predicate to store all that has been rolled forward
+	append(HDropped, HO, HN),			% rolled_history(H): H is the full system history
+	assert(rolled_history(HN)),
 	save_exog.	% Collect all exogenous actions
 
 
@@ -569,14 +488,14 @@ roll(H1, H2) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % H is a past situation w.r.t. the actual situation (stored in clause now/1)
-pasthist(H):- now(ActualH), before(H, ActualH).
+pasthist(H) :- now(ActualH), before(H, ActualH).
 
 % Deal with an unknown configuration (P, H)
-error(M):-
+error(M) :-
         logging(error, M),
         logging(error, "Execution will be aborted!"), abort.
 
-warn(M):-
+warn(M) :-
         logging(warning, M).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
