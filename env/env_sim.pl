@@ -76,7 +76,7 @@ This part implements a keyboard interface to enter exogenous events in an asynch
 
 An TCL/TK independent process is initiated to read exogenous events the program exog.tcl writes each exogenous action entered to a special pipe. At that time, a sigio signal is assigned to such pipe so that whenever data arrives to the pipe an interrupt is triggered which can be cached by the main cycle to handle thestart exog action entered.
 */
-initialize_interfaces :- initialize_exog(tcltk), !.
+initialize_interfaces :- initialize_exog(tcltk).
 
 finalize_interfaces :- finalize_exog(tcltk).
 
@@ -87,14 +87,16 @@ initialize_exog(tcltk) :-
         process_create(path(wish), [TclFile], [stdout(pipe(OutStream)), process(PID)]),
         set_stream(OutStream, alias(tcltk)),
         sleep(2),    % give time to TCL/TK program to appear
-        assert(exog_proc(PID)),
-        assert(listen_to(tcltk, [read(OutStream), pid(PID)])).  % listen to tcltk
+        assert(listen_to(tcltk, OutStream, [pid(PID)])),  % listen to tcltk
+        add_stream_to_pool(tcltk, handle_stream(tcltk)).
 finalize_exog(tcltk) :-
-	listen_to(tcltk, L), % tcltk is still open
         logging(system(1), 'Closing TCL-TK interface.'),
-        close(tcltk),
+	delete_stream_from_pool(tcltk),
+        listen_to(tcltk, _, L),
         member(pid(PID), L),
-        process_kill(PID).
+        process_kill(PID),
+        logging(system(1), 'TCL-TK interface closed: stream and process.').
+
 finalize_exog(tcltk).	% already down
 
 % printKbInstructions: Print instructions on how to enter keyboard input
@@ -117,13 +119,14 @@ printKbInstructions :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Handle tcl/tk stream: called when there is data comming from the tcl/tk app
+% similar to failure-driven loop: https://www.swi-prolog.org/pldoc/doc_for?object=repeat/0
 handle_stream(tcltk) :-
-        read(tcltk, T),
-        (       T = end_of_file
-        ->      true          % Tcl/Tk finished
-        ;       report_exog_event(A, ['Exogenous action *', A, '* received from TCL/TK'])
+        read(tcltk, Term),
+        writeln(Term),
+        (       Term == end_of_file
+        ->      finalize_exog(tcltk)
+        ;       report_exog(Term)
         ).
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % C - EXECUTION MODULE: execute/4
@@ -136,138 +139,12 @@ handle_stream(tcltk) :-
 % SensingResult is the sensing outcome of Action
 execute(Action, T, _, Sensing) :-
 	member(T, [sensing, simsenstartsing]), !,
-        logging(action, ['Executing sensing action: *',Action,'*']),
-        write('    ------------> Enter Sensing value, terminate with ".": '),
+        logging(action, 'EXECUTE SENSING ACTION: ~w', [Action]),
+        write('\t---------> Enter Sensing value, terminate with ".": '),
         read(Sensing), nl.
 
 execute(Action, _, _, ok) :-
-        logging(action, ['Executing non-sensing action: *',Action,'*']).
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%% OTHER CODE %%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-my_system_error_handler(E, Goal) :-
-        (
-            errno_id(`Interrupted system call`),
-%            errno_id(170, M), errno_id(M),  % M is "Unknown error 170" ??
-            restartable_builtin(Goal)
-        ->
-            call(Goal)
-        ;
-            errno_id(M),
-            logging(error, M),
-            read(_),
-            error(default(E), Goal)
-        ).
-
-% Builtins that can raise EINTR and can be restarted after that
-restartable_builtin(accept(_,_,_)).
-restartable_builtin(cd(_)).
-restartable_builtin(close(_)).
-restartable_builtin(connect(_,_)).
-restartable_builtin(select_stream(_,_,_)).
-restartable_builtin(stream_select(_,_,_)).
-restartable_builtin(wait(_,_)).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Exogenous action window in SWI itself (instead of TCL/TK)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-/*
-:- use_module(library(pce)).
-
-fileviewer(Dir) :-
-        new(F, frame('File Viewer')),
-        send(F, append(new(B, browser))),
-        send(new(D, dialog), below(B)),
-        send(D, append(button(view,
-                              message(@prolog, view,
-                                      B?selection?key)))),
-        send(D, append(button(quit,
-                              message(F, destroy)))),
-        send(B, members(directory(Dir)?files)),
-        send(F, open).
-
-view(F) :-
-        send(new(V, view(F)), open),
-        send(V, load(F)).
-
-
-
-%:- pce_autoload(file_item, library(file_item)).
-
-
-edit_file_dialog :-
-        new(D, dialog('Exogenous Events')),
-        send(D, append, new(E, text_item(exog, @default,
-						and(message(@prolog, reportTea, @arg1),
-					    	    message(@receiver,clear))
-					))),
-        send(D, append, button(send,
-				and(message(@prolog, reportTea, E?selection),
-				    message(E,clear))
-			)),
-        send(D, append, button(cancel, message(D, destroy))),
-        send(D, append, button(halt,   message(@prolog, terminateTea))),
-        send(D, open).
-
-
-reportTea(E) :- logging(action, ['Executing non-sensing action: *',E,'*']).
-terminateTea :- logging(action, terminate).
-
-
-
-	%	ask_name(+Prompt, +Label, -Name)
-	%	Put a prompter on the screen and wait till the user has
-	%	entered a name.  Pressing cancel makes this predicate fail.
-	%	Prompt is a long string, giving explanation; Label is a short
-	%	label displayed for the text entry field.
-
-
-	:- pce_global(@name_prompter, make_name_prompter).
-
-	make_name_prompter(P) :-
-		new(P, dialog),
-		send(P, kind, transient),
-		send(P, append, label(prompt)),
-		send(P, append,
-		        new(TI, text_item(name, '',
-				 message(P?ok_member, execute)))),
-		send(P, append, button(ok, message(P, return, TI?selection))),
-		send(P, append, button(cancel, message(P, return, @nil))).
-
-
-	ask_name(Prompt, Label, Name) :-
-		send(@name_prompter?prompt_member, selection, Prompt),
-		send(@name_prompter?name_member, label, Label),
-		send(@name_prompter?name_member, clear),
-		get(@name_prompter, confirm_centered, RawName),
-		send(@name_prompter, show, @off),
-		RawName \== @nil,
-		Name = RawName.
-
-	ask_name :-
-		ask_name('Street', name, Street),
-		writeln(Street).
-
-
-create_fill_pattern_dialog :-
-	new(Dialog, dialog('Fill Patterns')),
-	send(Dialog, append,
-		 new(M, menu(fill_pattern, cycle,
-						 message(@prolog, write_ln, @arg1)))),
-		send_list(M, append,
-			[ menu_item(white,  @default, opcion1)
-			, menu_item(grey12, @default, opcion2)
-			, menu_item(grey25, @default, opcion3)
-			, menu_item(grey50, @default, opcion4)
-			]),
-	send(Dialog, open).
-
-*/
-
+        logging(action, 'EXECUTE ACTION: ~w', [Action]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

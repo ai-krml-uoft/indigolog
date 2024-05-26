@@ -282,40 +282,6 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 :- dynamic name_env/1. % Stores the name of the current module
 
 
-% Send: [Env, Data] where Env is the name of the device (e.g., simulator)
-send_data_socket(Socket, Data) :-
-        (name_env(Env2) -> Env=Env2 ; Env=unknown),
-        decode_data(_, DataToSent, [Env, Data]),
-        				% Changed quote(true) --> quote(false) so that TERMS can be transmited (e.g., begin(photo,1,id_2))
-        				% Otherwise, the term is quoted!
-        write_term(Socket, DataToSent, [quoted(false)]),
-        write(Socket, '.'),
-        nl(Socket),
-        flush(Socket).
-
-% Receive a list of [Env, Data] where Env is the id of the sender
-receive_list_data_stream(Socket, [Data|L]) :-
-        receive_list_data_stream(Socket, Data),
-        (Data = [_, [_, end_of_file]] ->
-             L=[]
-        ;
-             receive_list_data_socket(Socket, L)
-        ).
-
-receive_data_socket(Stream, TData) :-
-         read_term(Stream, TRead, []),
-         decode_data(Stream, TRead, TData).
-
-% decode_data(Socket, Data, CodifiedData)
-%      Codify Data as as CodifiedData to send via socket S
-decode_data(Socket, end_of_file, [socket(Socket), [system, end_of_file]]) :- !.
-decode_data(_, [Env, Data], [Env, Data]) :- !.
-decode_data(_, Data, [unknown, Data]).
-
-
-
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

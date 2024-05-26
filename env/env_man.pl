@@ -49,7 +49,7 @@
 	got_sensing/2,      % stores sensing outcome for executed actions
 	got_exogenous/1,    % stores occurred exogenous actions
 	counter_actions/1,  % Carries a counter for each action performed
-	env_data/3,         % (Env name, Pid, Socket) of each device
+	dev_data/2,         % (Env name, Pid, Socket) of each device
 	executing_action/3, % Stores the current action being executed
 	translateExogAction/2,
 	translateSensing/3, % Translates sensing outcome to high-level sensing
@@ -87,7 +87,7 @@ initialize(env_manager) :-
 	assert(em_data(Socket, Address, StreamPair)),
 	logging(system(2, em), "Loading the following devices: ~w", [LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
-    logging(system(2, em), "4 - Start EM cycle..."),
+    logging(system(2, em), "Start EM cycle to listen to devices..."),
 	start_env_cycle.   % Start the env. manager main cycle
 
 /* Start device manager environment E
@@ -102,11 +102,12 @@ start_dev(E) :-
 	load_device(E, AddressEM, InfoEnv),	% PROVIDED BY APPLICATION!
 	tcp_accept(SocketEM, SocketFrom, IP), 		% Wait until the device connects...
 	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
+	stream_pair(StreamPair, ReadStream, _),
+	set_stream(ReadStream, alias(E)),	% for better reading with the device name
 	logging(system(1, em), "Device ~w initialized at ~w", [E, IP]),
-	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])).
+	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])),
+	add_stream_to_pool(StreamPair, handle_device(E)).	% register to listen to this stream
 
-% get the stream pair of the device
-dev_stream(Env, Stream) :- dev_data(Env, L), member(stream(Stream), L).
 
 
 /* A - FINALIZATION OF DEVICES
@@ -120,7 +121,8 @@ finalize(env_manager) :-
 	logging(system(2, em), "1 - Closing all device managers..."),
     findall(Dev, dev_data(Dev, _), LDev), % Get all current open devices
 	maplist(close_dev, LDev), 	% Close all the devices found
-	sleep(3), !, 				% Wait to give time to devices to finish cleanly
+	sleep(3), 	% Wait to give time to devices to finish cleanly
+	close_stream_pool, !,
 	logging(system(2, em), "2 - Terminating EM cycle..."),
 	em_data(_, _, StreamPair),
 	close(StreamPair),
@@ -151,38 +153,12 @@ close_dev(Env) :-
  the open connections to the device managers. When it receives a message
  (e.g., sensing outcome, exog. action, closing message) it hanldes it.
 */
+% this can be used for debugging the EM
+start_env_cycle :- stream_pool_main_loop, !.
 start_env_cycle :-
-	thread_create(catch(em_cycle, E,
-			(	E = finish
-			->	logging(system(2, em), "EM cycle finished successfully")
-			;	logging(error(em)
-			), "EM thread Error: ~w", [E])), em_thread, [alias(em_thread)]).
-
-em_cycle :-
-	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
-		% Get all the read-streams of the environments sockets
-	findall(Dev, dev_data(Dev, stream_in, StreamIn), LDev),
-		% Check which of these streams have data waiting, i.e., the "ready" ones
-	logging(system(5, em), "Blocking on environments: ~w", [LDev]),
-	setof(StreamIn, X^dev_data(X, stream_in, StreamIn), LStreamIn),
-	wait_for_input(LStreamIn, LStreamInReady, infinite),   !, % BLOCK!
-		% Get back the name of the environments of these "ready" streams
-	setof(Dev, S^(member(S, LStreamInReady), dev_data(Dev, stream_in, S)), LDevReady),
-	logging(system(5, em), "Handling messages in devices:: ~w", [LDevReady]),
-		% Next, read all the events waiting from these devices
-	maplist(get_events_from_env, LDevReady, LLEvents), !,
-	flatten(LLEvents, LEvents),  % Flatten the list of lists of events
-		% Finally, handle all these events
-	handle_levents(LEvents), !,
-	em_cycle.
-em_cycle :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
-
-% Collecte data pending in ready environments
-get_events_from_env(Env, [Term]) :-
-	dev_data(Env, stream, Stream),
-	read(Stream, Term), !.
-	% receive_list_data_stream(StreamIn, LEvents).
-
+	thread_create(catch(stream_pool_main_loop, E,
+			(logging(system(2, em), "EM cycle received exception to finish: ~w", [E]),
+			close_stream_pool)), em_thread, [alias(em_thread)]).
 
 end_env_cycle :-
 	(	current_thread(em_thread, running)
@@ -190,8 +166,46 @@ end_env_cycle :-
 	;	true % Already finished (because all devices were closed)
 	),
 	thread_join(em_thread, _),
-	logging(system(3, em), "Environment cycle (thread) finished").
+	logging(system(1, em), "EM cycle (thread) finished").
 
+
+
+% start_env_cycle :-
+% 	thread_create(catch(em_cycle, E,
+% 			(	E = finish
+% 			->	logging(system(2, em), "EM cycle finished successfully")
+% 			;	logging(error(em)
+% 			), "EM thread Error: ~w", [E])), em_thread, [alias(em_thread)]).
+
+% em_cycle :-
+% 	logging(system(5, em), "Waiting data to arrived at env. manager (block)"),
+% 		% Get all the read-streams of the environments sockets
+% 	findall(Dev, dev_data(Dev, _), LDevices),
+% 		% Check which of these streams have data waiting, i.e., the "ready" ones
+% 	logging(system(5, em), "Blocking on environments: ~w", [LDevices]),
+% 	trace,
+% 	wait_for_input(LDevices, LDevicesReady, infinite),   !, % BLOCK!
+% 		% Get back the name of the environments of these "ready" streams
+% 	logging(system(5, em), "Handling messages in device(s): ~w", [LDevicesReady]), !,
+% 		% Next, read all the events waiting from these devices
+% 	maplist(handle_device, LDevicesReady), !,
+% 	em_cycle.
+% em_cycle :- logging(system(5, em), "EM cycle finished, no more streams to wait for...").
+
+% Collect data pending in ready environments
+handle_device(Device) :-
+	read_term(Device, Term, []),
+	(  Term == end_of_file
+	-> !
+	;  handle_event(Device, Term)
+	).
+% handle_device(Device) :-
+% 	repeat,
+% 			read(Device, Term),
+% 			(  Term == end_of_file
+% 			-> !
+% 			;  handle_event(Device, Term), fail
+% 			).
 
 
 
@@ -242,7 +256,8 @@ handle_levents(_).
 
 
 
-
+handle_event(Device, Term) :-
+	logging(system(5, em), "Handling event from device ~w: ~w", [Device, Term]).
 
 
 

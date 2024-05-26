@@ -211,7 +211,7 @@ fin  :-
 	finalizeDB,               	% Finalization of projector
 	logging(system(0), "PROJECTOR was finalized successfully."),
 	logging(system(0), "Finalizing ENVIRONMENT MANAGER..."),
-	finalizeEM,      		% Finalization of environment
+	finalize(env_manager),      		% Finalization of environment
 	logging(system(0), "ENVIRONMENT MANAGER was finalized successfully.").
 
 

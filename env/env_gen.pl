@@ -71,77 +71,64 @@ opts_spec(env_gen,
 wait_until_close(5). % how many seconds to wait until closing the device manager
 
 
-
+start :- catch(run, E, (logging(error, "Error in device manager: ~w", [E]), trace)).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%% START OF STANDARD SECTION %%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-start :-
+% Run at the beginning of the environment setting
+% It initializes the communication with the environment manager and
+% it initializes every source of input (rcx, tcl/tk, etc.)
+run :- name_dev(EnvId),
+        logging(system(1), "Initializing environment ~w", [EnvId]),
+                % 1 - Process CLI options
         current_prolog_flag(argv, Argsv),
         opts_spec(env_gen, OptsSpec, PositionalArgs),
         opt_parse(OptsSpec, Argsv, Opts, PositionalArgs, [output_functor(cli_args)]), !,
         writeln(Opts),
         maplist(assert, Opts),
-        catch_call(start2, "Main cycle for device manager got exception", fail).
-start :- logging(error, "For some reason the environment has stopped"), halt_device.
-
-% Run at the beginning of the environment setting
-% It initializes the communication with the environment manager and
-% it initializes every source of input (rcx, tcl/tk, etc.)
-start2 :-
-        name_dev(EnvId),
-        logging(system(1), "Initializing environment ~w", [EnvId]),
-        % 1 - Set debug level
+                % 2 - Set debug level
         (cli_args(debug, DebugLevel) -> true ; DebugLevel = 10),
         set_option(log_level, DebugLevel),
-        logging(system(1), "Set log level to ~d", [DebugLevel]),
-        % 2 - Obtain Host and Port number of env. manager from command
-        logging(system(1), "Setting socket connection with EM"),
+        logging(system(1, gen), "Set log level to ~d", [DebugLevel]),
+                % 3 - Obtain Host and Port number of env. manager from command
+        logging(system(1, gen), "Setting socket connection with EM"),
         cli_args(host, Host),
         cli_args(port, Port),
-        sleep(3),  % Give time to EM to wait for us
+        sleep(1),  % Give time to EM to wait for us
+                % 4 - Connect to EM via network and extract read/write stream
+                %  read/write stream to talk to EM  (send actions, receive exog events and sensing)
         tcp_connect(Host:Port, StreamPair, []),
         assert(env_manager(Host:Port, StreamPair)),
-        assert(listen_to(env_manager, StreamPair)),
-        % 3 - Initialize different interfaces
-        logging(system(1), "Initializing required interfaces..."),
-        initialize_interfaces,   %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-        % 4 - Run the main cycle
-        logging(system(1), "Starting main cycle"), !,
-        main_cycle,
-        % 5 - Terminate interfaces
-        logging(system(1), "Finalizing domain interfaces..."), !,
+        stream_pair(StreamPair, ReadStream, WriteStream),
+        set_stream(ReadStream, alias(em_read_stream)),
+        set_stream(WriteStream, alias(em_write_stream)),
+        add_stream_to_pool(StreamPair, handle_stream(env_manager)),
+                % 5 - Initialize different interfaces
+        logging(system(1, gen), "Initializing required interfaces..."),
+        initialize_interfaces, !,  %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
+                % 6 - Run the main cycle
+        logging(system(1, gen), "Starting device manager main cycle..."), !,
+        stream_pool_main_loop,
+                % 7 - Terminate interfaces
+        logging(system(1, gen), "Finalizing domain interfaces..."), !,
         finalize_interfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
-        logging(system(1), "Device manager totally finished; about to halt..."),
         close(StreamPair),
         halt_device.
+run :- logging(error, "For some reason the environment has stopped"), halt_device.
 
 halt_device :-
-        (wait_until_close(Seconds) -> true ; Seconds = 5),
-        sleep(Seconds), 		% Hold for Seconds and then close
+        (wait_until_close(Secs) -> true ; Secs = 5),
+        logging(system(1, gen), "Halting device in ~d seconds...", [Secs]), !,
+        sleep(Secs), 		% Hold for Seconds and then close
         halt.
 
 % halt device after waiting for some seconds (so that one can read debug info)
 break_device :-
-        logging(system(1), "Device manager breaking.."),
+        logging(system(1, gen), "Device manager breaking.."),
 	break.
 
-
-% MAIN CYCLE: Wait for data to arrive from data comming from the
-%             environment manager or any interface that was initialized
-%             and stored in listen_to/3.
-%             Here we wait for the tcl/tk pipe and the env_manager socket
-%
-% listen_to(Type, Id, X) means that X should be checked at every cycle
-main_cycle :- terminate, !.
-main_cycle :-
-        findall(Stream, listen_to(Stream, _), LStreams),
-        logging(system(3), "Waiting the following streams: ~w", [LStreams]),
-        wait_for_input(LStreams, ReadyStreams, infinite),
-        logging(system(3), "Streams ready: ~w", [ReadyStreams]),
-        maplist(handle_stream, ReadyStreams),
-        main_cycle.
 
 % order termination of the device manager
 order_device_termination :- terminate -> true ; assert(terminate).
@@ -159,28 +146,25 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % called when the environment manager sent something
 % usually, there is no need to modify it, one should implement execute/3
 handle_stream(env_manager) :-
-        logging(system(3), "Handling data on env_manager"),
-        receive_data_socket(env_manager, [_, Data]),
-	((Data = [terminate] ; Data = [system, end_of_file]) ->
-             logging(system(2), ["Termination requested. Reason: ", Data]),
-             order_device_termination
-        ;
-         Data = [execute, N, Type, Action] ->
-	     change_action_state(Action, N, orderExecution, null, []),
-	     logging(system(3), ["About to execute *", (Action, N), "*"]),
-             (execute(Action, Type, N, S) ->
-		logging(system(3), ["Action *", (Action, N), "* executed with outcome: ", S])
-	     ;
-		logging(error, ["Action *", (Action, N), "* could not execute (assumed failed)"]),
-		S=failed
-	     ),
-%	     change_action_state(Action, N, finalExecution, S, []),
-             % Report the sensing if it was not "null" (null=not available yet)
-             % If it was null, then the user should make sure that the
-             % sensing outcome will be eventually reported to the manager
-             (S \=null -> report_sensing(Action, N, S, _) ; true)
-        ;
-             logging(warning, ["Uknown message from Manager: ", Data])
+        logging(system(3, gen), "Handling data from EMenv_manager"),
+        read(env_manager, Data),
+	( member(Data, [finish, end_of_file])
+        ->      logging(system(1, gen), "Termination requested from EM: ~w", [Data]),
+                close_stream_pool
+        ;       Data = [execute, N, Type, Action]  ->
+	        change_action_state(Action, N, orderExecution, null, []),
+	        logging(system(3, gen), ["About to execute *", (Action, N), "*"]),
+                (execute(Action, Type, N, S) ->
+		        logging(system(3, gen), ["Action *", (Action, N), "* executed with outcome: ", S])
+	        ;
+		        logging(error, ["Action *", (Action, N), "* could not execute (assumed failed)"]),
+		        S=failed
+	        ),
+%	        change_action_state(Action, N, finalExecution, S, []),
+                % Report the sensing if it was not "null" (null=not available yet)
+                % If it was null, then the user should make sure that the
+                % sensing outcome will be eventually reported to the manager
+                (S \=null -> report_sensing(Action, N, S, _) ; true)
         ).
 
 
@@ -198,19 +182,15 @@ handle_stream(env_manager) :-
 % events/actions and action sensing outcomes.
 % Message is a message that should be printed in the device manager output.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-report_exog_event(A, Message) :- var(Message), !,
-        logging(exogaction, "Exogenous action ~w occurred", [A]),
-        send_data_socket(env_manager, [exog_action, A]).
-report_exog_event(A, Message) :-
-        logging(exogaction, Message),
-        send_data_socket(env_manager, [exog_action, A]).
+report_exog(A) :-
+        logging(exogaction, "Exogenous action occurred: ~w", [A]),
+        write_term(em_write_stream, [exog_action, A], [quoted(false), fullstop(true), nl(true)]),
+        flush_output(em_write_stream).
 
-report_sensing(A, N, S, Message) :- var(Message), !,
-        logging(sensing, ["Sending sensing to manager:  ", (A, N, S)]),
-        send_data_socket(env_manager, [sensing, N, S]).
-report_sensing(_, N, S, Message) :-
-        logging(sensing, Message),
-        send_data_socket(env_manager, [sensing, N, S]).
+report_sensing(A, N, S) :-
+        logging(sensing, ["Sending sensing to manager: ", (A, N, S)]),
+        write_term(env_manager, [sensing, N, S], [quoted(false), fullstop(true), nl(true)]),
+        flush_output(em_write_stream).
 
 
 
