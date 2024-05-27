@@ -1,6 +1,6 @@
 /*  Environment Manager for the IndiGolog interpreter
 
-    @author Sebastian Sardina 2004 - ssardina@gmail.com
+    @author Sebastian Sardina 2003-2024 - ssardina@gmail.com
 
  This code coordinates the exchanges among the various device managers
  and the main IndiGolog interpreter. It is responsible for the execution
@@ -15,12 +15,12 @@
 
  The following system independent predicates are provided:
 
- -- initialize_EnvManager -- finalize_EnvManager -- execute_action(A, H,
- T, S) : execute action A of type T at history H and resturn sensing
- outcome S -- exog_occurs(LA)     : return a list LA of exog. actions
- that have occurred (synchronous) -- indi_exog(Action)          :
- asserted whenever exog Action occurred -- set_type_manager(+T)       :
- set the implementation type of the env manager
+ -- initialize(env_manager)
+ -- finalize(env_manager)
+ -- execute_action(A, H, T, S): execute action A of type T at history H and resturn sensing outcome S
+ -- exog_occurs(LA): return a list LA of exog. actions that have occurred (synchronous)
+ -- indi_exog(Action): asserted whenever exog Action occurred 
+ -- set_type_manager(+T): set the implementation type of the env manager
 
 
  The following code is required:
@@ -36,7 +36,7 @@
  -- server_port(Port) Port to set up the environment manager --
     load_device(Env, Command, Options) for each environemnt to be loaded
     -- how_to_execute(Action, Env, Code) Action should be executed in
-    environment Env with using code Code -- translateExogAction(Code,
+    environment Env with using code Code -- translate_exog(Code,
     Action) Code is action Action -- exog_action(Action) Action is an
     exogenous action
 
@@ -53,8 +53,8 @@
 	counter_actions/1,  % Carries a counter for each action performed
 	dev_data/2,         % (Env name, Pid, Socket) of each device
 	executing_action/3, % Stores the current action being executed
-	translateExogAction/2,
-	translateSensing/3, % Translates sensing outcome to high-level sensing
+	translate_exog/2,
+	translate_sensing/3, % Translates sensing outcome to high-level sensing
 	how_to_execute/3.   % Defines how to execute each high-level action
 
 name_env(manager).   % We are the "environment manager"
@@ -79,7 +79,7 @@ initialize(env_manager) :-
 	assert(counter_actions(0)),
 	load_devices(LDevices),	% get devices to load and how many
     length(LDevices, NoDevices),
-	logging(system(1, em), "Openinig EM server socket..."),
+	logging(info(1, em), "Openinig EM server socket..."),
 	tcp_socket(Socket),
     em_address(Host, Port),
 	Address = Host:Port,
@@ -87,9 +87,9 @@ initialize(env_manager) :-
     tcp_listen(Socket, NoDevices),
 	tcp_open_socket(Socket, StreamPair),	% stream use for tcp_accept/3
 	assert(em_data(Socket, Address, StreamPair)),
-	logging(system(2, em), "Loading the following devices: ~w", [LDevices]),
+	logging(info(2, em), "Loading the following devices: ~w", [LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
-    logging(system(2, em), "Start EM cycle to listen to devices..."),
+    logging(info(2, em), "Start EM cycle to listen to devices..."),
 	start_env_cycle.   % Start the env. manager main cycle
 
 /* Start device manager environment E
@@ -106,7 +106,7 @@ start_dev(E) :-
 	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
 	stream_pair(StreamPair, ReadStream, _),
 	set_stream(ReadStream, alias(E)),	% for better reading with the device name
-	logging(system(1, em), "Device ~w initialized at ~w", [E, IP]),
+	logging(info(1, em), "Device ~w initialized at ~w", [E, IP]),
 	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])),
 	add_stream_to_pool(StreamPair, handle_device(E)).	% register to listen to this stream
 
@@ -120,25 +120,25 @@ dev_stream(E, Stream) :- dev_data(E, L), member(stream(Stream), L).
 	4 - Report the number of actions that were executed
 */
 finalize(env_manager) :-
-	logging(system(2, em), "1 - Closing all device managers..."),
+	logging(info(2, em), "1 - Closing all device managers..."),
     findall(Dev, dev_data(Dev, _), LDev), % Get all current open devices
 	maplist(close_dev, LDev), 	% Close all the devices found
 	sleep(3), 	% Wait to give time to devices to finish cleanly
 	close_stream_pool, !,
-	logging(system(2, em), "2 - Terminating EM cycle..."),
+	logging(info(2, em), "2 - Terminating EM cycle..."),
 	em_data(_, _, StreamPair),
 	close(StreamPair),
 	catch(wait_for_children, _, true), !,
-	logging(system(2, em), "3 - Closing EM server socket..."),
+	logging(info(2, em), "3 - Closing EM server socket..."),
     close(StreamPair), 		% Disconnect server socket
     counter_actions(N),
-    logging(system(1, em), "EM completed with *~d* executed actions", [N]).
+    logging(info(1, em), "EM completed with *~d* executed actions", [N]).
 
 % keep waiting for all children to finish
 % https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
 % TODO: maybe send to each env a "exit" and wait for it to finish?
 wait_for_children :- wait(PId, S), !,
-	logging(system(3, em), "Successful proccess waiting: (~w, ~w)", [PId, S]),
+	logging(info(3, em), "Successful proccess waiting: (~w, ~w)", [PId, S]),
 	wait_for_children.
 wait_for_children.
 
@@ -161,7 +161,7 @@ close_dev(Env) :-
 
 start_env_cycle :-
 	thread_create(catch(stream_pool_main_loop, E,
-			(logging(system(2, em), "EM cycle received exception to finish: ~w", [E]),
+			(logging(info(2, em), "EM cycle received exception to finish: ~w", [E]),
 			close_stream_pool)), em_thread, [alias(em_thread)]).
 
 end_env_cycle :-
@@ -170,7 +170,7 @@ end_env_cycle :-
 	;	true % Already finished (because all devices were closed)
 	),
 	thread_join(em_thread, _),
-	logging(system(1, em), "EM cycle (thread) finished").
+	logging(info(1, em), "EM cycle (thread) finished").
 
 % Collect data pending in ready environments
 handle_device(Device) :-
@@ -237,38 +237,38 @@ handle_levents(_).
 
 
 handle_event(Device, Term) :-
-	logging(system(5, em), "Handling event from device ~w: ~w", [Device, Term]).
+	logging(info(5, em), "Handling event from device ~w: ~w", [Device, Term]).
 
 
 
 % handle_event/1: Handle each *single* event
 handle_event([_, [sensing, N, OutcomeCode]]) :- !,
 	executing_action(N, Action, _),
-	(translateSensing(Action, OutcomeCode, Outcome) ->  true ; Outcome=OutcomeCode),
+	(translate_sensing(Action, OutcomeCode, Outcome) ->  true ; Outcome=OutcomeCode),
 	assert(got_sensing(N, Outcome)),
-		logging(system(5),
+		logging(info(5),
 			["(EM) Sensing outcome arrived for action ",
 			(N, Action), " - Sensing Outcome:: ", (OutcomeCode, Outcome)]).
 
 handle_event([_, [exog_action, CodeAction]]):-
-	(translateExogAction(CodeAction, Action) -> true ; Action=CodeAction),
+	(translate_exog(CodeAction, Action) -> true ; Action=CodeAction),
     exog_action(Action), !,
 	assert(got_exogenous(Action)),
-        logging(system(5),
+        logging(info(5),
 	               ["(EM) Exogenous action occurred:: ", (CodeAction, Action)]).
 
 handle_event([socket(Socket), [_, end_of_file]]) :- !,  % Env has been closed!
         dev_data(Env, _, Socket),                        % remove it
-        logging(system(2), ["(EM) Device ", Env, " has reported termination!"]),
+        logging(info(2), ["(EM) Device ", Env, " has reported termination!"]),
         delete_dev(Env).
 
 handle_event([Sender, [Type, Message]]):- !, % The event is unknown but with form
-        logging(system(5),
+        logging(info(5),
         	["(EM) UNKNOWN MESSAGE! Sender: ", Sender,
                                    " ; Type: " , Type, " ; Message: ", Message]).
 
 handle_event(Data):-                         % The event is completely unknown
-        logging(system(5), ["(EM) UNKNOWN and UNSTRUCTURED MESSAGE!:: ", Data]).
+        logging(info(5), ["(EM) UNKNOWN and UNSTRUCTURED MESSAGE!:: ", Data]).
 
 
 
@@ -289,18 +289,18 @@ execute_action(Action, H, Type, N2, Outcome) :-
 		% Learn how Action should be executed (Env, Code of action)
 	map_execution(Action, Env, Code),   % From domain spec
 		% Send "execute" message to corresponding device
-	logging(system(2, em),
+	logging(info(2, em),
 		"Start to execute the following action: ~w", [N2, Action, Env, Code]),
 	dev_stream(Env, StreamEnv),
 	send_term(StreamEnv, [execute, N2, Type, Code]),
-	logging(system(3, em),
+	logging(info(3, em),
 		"Action ~w sent to device ~w (waiting for sensing outcome)", [N2, Env]), !,
 		% Busy waiting for sensing outcome to arrive (ALWAYS)
 	repeat,
 	got_sensing(N2, Outcome),
 	retract(executing_action(N2, _, _)),
 	retract(got_sensing(N2, _)), !,
-	logging(system(2, em), 
+	logging(info(2, em),
 		"Action ~w completed with outcome: ~w", [[N2, Action, Env, Code], Outcome]).
 execute_action(_, _, _, N, failed) :- counter_actions(N).
 

@@ -96,7 +96,7 @@
 
  FROM THE SPECIFIC DOMAIN OR APPLICATION:
 
- -- simulateSensing(+A)
+ -- simulate_sensing(+A)
        sensing outcome for action A is simulated
  -- type_prolog(+P)
        name of prolog being used (ecl, swi, vanilla, etc)
@@ -156,11 +156,11 @@ set_option("wait_step : pause V seconds after each prim. action execution.").
 set_option(wait_step, N) :- wait_step(N).
 
 wait_step(0) :-
-	logging(system(0), "** Wait-at-action disabled"),
+	logging(info(0), "** Wait-at-action disabled"),
 	retractall(wait_at_action(_)).
 wait_step(S) :-
 	number(S),
-	logging(system(0), ["** Wait-at-action enable to ", S, " seconds."]),
+	logging(info(0), ["** Wait-at-action enable to ", S, " seconds."]),
 	retractall(wait_at_action(_)),
 	assert(wait_at_action(S)).
 wait_step(_) :-
@@ -198,21 +198,21 @@ exog_action(start_exec).		% Start the execution of the program
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :-
 %	set_option(debug_level, 3),
-	logging(system(0), "Starting ENVIRONMENT MANAGER..."),
+	logging(info(0), "Starting ENVIRONMENT MANAGER..."),
 	initialize(env_manager),    	  	% Initialization of environment
-	logging(system(0), "ENVIRONMENT MANAGER was started successfully."),
-	logging(system(0), "Starting PROJECTOR EVALUATOR..."),
+	logging(info(0), "ENVIRONMENT MANAGER was started successfully."),
+	logging(info(0), "Starting PROJECTOR EVALUATOR..."),
 	initialize(evaluator),             	% Initialization of projector
-	logging(system(0), "PROJECTOR was started successfully."),
+	logging(info(0), "PROJECTOR was started successfully."),
 	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
 
 fin  :-
-	logging(system(0), "Finalizing PROJECTOR..."),
+	logging(info(0), "Finalizing PROJECTOR..."),
 	finalize(evaluator),               	% Finalization of projector
-	logging(system(0), "PROJECTOR was finalized successfully."),
-	logging(system(0), "Finalizing ENVIRONMENT MANAGER..."),
+	logging(info(0), "PROJECTOR was finalized successfully."),
+	logging(info(0), "Finalizing ENVIRONMENT MANAGER..."),
 	finalize(env_manager),      		% Finalization of environment
-	logging(system(0), "ENVIRONMENT MANAGER was finalized successfully.").
+	logging(info(0), "ENVIRONMENT MANAGER was finalized successfully.").
 
 
 % Clean all exogenous actions and set the initial now/1 situation
@@ -235,11 +235,11 @@ reset_indigolog_dbs(_).
 indigolog(E) :-		% Run program E
 	(var(E) -> proc(main, E) ; true),
 	init,
-	logging(system(0), "Starting to execute main program"),
+	logging(info(0), "Starting to execute main program"),
 	indigolog(E, []), !,
-	logging(system(0), "Execution finished. Closing modules..."),
+	logging(info(0), "Execution finished. Closing modules..."),
 	fin, !,
-	logging(system(0), "Everything finished - HALTING TOP-LEVEL CONTROLLER").
+	logging(info(0), "Everything finished - HALTING TOP-LEVEL CONTROLLER").
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
@@ -275,35 +275,38 @@ compute_step(E1, H1, E2, H2, T) :-
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition
 %%
-indigolog(H, E, H)          :-
+indigolog(H, E, H) :-
 	indigolog(E, H).	% The case of Trans for tests
 indigolog(H, E, [sim(_)|H]) :- !,
 	indigolog(E, H).	% Drop simulated actions
-indigolog(H, E, [wait|H])   :- !,
+indigolog(H, E, [wait|H]) :- !,
 	pause_or_roll(H, H1),
-	doWaitForExog(H1, H2),
+	logging(info(2), "Waiting for exogenous action to ocurr..."),
+	repeat,
+	handle_exog(H1, H2),
+	(H2 = H1 -> fail ; true),
 	indigolog(E, H2).
 indigolog(_, E, [debug_exec|H]) :- !,
-	logging(system(0), "Request for DEBUGGING"),
+	logging(info(0), "Request for DEBUGGING"),
 	debug(debug, H, null),
 	delete(H, debug, H2),
 	length(H2, LH2),
 	assert(debuginfo(E, H2, LH2)), !,
 	indigolog(E, H2).
 indigolog(_, _, [halt_exec|H]) :- !,
-	logging(system(0), "Request for TERMINATION of the program"),
+	logging(info(0), "Request for TERMINATION of the program"),
 	indigolog([], H).
 indigolog(_, _, [abort_exec|H]) :- !,
-	logging(system(0), "Request for ABORTION of the program"),
+	logging(info(0), "Request for ABORTION of the program"),
 	indigolog([?(false)], H).
 indigolog(_, E, [break_exec|H]) :- !,
-	logging(system(0), "Request for PAUSE of the program"),
+	logging(info(0), "Request for PAUSE of the program"),
 	writeln(E),
 	break,		% BREAK POINT (CTRL+D to continue execution)
 	delete(H, pause, H2),
 	indigolog(E, H2).
 indigolog(_, _, [reset_exec|_]) :- !,
-	logging(system(0), "Request for RESETING agent execution"),
+	logging(info(0), "Request for RESETING agent execution"),
 	finalizeDB,
 	initializeDB,
 	proc(main, E),		% obtain main agent program
@@ -324,12 +327,6 @@ system_action(start_exec).	% Action to start execution
 system_action(break_exec).	% Action to break the agent execution to top-level Prolog
 system_action(reset_exec).	% Reset agent execution from scratch
 
-% Wait continously until an exogenous action occurrs
-doWaitForExog(H1, H2) :-
-        logging(system(2), "Waiting for exogenous action to happen"),
-        repeat,
-        handle_exog(H1, H2),
-        (H2 = H1 -> fail ; true).
 
 
 
@@ -349,8 +346,8 @@ abort_step :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % type_action(Action, Type) : finds out the type of an action
-type_action(Act, sensing)    :- sensing(Act, _), !.
-type_action(Act, system)     :- system_action(Act), !.
+type_action(Act, sensing) :- sensing(Act, _), !.
+type_action(Act, system) :- system_action(Act), !.
 type_action(_, nonsensing).
 
 indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
@@ -359,7 +356,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
         update_now(H2).
 indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
         type_action(Act, sensing), !,
-        logging(system(1), ["Sending sensing Action *", Act, "* for execution"]),
+        logging(info(1), ["Sending sensing Action *", Act, "* for execution"]),
         execute_action(Act, H, sensing, IdAct, S), !,
 	(S = failed ->
 		logging(error, ["Action *", Act, "* FAILED to execute at history: ", H]),
@@ -374,7 +371,7 @@ indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
         type_action(Act, nonsensing), !,
-        logging(system(1), ["Sending nonsensing action *", Act, "* for execution"]),
+        logging(info(1), ["Sending nonsensing action *", Act, "* for execution"]),
         execute_action(Act, H, nonsensing, IdAct, S), !,
 	(S = failed ->
 		logging(error, ["Action *", Act, "* could not be executed at history: ", H]),
@@ -390,13 +387,13 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
 % Simulated pause between execution of actions if requested by user
 wait_if_neccessary :-
         wait_at_action(Sec), !,   % Wait Sec numbers of seconds
-        logging(system(2), ["Waiting at step ", Sec, " seconds"]),
+        logging(info(2), ["Waiting at step ", Sec, " seconds"]),
         sleep(Sec).
 wait_if_neccessary.
 
 % Updates the current history to H
 update_now(H) :-
-        %logging(system(2), ["Updating now history to: ", H]),
+        %logging(info(2), ["Updating now history to: ", H]),
         %write(H),
         retract(now(_)) -> assert(now(H)) ; assert(now(H)).
 
@@ -471,10 +468,10 @@ pause_or_roll(H1, H1).
 
 
 roll(H1, H2) :-
-        logging(system(0), "Rolling down the river (progressing the database)......."),
+        logging(info(0), "Rolling down the river (progressing the database)......."),
 	roll_db(H1, H2),
-        logging(system(0), "done progressing the database!"),
-        logging(system(3), ["New History: ", H2]),
+        logging(info(0), "done progressing the database!"),
+        logging(info(3), ["New History: ", H2]),
 	update_now(H2), 			% Update the current history
 	append(H2, HDropped, H1),	% Extract what was dropped from H1
 	retract(rolled_history(HO)),		% Update the rolled_history/1 predicate to store all that has been rolled forward

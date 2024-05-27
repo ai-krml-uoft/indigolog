@@ -144,13 +144,13 @@ printKbInstructions :-
 handle_stream(Stream) :- 
              	% There is data in stream S which corresponds to action (A,N)
 	listen_to(_, action(A, N), Stream),   
-        report_message(system(3), ['Handling data from action ',(A,N)]),
+        report_message(info(3), ['Handling data from action ',(A,N)]),
 	read(Stream, Data),
 	((Data= end_of_file ; Data=finish) ->    
              	% Stream is EOF or requested terminination (action is over)
 	     close(Stream),
 	     retract(listen_to(_, action(A, N), Stream)),
-	     report_message(system(2), ['Action ',(A, N),' has finished completely'])
+	     report_message(info(2), ['Action ',(A, N),' has finished completely'])
         ;
 		% Data is sensing information, report it using report_sensing/4
         Data = [sensing, Outcome] ->

@@ -51,7 +51,7 @@ load_device(simulator, Host:Port, [pid(PID)]) :-
     root_indigolog(Dir),
     directory_file_path(Dir, 'env/env_sim.pl', File),
     ARGS = ['-e', 'swipl', '-t', 'start', File, '--host', Host, '--port', Port],
-    logging(system(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
+    logging(info(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
     process_create(path(xterm), ARGS, [process(PID)]).
 
 
@@ -66,13 +66,13 @@ how_to_execute(Action, simulator, Action).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION
 %
-%          translateExogAction(Code, Action)
-%          translateSensing(Action, Outcome, Value)
+%          translate_exog(Code, Action)
+%          translate_sensing(Action, Outcome, Value)
 %
 % OBS: If not present, then the translation is 1-1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-translateExogAction(CodeAction, Action) :- actionNum(Action, CodeAction).
-translateSensing(_, SensorValue, SensorValue).
+translate_exog(CodeAction, Action) :- actionNum(Action, CodeAction).
+translate_sensing(_, SensorValue, SensorValue).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

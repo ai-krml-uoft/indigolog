@@ -109,12 +109,12 @@
 %
 % -- actionNum(action, num)  
 %         action has RCX code num
-% -- simulateSensing(action)
+% -- simulate_sensing(action)
 %         sensing result for action should be asked to the user
-% -- translateSensing(action, sensorValue, sensorResult) 
+% -- translate_sensing(action, sensorValue, sensorResult) 
 %         translate the sensorValue of action to sensorResult
-% -- translateExogAction(codeAction, action) 
-%         translateSensing action name into codeAction and vice-versa
+% -- translate_exog(codeAction, action) 
+%         translate_sensing action name into codeAction and vice-versa
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 /* DOMAINS/SORTS */
@@ -353,7 +353,7 @@ actionNum(say(M),   say(M, english)).
 % Translation of sensor values from RCX
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% translateSensing(+Action, +SensorValue, SensingResult): Translate
+% translate_sensing(+Action, +SensorValue, SensingResult): Translate
 %     the value SensorValue returned by the RCX sensor into a legal
 %     SensingResult under Action
 

@@ -77,7 +77,6 @@ This part implements a keyboard interface to enter exogenous events in an asynch
 An TCL/TK independent process is initiated to read exogenous events the program exog.tcl writes each exogenous action entered to a special pipe. At that time, a sigio signal is assigned to such pipe so that whenever data arrives to the pipe an interrupt is triggered which can be cached by the main cycle to handle thestart exog action entered.
 */
 initialize_interfaces :- initialize_exog(tcltk).
-
 finalize_interfaces :- finalize_exog(tcltk).
 
 initialize_exog(tcltk) :-
@@ -90,12 +89,12 @@ initialize_exog(tcltk) :-
         assert(listen_to(tcltk, OutStream, [pid(PID)])),  % listen to tcltk
         add_stream_to_pool(tcltk, handle_stream(tcltk)).
 finalize_exog(tcltk) :-
-        logging(system(1), 'Closing TCL-TK interface.'),
+        logging(info(1), 'Closing TCL-TK interface.'),
 	delete_stream_from_pool(tcltk),
         listen_to(tcltk, _, L),
         member(pid(PID), L),
         process_kill(PID),
-        logging(system(1), 'TCL-TK interface closed: stream and process.').
+        logging(info(1), 'TCL-TK interface closed: stream and process.').
 
 finalize_exog(tcltk).	% already down
 

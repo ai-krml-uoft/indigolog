@@ -184,10 +184,10 @@ how_to_execute(Action, clima07(_), Action) :-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION
-%          translateExogAction(Code, Action)
-%          translateSensing(Action, Outcome, Value)
+%          translate_exog(Code, Action)
+%          translate_sensing(Action, Outcome, Value)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-translateExogAction(CodeAction, Action) :- 
+translate_exog(CodeAction, Action) :- 
 	actionNum(Action, CodeAction).
 
 

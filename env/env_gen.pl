@@ -5,8 +5,8 @@
 
  This files provides the core of a device manager. The user should later  finish the device by providing the implementation of:
 
-        - initializeInterface/0
-        - finalizeInterface/0
+        - initialize_interfaces/0
+        - finalize_interfaces/0
         - handle_stream/1
         - execute/4
 
@@ -81,7 +81,7 @@ start :- catch(run, E, (logging(error, "Error in device manager: ~w", [E]), trac
 % It initializes the communication with the environment manager and
 % it initializes every source of input (rcx, tcl/tk, etc.)
 run :- name_dev(EnvId),
-        logging(system(1), "Initializing environment ~w", [EnvId]),
+        logging(info(1), "Initializing environment ~w", [EnvId]),
                 % 1 - Process CLI options
         current_prolog_flag(argv, Argsv),
         opts_spec(env_gen, OptsSpec, PositionalArgs),
@@ -91,9 +91,9 @@ run :- name_dev(EnvId),
                 % 2 - Set debug level
         (cli_args(debug, DebugLevel) -> true ; DebugLevel = 10),
         set_option(log_level, DebugLevel),
-        logging(system(1, gen), "Set log level to ~d", [DebugLevel]),
+        logging(info(1, gen), "Set log level to ~d", [DebugLevel]),
                 % 3 - Obtain Host and Port number of env. manager from command
-        logging(system(1, gen), "Setting socket connection with EM"),
+        logging(info(1, gen), "Setting socket connection with EM"),
         cli_args(host, Host),
         cli_args(port, Port),
         sleep(1),  % Give time to EM to wait for us
@@ -106,13 +106,13 @@ run :- name_dev(EnvId),
         set_stream(WriteStream, alias(em_write_stream)),
         add_stream_to_pool(StreamPair, handle_stream(env_manager)),
                 % 5 - Initialize different interfaces
-        logging(system(1, gen), "Initializing required interfaces..."),
+        logging(info(1, gen), "Initializing required interfaces..."),
         initialize_interfaces, !,  %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
                 % 6 - Run the main cycle
-        logging(system(1, gen), "Starting device manager main cycle..."), !,
+        logging(info(1, gen), "Starting device manager main cycle..."), !,
         stream_pool_main_loop,
                 % 7 - Terminate interfaces
-        logging(system(1, gen), "Finalizing domain interfaces..."), !,
+        logging(info(1, gen), "Finalizing domain interfaces..."), !,
         finalize_interfaces,     %%%%%%%%%%% USER SHOULD IMPLEMENT THIS!
         close(StreamPair),
         halt_device.
@@ -120,13 +120,13 @@ run :- logging(error, "For some reason the environment has stopped"), halt_devic
 
 halt_device :-
         (wait_until_close(Secs) -> true ; Secs = 5),
-        logging(system(1, gen), "Halting device in ~d seconds...", [Secs]), !,
+        logging(info(1, gen), "Halting device in ~d seconds...", [Secs]), !,
         sleep(Secs), 		% Hold for Seconds and then close
         halt.
 
 % halt device after waiting for some seconds (so that one can read debug info)
 break_device :-
-        logging(system(1, gen), "Device manager breaking.."),
+        logging(info(1, gen), "Device manager breaking.."),
 	break.
 
 
@@ -146,27 +146,27 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % called when the environment manager sent something
 % usually, there is no need to modify it, one should implement execute/3
 handle_stream(env_manager) :-
-        logging(system(3, gen), "Handling data from EM"),
+        logging(info(3, gen), "Handling data from EM"),
         read(em_read_stream, Data),
-        logging(system(3, gen), "Received data from EM: ~w", [Data]),
+        logging(info(3, gen), "Received data from EM: ~w", [Data]),
         handle_data(Data).
 
 handle_data(Data) :-
-        member(Data, [finish, end_of_file]),
-        logging(system(1, gen), "Termination requested from EM: ~w", [Data]),
+        member(Data, [finish, end_of_file]), !,
+        logging(info(2, gen), "Termination requested from EM: ~w", [Data]),
         close_stream_pool.
-handle_data([execute, N, Type, Action]) :-
+handle_data([execute, N, Type, Action]) :- !,
         change_action_state(Action, N, orderExecution, null, []),
-        logging(system(3, gen), ["About to execute *", (Action, N), "*"]),
-        (       execute(Action, Type, N, S)     % actual execution!
-        ->      logging(system(3, gen), "Action ~w executed with outcome: ", [[Action, N], S]),
-                (S \= null -> report_sensing(A, N, S) ; true)
-        ;       logging(error, "Action ~w failed to execute (assumed failed)", [Action, N]),
-                S = failed
+        logging(info(2, gen), "About to execute action ~d: ~w", [N, Action]),
+        (       execute(Action, Type, N, SR)     % actual execution!
+        ->      logging(info(1, gen), "Action ~w executed with outcome: ~w", [N, [Action, SR]]),
+                (SR \= null -> report_sensing(Action, N, SR) ; true)
+        ;       logging(error, "Action ~w failed to execute (assumed failed)", [[Action, N]]),
+                SR = failed
         ),
-        change_action_state(Action, N, finalExecution, S, []).
-
-
+        change_action_state(Action, N, finalExecution, SR, []).
+handle_data(Data) :-
+        logging(info(2, gen), "No rule for handling data: ~w", [Data]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -187,8 +187,8 @@ report_exog(A) :-
         send_term(em_write_stream, [exog_action, A]).
 
 report_sensing(A, N, S) :-
-        logging(sensing, ["Sending sensing to manager: ", (A, N, S)]),
-        send_term(env_manager, [sensing, N, S]).
+        logging(sensing, "Sending sensing action ~d to EM: ~w", [N, [A, S]]),
+        send_term(em_write_stream, [sensing, N, S]).
 
 
 

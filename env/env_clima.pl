@@ -107,13 +107,13 @@ initializeInterfaces(L) :-
 	assert(clima_location(IP, Port)),		% Assert the clima server location
 	assert(clima_agentid(AL, AP)),			% Assert the agent login information
            % 2 - Setup communication with CLIMA game server
-        report_message(system(2),'Establishing connection to CLIMA SIMULATOR'),
+        report_message(info(2),'Establishing connection to CLIMA SIMULATOR'),
         printKbInstructions,
         connectToGameSimulator.
 
 finalizeInterfaces(_) :- 
         disconnectFromGameSimulator,
-        report_message(system(2), 'Disconnection from CLIMA SIMULATOR successful').
+        report_message(info(2), 'Disconnection from CLIMA SIMULATOR successful').
 
 
 
@@ -134,7 +134,7 @@ connectToGameSimulator :-
 	clima_connect(Host, Port, comm_sim), 
 	clima_authenticate(comm_sim, AgentUser, AgentPass, R), !,
 	(R = ok -> 
-	        report_message(system(2), 'Communication with CLIMA SIMULATOR established'),
+	        report_message(info(2), 'Communication with CLIMA SIMULATOR established'),
 		assert(listen_to(socket, comm_sim, comm_sim)),
 		sleep(1),
 		report_exog_event(connected(climaServer), _)
@@ -164,15 +164,15 @@ disconnectFromGameSimulator :-
 handle_stream(comm_sim) :- 
 	get_socket_stream(comm_sim, read, Read),
 	at_end_of_stream(Read), 
-	report_message(system(2), ['Game server disconnection']), !,
+	report_message(info(2), ['Game server disconnection']), !,
 	(bye_message_received -> 
-		report_message(system(2), 
+		report_message(info(2), 
 			['Bye message was already received. Ready for termination.']),
 		disconnectFromGameSimulator
 		
 	;
 		repeat,
-		report_message(system(2), ['Reconnecting to game server...']),
+		report_message(info(2), ['Reconnecting to game server...']),
 		disconnectFromGameSimulator,
 		sleep(5),
 		(connectToGameSimulator -> true ; fail)
@@ -184,7 +184,7 @@ handle_stream(comm_sim) :-
 	get_socket_stream(comm_sim, read, Read),
 	\+ at_end_of_stream(Read),
 	clima_receive_XML(comm_sim, XMLMess), !, 
-	report_message(system(3), ['Message from game server: ', XMLMess]),
+	report_message(info(3), ['Message from game server: ', XMLMess]),
 	handle_xml_message(XMLMess).
 
 
@@ -247,10 +247,10 @@ execute(Action, _, N, Sensing) :-
         report_message(action, ['Executing non-sensing action: *',(Action,N,IdAction),'*']), 
 	(clima_execute(comm_sim, Action, IdAction, ok) ->
 		Sensing=ok,
-		report_message(system(4), ['The action *',(Action,N,IdAction),'* was sent to game server'])
+		report_message(info(4), ['The action *',(Action,N,IdAction),'* was sent to game server'])
 	;
 		Sensing=failed, 
-		report_message(system(4), ['The following action failed to execute: *',	(Action,N,IdAction),'*'])
+		report_message(info(4), ['The following action failed to execute: *',	(Action,N,IdAction),'*'])
 	),
 	asserta(actionStatus(Deadline, IdAction, Sensing)).
 

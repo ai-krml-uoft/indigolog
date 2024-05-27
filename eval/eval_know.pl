@@ -4,8 +4,8 @@
 %
 %       Possible value BAT evaluator
 %	(This is just a prototype and it may contain bugs and problems)
-%	
-%  AUTHOR : Sebastian Sardina & Stavros Vassos 
+%
+%  AUTHOR : Sebastian Sardina & Stavros Vassos
 %             Based also on Hector Levesque KPlanner from IJCAI-05
 %  EMAIL  : {ssardina,stavros}@cs.toronto.edu
 %  WWW    : www.cs.toronto.edu/cogrobo
@@ -21,7 +21,7 @@
 %
 %   The main tool provided in this file is the following predicate:
 %
-% -- eval(P,H,B):  B=true/false/unknown is the truth value of P at history H 
+% -- eval(P,H,B):  B=true/false/unknown is the truth value of P at history H
 %
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
@@ -32,16 +32,16 @@
 %
 % This software was developed by the Cognitive Robotics Group under the
 % direction of Hector Levesque and Ray Reiter.
-% 
+%
 %        Do not distribute without permission.
 %        Include this notice in any copy made.
-% 
-% 
+%
+%
 %         Copyright (c) 2000 by The University of Toronto,
 %                        Toronto, Ontario, Canada.
-% 
+%
 %                          All Rights Reserved
-% 
+%
 % Permission to use, copy, and modify, this software and its
 % documentation for non-commercial research purpose is hereby granted
 % without fee, provided that the above copyright notice appears in all
@@ -52,7 +52,7 @@
 % permission.  The University of Toronto makes no representations about
 % the suitability of this software for any purpose.  It is provided "as
 % is" without express or implied warranty.
-% 
+%
 % THE UNIVERSITY OF TORONTO DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS
 % SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
 % FITNESS, IN NO EVENT SHALL THE UNIVERSITY OF TORONTO BE LIABLE FOR ANY
@@ -66,7 +66,7 @@
 % This file provides the following:
 %
 % -- eval(P, H, B)  (MAIN PREDICATE, used by the transition system)
-%           B is the truth value of P at history H 
+%           B is the truth value of P at history H
 %
 % SYSTEM TOOLS (used by the top-level cycle)::
 %
@@ -74,20 +74,20 @@
 %           initialize the projector
 % -- finalizeDB/0
 %           finalize the projector
-% -- can_roll(+H1) 
+% -- can_roll(+H1)
 %       check if the DB CAN roll forward
-% -- must_roll(+H1) 
+% -- must_roll(+H1)
 %       check if the DB MUST roll forward
-% -- roll_db(+H1,-H2) 
+% -- roll_db(+H1,-H2)
 %       perform roll forward with current history H1 and new history H2
-% -- actionolling(+H1, -H2) 
+% -- actionolling(+H1, -H2)
 %           mandatory roll forward of history H1 into new history H2
-% -- handle_sensing(+A, +H, +S, -H2) 
+% -- handle_sensing(+A, +H, +S, -H2)
 %           H2 is H plus action A with sensing result S
 % -- debug(+A, +H, -S)
 %           perform debug tasks with current action A, sensing outcome S,
 %           and history H
-% -- system_action(+A)       
+% -- system_action(+A)
 %           action A is an action used as a specific tool for the projector
 %
 %
@@ -98,19 +98,19 @@
 % -- sensed(+A, +S, +H)
 %           action A, when executed at history H, got sensing result S
 % -- inconsistent(+H)
-%           last action turned history H inconsistent, i.e., impossible 
-% -- rdomain(-V, +D)       
+%           last action turned history H inconsistent, i.e., impossible
+% -- rdomain(-V, +D)
 %           object V is an element of domain D
-% -- rdomain(-V, +D)       
+% -- rdomain(-V, +D)
 %           object V is an element of domain D (random way)
-% -- getdomain(+D, -L)   
+% -- getdomain(+D, -L)
 %            L is the list representing domain D
-% -- calc_arg(+A1, -A2, +H)  
+% -- calc_arg(+A1, -A2, +H)
 %           action A2 is action A1 with its arguments replaced wrt history H
 % -- before(+H1, +H2)
 %           history H1 is a previous history of H2
-% -- assume(+F, +V, +H1, -H2) 
-%           H2 is the history resulting from assuming fluent F to 
+% -- assume(+F, +V, +H1, -H2)
+%           H2 is the history resulting from assuming fluent F to
 %           have value V at history H1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -145,7 +145,7 @@
 %                initially(color(3), blue).
 %
 % -- causes_val_tt(action,sensing,fluent,value,cond)
-%          when cond holds, doing action with outcome sensing causes fluent 
+%          when cond holds, doing action with outcome sensing causes fluent
 %	   to have value
 %
 %            e.g., causes_val(paint(C2,V), color(C), V, C = C2).
@@ -162,7 +162,7 @@
 %               or causes_false(clean(C),  painted(C), true).
 %
 % -- sort-name(domain_of_sort).      : defines a sort
-%        e.g., color([blue, green, yellow, red]).       
+%        e.g., color([blue, green, yellow, red]).
 %              temperature([-30..45]).
 %
 % Requirements:
@@ -186,10 +186,10 @@
 %%            inconsistent/1,
 %%            assume/4
 %%           ]).
-%% 
+%%
 %% :- use_module(library(quintus)).
 
-:- dynamic 
+:- dynamic
    currently/2,    % Used to store the actual initial fluent values
    simulator/2,    % There may be no simulator
    senses/2,       % There may be no exogenous action simulator
@@ -207,8 +207,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    /* Move initially(-,-) to currently(-,-) and clear exog actions  */
-initializeDB:- 
-	retractall(currently(_,_)), 
+initializeDB:-
+	retractall(currently(_,_)),
 	forall(initially(F,V), assert(currently(F,V))),
 	clean_cache.
 
@@ -231,7 +231,7 @@ clean_cache :- retractall(has_valc(_,_,_)).
 assume(F,V,H,[e(F,V)|H]).
 
 % system_action/1 defines actions that are used by the projector for managment
-system_action(e(_,_)). 
+system_action(e(_,_)).
 
 % Action A is a sensing action
 sensing(A,_):- senses(A).
@@ -240,11 +240,11 @@ sensing(A,_):- senses(A).
 sensed(A,V,[e(F,V2)|_]):- senses(A,F), !, V=V2.
 sensed(A,V,[_|H])      :- sensed(A,V,H).
 
-% domain/2: assigns a user-defined domain to a variable. 
+% domain/2: assigns a user-defined domain to a variable.
 %domain(V, D)  :- getdomain(D, L), member(V, L).
 %rdomain(V, D) :- getdomain(D, L), shuffle(L,L2), !, member(V, L2).
 domain(V, D)  :- is_list(D) -> member(V, D) ; apply(D,[V]).
-rdomain(V, D) :- (is_list(D) -> L=D ; bagof(P,apply(D,[P]),L)), 
+rdomain(V, D) :- (is_list(D) -> L=D ; bagof(P,apply(D,[P]),L)),
 				 shuffle(L,L2), !, member(V, L2).
 
 % ***** to go
@@ -252,10 +252,10 @@ rdomain(V, D) :- (is_list(D) -> L=D ; bagof(P,apply(D,[P]),L)),
 %getdomain(D, L) :- is_list(D) -> L=D ; (P =.. [D,L], call(P)).
 
 % Computes the arguments of an action or a fluent P
-% Action/Fluent P1 is action/fluent P with all arguments evaluated 
+% Action/Fluent P1 is action/fluent P with all arguments evaluated
 calc_arg(P,P1,H):- (is_an_action(P) ; prim_fluent(P)),
 	(atomic(P)-> P1=P ;
-                    (P =..[Function|LArg], subfl(LArg,LArg2,H), 
+                    (P =..[Function|LArg], subfl(LArg,LArg2,H),
                      P1=..[Function|LArg2])).
 
 % History H1 is a previous history of H2
@@ -305,17 +305,17 @@ update_cache(_).
 
 %---------------------------------------------------------------------------
 % kholds(+P,+H): P is known to be true at H (i.e., P holds at H)
-% This is guarranteed to be sound P only when P is ground. Free vars are 
+% This is guarranteed to be sound P only when P is ground. Free vars are
 % allowed and in some special cases. ***
 %---------------------------------------------------------------------------
-kholds(P,H) :-	ground(P) ->  
-			\+ holds(neg(P),H) 
+kholds(P,H) :-	ground(P) ->
+			\+ holds(neg(P),H)
 		;
-			(warn(['kholds/2 called with open variables: ',P]), 
-			holds(P,H), 
-			\+ holds(neg(P),H)).	
+			(warn(['kholds/2 called with open variables: ',P]),
+			holds(P,H),
+			\+ holds(neg(P),H)).
 
-%kholds(P,H) :- 	ground(P) -> 
+%kholds(P,H) :- 	ground(P) ->
 %			( !, \+ holds(neg(P),H), (holds(P,H) -> true ;
 %			(write('AAAAAAAAAAAA!:'),write(P),write('@'),writeln(H),halt)))
 %		;
@@ -348,7 +348,7 @@ holds(P,H)           	:- proc(P,P1), !, holds(P1,H).
 
 
 %---------------------------------------------------------------------------
-% Evaluation of ground atoms. Atoms are either equality (fluent) atoms or 
+% Evaluation of ground atoms. Atoms are either equality (fluent) atoms or
 % prolog predicates possibly mentioning ground fluents.
 %---------------------------------------------------------------------------
 % if it's a prolog predicate then use good-old subf ***
@@ -359,8 +359,8 @@ holds(neg(P),H):- !, subf(P,P1,H), \+ call(P1).
 
 %% This is a special optimized case when evaluating Fluent = Value so as to
 %% feed has_value/3 with the exact match that can guide de search
-holds(T1=T2,H) :- ground(T1), ground(T2), 
-		  liftAtom(T1, NameT1, ArgT1, LiftT1),  
+holds(T1=T2,H) :- ground(T1), ground(T2),
+		  liftAtom(T1, NameT1, ArgT1, LiftT1),
 		  liftAtom(T2, NameT2, ArgT2, LiftT2),
 		  ( (prim_fluent(LiftT1), \+ prim_fluent(LiftT2), !,
 		     subf(ArgT1,ArgT1Eval,H),
@@ -378,21 +378,21 @@ holds(P,H) :- !, subf(P,P1,H), call(P1).
 
 liftAtom(Atom, NameA, ArgA, LiftedAtom) :-
 	Atom =..[NameA|ArgA],
-	templist(ArgA,ArgAVars), 
-	LiftedAtom =..[NameA|ArgAVars]. 
-	
+	templist(ArgA,ArgAVars),
+	LiftedAtom =..[NameA|ArgAVars].
+
 liftAtom2(Atom, NameA, ArgA, LiftedAtom) :-
 	Atom =..[NameA|ArgA],
 	length(ArgA, L),
 	length(ArgAVars, L),
-	LiftedAtom =..[NameA|ArgAVars]. 
-	
+	LiftedAtom =..[NameA|ArgAVars].
+
 
 % templist(X,Y) : X and Y are lists of the same length; Y used to return a list of variables of size |X|
 templist([],[]) :- !.
 templist([_],[_]) :- !.
 templist([_,_],[_,_]) :- !.
-templist([_,_,_],[_,_,_]) :- !. 
+templist([_,_,_],[_,_,_]) :- !.
 templist([_,_,_,_],[_,_,_,_]) :- !.
 templist([_,_,_,_,_],[_,_,_,_,_]) :- !.
 templist([_,_,_,_,_,_],[_,_,_,_,_,_]) :- !.
@@ -405,7 +405,7 @@ templist([_|R1],[_|R2]) :- templist(R1,R2).
 %---------------------------------------------------------------------------
 subf(P1,P2,_)  :- (var(P1) ; number(P1)), !, P2 = P1.
 subf(now,H,H)  :- !.
-subf(m(F),L,H) :- !, setof(V1,has_value(F,V1,H),L). 
+subf(m(F),L,H) :- !, setof(V1,has_value(F,V1,H),L).
 subf(i(F),V,_) :- !, currently(F,V).
 
 subf(P1,P2,H)  :- atom(P1), !, subf2(P1,P2,H).
@@ -421,17 +421,17 @@ subfl([T1|L1],[T2|L2],H) :- subf(T1,T2,H), subfl(L1,L2,H).
 % Implementation of top-level has_value/3
 % has_value(+F,?V,+H): V is a possible value for F at history H  (top-level predicate)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-has_value(F,V,H) :- 
+has_value(F,V,H) :-
 	ground(F) ->
-		has_valgc(F,V,H) 
-	; 
+		has_valgc(F,V,H)
+	;
 		(warn(['has_value/3 called with an open variable fluent: ',F]), has_valo(F,V,H)).
 
 % has_valgc/3: implements caching for ground fluents
 % if it is a cached fluent and there is no cache store, then compute all the cached values
 % if it is a cached fluent and there is cache info, then bind those values
 % it it is not a cached fluent, then just use normal regression via has_valg/3
-has_valgc(F,V,H)  :- cache(F), \+ has_valc(F,_,H), 
+has_valgc(F,V,H)  :- cache(F), \+ has_valc(F,_,H),
 		    has_valg(F,V,H), assert(has_valc(F,V,H)), fail.
 has_valgc(F,V,H)  :- cache(F), !, has_valc(F,V,H).
 has_valgc(F,V,H)  :- has_valg(F,V,H).  % F is a fluent with NO cache
@@ -442,12 +442,12 @@ has_valgc(F,V,H)  :- has_valg(F,V,H).  % F is a fluent with NO cache
 has_valo(F,V,H):- has_valg(F,V,H).
 
 
-% has_val(F,V,H) holds if V is a possible value for fluent F at history H 
+% has_val(F,V,H) holds if V is a possible value for fluent F at history H
 %  (proven by regression)
 %
 % This is the case when F is a ground fluent (e.g., open(3))
-% has_valg/3 is guarranteed to work reasonably only if the following are true  
-% - when a causes(A,F,_,_) exists then the next values for F will be 
+% has_valg/3 is guarranteed to work reasonably only if the following are true
+% - when a causes(A,F,_,_) exists then the next values for F will be
 %   determined by the set of causes(A,F,_,_)  which cover all the logical
 %   space, i.e.  \land_i \lnot C_i is unsatisfiable
 % - sensing actions and physical actions are disjoint
@@ -462,7 +462,7 @@ has_valg(F, V, [_|H]):- has_value(F,V,H).
 
 % First try if  F is defined by causes/4, then by settles/5
 sets_val(A,F,V,H)		:- causes(A,F,_,_), !, causes(A,F,V,C), holds(C,H).
-sets_val(e(A,S),F,V,[A|H])	:- settles(A,S,F,V1,C), kholds(C,H), !, V=V1. 
+sets_val(e(A,S),F,V,[A|H])	:- settles(A,S,F,V1,C), kholds(C,H), !, V=V1.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  End of has_value/3 implementation
@@ -503,14 +503,14 @@ must_roll(H) :- roll_parameters(_,M,N), length(H,L1), L1 > M, N>0.
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
 % H3 is the tail of H1 that is going to be dropped
-roll_db(H1,H2) :- 
-	roll_parameters(_,_,N), 
+roll_db(H1,H2) :-
+	roll_parameters(_,_,N),
 	split(N,H1,H2,H3),
-        report_message(system(3), ['(DB) ', 'Progressing the following sub-history: ', H3]), 
+        report_message(info(3), ['(DB) ', 'Progressing the following sub-history: ', H3]),
 	preserve(H3),
-        report_message(system(3), ['(DB) ', 'Updating cache...']), 
+        report_message(info(3), ['(DB) ', 'Updating cache...']),
 	update_cache(H3),	    % Update the cache information
-        report_message(system(3), ['(DB) ', 'Subhistory completely rolled forward']).
+        report_message(info(3), ['(DB) ', 'Subhistory completely rolled forward']).
 
       /* split(N,H,H1,H2) succeeds if append(H1,H2,H) and length(H1)=N. */
 split(0,H,[],H).
@@ -525,27 +525,27 @@ preserve([A|H]) :- preserve(H), roll_action(A), update_cache([A]).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % roll_action(A): Roll Currently/2 database with respect to action A
-roll_action(e(A,S)) :- 
-	settles(A, S, F, V, C),			% A may settle F	
-	prim_fluent(F),				
+roll_action(e(A,S)) :-
+	settles(A, S, F, V, C),			% A may settle F
+	prim_fluent(F),
 	kholds(C, []),				% Value of F is settled to V
-	retractall(currently(F, _)),		
+	retractall(currently(F, _)),
 	assert(currently(F, V)),		% Update value of F to unique value V
 	fail.
 roll_action(e(A,S)) :- 				% A may reject F
-	rejects(A, S, F, V, C),			
-	prim_fluent(F),				
+	rejects(A, S, F, V, C),
+	prim_fluent(F),
 	currently(F,V),				% choose a potential value V for rejection
 	kholds(C, []),				% V should be rejected!
 	retractall(currently(F, V)),		% then, retract V from F
 	fail.
 roll_action(A) :- \+ A=e(_,_),			% A may affect F
-	causes(A, F, _, _),					
-	prim_fluent(F),				
+	causes(A, F, _, _),
+	prim_fluent(F),
 	roll_action_fluent(A, F),
 	fail.
 roll_action(_).
- 
+
 
 % Fluent F requires update wrt executed action A
 % OBS: At this point F may still contain free var
@@ -562,7 +562,7 @@ roll_action_fluent(_, F) :-		% now update currently/2 with the just computed tem
 	retract(temp(F,V)),		% Remove the new possible value from temp/2
 	fail.
 roll_action_fluent(_, _).
-		
+
 
 
 
@@ -570,7 +570,7 @@ roll_action_fluent(_, _).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DEBUG ROUTINES
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% debug(+Action, +History, -SensingResult): 
+% debug(+Action, +History, -SensingResult):
 % If Action=debug then a snapshot of the system is printed out
 % Otherwise, the sendRcxActionNumber/2
 %     predicate failed (RCX panicked or there was a problem with the
@@ -602,11 +602,11 @@ errorRecoveryData(History) :-
 printFluentValues([], _).
 
 printFluentValues([Hf | FluentList], History) :-
-    (has_value(Hf, Hv, History),    % Print all instances of Hf 
+    (has_value(Hf, Hv, History),    % Print all instances of Hf
      write('    PRIMITIVE FLUENT '),
      write(Hf),
      write(' HAS VALUE '),
-     write(Hv), nl, fail) ; 
+     write(Hv), nl, fail) ;
     printFluentValues(FluentList, History). % Continue with other fluents
 
 % errorRecoveryProc: What to do in case of error. In this case, ask the user

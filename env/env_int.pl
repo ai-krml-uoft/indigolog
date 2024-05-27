@@ -155,7 +155,7 @@ initializeExog(tcltk) :-
 % finalizeExog: Things to do for sources of exogenous actions from the
 %               virtual interface
 finalizeExog(tcltk) :- 
-        report_message(system(1), 'Closing Tcl/Tk interface.'), 
+        report_message(info(1), 'Closing Tcl/Tk interface.'), 
         retract(exog_proc(P)), 
         proc_kill(P).
 
@@ -180,7 +180,7 @@ printKbInstructions :-
 handle_stream(S) :- 
              % There is data in stream S
 	listen_to(_, action(A, N,P), S),   
-        report_message(system(2), ['Handling data from action ',(A,N)]),
+        report_message(info(2), ['Handling data from action ',(A,N)]),
 	read(S, Data),
 	((Data= end_of_file ; Data=finish) ->    
              % Stream S is EOF or requested terminination
@@ -199,7 +199,7 @@ terminate_action(N, Pid, Stream) :-
              close(Stream),
              (proc_term(Pid) -> proc_wait(Pid, _) ; proc_kill(Pid)),
              retract(listen_to(_, action(A, N, Pid), Stream)),
-             report_message(system(2),
+             report_message(info(2),
                             ['Action ',(A, N),' has completely finished']).
 
       

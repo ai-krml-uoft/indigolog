@@ -152,12 +152,12 @@ initializeExog(rcx) :-
         set_event_handler(rcx_talk, rcx_com/0),
         ask_rcx_every(Sec), 
         event_after_every(rcx_talk, Sec),
-        report_message(system(3), 'Opening RCX communication').
+        report_message(info(3), 'Opening RCX communication').
 
 % Stop the after_every event
 finalizeExogRcx(rcx) :- 
         cancel_after_event(rcx_talk),
-        report_message(system(3), 'Closing RCX communication').
+        report_message(info(3), 'Closing RCX communication').
 
 % If there is something pending to execute, execute it on the RCX
 % Otherwise ask for possible exogenous events
@@ -167,9 +167,9 @@ rcx_com :-
             executeRcx(Action, 1, T, S),
             report_sensing(Action, N, S, _)  % REPORT SENSING OUTCOME!
         ;
-            report_message(system(2), 'Querying the RCX for exogenous events'),
+            report_message(info(2), 'Querying the RCX for exogenous events'),
             queryRcxExogAction, 
-            report_message(system(3), 'Finished with RCX communication').
+            report_message(info(3), 'Finished with RCX communication').
 
 % Ask for exogenous events. If there is one, then send it to the
 % environment manager via soutput

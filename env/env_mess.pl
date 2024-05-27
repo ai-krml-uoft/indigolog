@@ -106,13 +106,13 @@ initializeInterfaces(L) :-
 	assert(mess_server(IP, Port)),		% Assert the messenger server location
 	assert(agentID(AL)),			% Assert the agent login information
            % 2 - Setup communication with CLIMA game server
-        report_message(system(2),'Establishing connection to MESSENGER server'),
+        report_message(info(2),'Establishing connection to MESSENGER server'),
         printKbInstructions,
         connectToMessServer.
 
 finalizeInterfaces(_) :- 
         disconnectFromMessServer,
-        report_message(system(2), 'Disconnection from CLIMA SIMULATOR successful').
+        report_message(info(2), 'Disconnection from CLIMA SIMULATOR successful').
 
 
 
@@ -133,7 +133,7 @@ connectToMessServer :-
 	mess_connect(Host, Port, comm_mess), 
 	mess_authenticate(AgentUser, R), !,
 	(R = told(server, ok) -> 
-	        report_message(system(2), 'Communication with MESSENGER server established'),
+	        report_message(info(2), 'Communication with MESSENGER server established'),
 		assert(listen_to(socket, comm_mess, comm_mess)) 
 	; 
 		report_message(error, ['Cannot authenticate to MESSENGER server: ',R])
@@ -166,14 +166,14 @@ handle_stream(comm_mess) :-
 handle_stream(comm_mess) :- 
 	get_socket_stream(comm_mess, read, Read),
 	at_end_of_stream(Read), 
-	report_message(system(2), ['Messenger server disconnection']), !,
+	report_message(info(2), ['Messenger server disconnection']), !,
 	(terminate -> 
-		report_message(system(2), 
+		report_message(info(2), 
 			['Termination message was already received. No reconnectoin'])
 		
 	;
 		repeat,
-		report_message(system(2), ['Reconnecting to messenger server...']),
+		report_message(info(2), ['Reconnecting to messenger server...']),
 		disconnectFromMessServer,
 		(connectToMessServer -> true ; (sleep(2), fail))
 	).
@@ -226,7 +226,7 @@ mess_authenticate(AgentUser, Result) :-
 	).
 
 mess_send(Mess) :-
-	report_message(system(5),['About to send to MESSENGER server: ',Mess]),
+	report_message(info(5),['About to send to MESSENGER server: ',Mess]),
 	get_socket_stream(comm_mess, write, Stream),
         write_term(Stream, Mess, [quoted(true)]),
         write(Stream, '.'),
@@ -234,10 +234,10 @@ mess_send(Mess) :-
         flush(Stream).
 
 mess_receive(Mess) :-
-	report_message(system(5),['About to receive data from MESSENGER: ']),
+	report_message(info(5),['About to receive data from MESSENGER: ']),
 	get_socket_stream(comm_mess, read, Stream),
         read_term(Stream, Mess, []),
-	report_message(system(5),['Received from MESSENGER: ', Mess]).
+	report_message(info(5),['Received from MESSENGER: ', Mess]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

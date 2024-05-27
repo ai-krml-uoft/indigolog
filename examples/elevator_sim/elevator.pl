@@ -22,11 +22,11 @@
   actions for each call button of the elevator
 */
 :- dynamic controller/1.
-:- discontiguous 
-    fun_fluent/1, 
-    rel_fluent/1, 
-    proc/2, 
-    causes_true/3, 
+:- discontiguous
+    fun_fluent/1,
+    rel_fluent/1,
+    proc/2,
+    causes_true/3,
     causes_false/3.
 
 % There is nothing to do caching on (required becase cache/1 is static)
@@ -62,13 +62,13 @@ senses(look(N), light(N)).     % checks if light(N) is true
 prim_action(down).
 poss(down, neg(floor = 1)).
 
-prim_action(up).  
+prim_action(up).
 poss(up, neg(floor = N)) :- max_floor(N).
 
 prim_action(toggle).  % toggle ring alarm
 poss(toggle, true).
 
-prim_action(ring).  % do one ring
+prim_action(ring).    % do one ring
 poss(ring, true).
 
 prim_action(off(N)) :- floor(N).    % turn off call button on floor n
@@ -170,7 +170,7 @@ actionNum(X, X).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: ElevatorSim-BAT/elevator.pl
+% EOF
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 /*

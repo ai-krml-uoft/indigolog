@@ -139,12 +139,12 @@ how_to_execute(Action, virtual_wumpus_silent, Action).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION   
-%          translateExogAction(Code, Action)           
-%          translateSensing(Action, Outcome, Value)    
+%          translate_exog(Code, Action)           
+%          translate_sensing(Action, Outcome, Value)    
 % OBS: If not present, then the translation is 1-1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-translateExogAction(CodeAction, Action) :-  actionNum(Action, CodeAction).
-%translateSensing(_, SensorValue, SensorValue).
+translate_exog(CodeAction, Action) :-  actionNum(Action, CodeAction).
+%translate_sensing(_, SensorValue, SensorValue).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

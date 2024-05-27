@@ -137,16 +137,16 @@ how_to_execute(Action, rcx, Code) :-
 
            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
            %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION   %
-           %          translateExogAction(Code, Action)           %
-           %          translateSensing(Action, Outcome, Value)    %
+           %          translate_exog(Code, Action)           %
+           %          translate_sensing(Action, Outcome, Value)    %
 	   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-translateExogAction(CodeAction, Action) :- actionNum(Action, CodeAction).
+translate_exog(CodeAction, Action) :- actionNum(Action, CodeAction).
 
-translateSensing(check(_,_), SensorValue, true):- 
+translate_sensing(check(_,_), SensorValue, true):- 
 	number(SensorValue),
 	(SensorValue<30 ; SensorValue>40), !.
-translateSensing(check(_,_), N, false) :- number(N).
+translate_sensing(check(_,_), N, false) :- number(N).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -114,12 +114,12 @@
 %
 % -- actionNum(action, num)  
 %         action has RCX code num
-% -- simulateSensing(action)
+% -- simulate_sensing(action)
 %         sensing result for action should be asked to the user
-% -- translateSensing(action, sensorValue, sensorResult) 
+% -- translate_sensing(action, sensorValue, sensorResult) 
 %         translate the sensorValue of action to sensorResult
-% -- translateExogAction(codeAction, action) 
-%         translateSensing action name into codeAction and vice-versa
+% -- translate_exog(codeAction, action) 
+%         translate_sensing action name into codeAction and vice-versa
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

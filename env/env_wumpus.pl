@@ -135,7 +135,7 @@ initializeInterfaces(L) :-
 	   % 0 - BUILD A VIRTUAL SCNEARIO OF THE WUMPUS WORLD
 	   % build_random_wumpus_world(RX,RY,robDir,NoArrows,ProbPits,NoGolds),
 	   % Probability of pit is between 0 and 100
-	report_message(system(1), 'Building WUMPUS World Configuration'),
+	report_message(info(1), 'Building WUMPUS World Configuration'),
         member([idrun,SIDRun], L), string_to_term(SIDRun, IDRun),
         member([idscenario, SIDScenario], L), string_to_term(SIDScenario, IDScenario),
           % Get Size, PPits and NoGolds if available (always available for random!)
@@ -151,26 +151,26 @@ initializeInterfaces(L) :-
 		% Build a fixed world using id IDScenario (get size, ppits and nogolds)
 	        build_fixed_wumpus_world(IDScenario,[Size,PPits,NoGolds])
 	),
-	report_message(system(1), 'Building WUMPUS World COMPLETED!'),
+	report_message(info(1), 'Building WUMPUS World COMPLETED!'),
 	   % 1 - Obtain IP and Port from L
         member([ipwumpus,SIP], L),   
         string_to_atom(SIP, IP),
         member([portwumpus, SP], L),  % Get Host and Port of Wumpus from L
         string_to_number(SP, Port),
            % 2 - Initialize the WUMPUS WORLD Applet
-	report_message(system(0), 'INITIALIZING INTERFACES!'),
-	report_message(system(1), 'Initializing WUMPUS APPLET interface'),
+	report_message(info(0), 'INITIALIZING INTERFACES!'),
+	report_message(info(1), 'Initializing WUMPUS APPLET interface'),
         initializeWumpusWorldApplet(IP, Port),
-	report_message(system(1), 'Initializing STATISTICS interface'),
+	report_message(info(1), 'Initializing STATISTICS interface'),
 	initializeStatistics(IDRun, Size, PPits,NoGolds),
-	report_message(system(0), 'INITIALIZATION COMPLETED!').
+	report_message(info(0), 'INITIALIZATION COMPLETED!').
 	
 	
 finalizeInterfaces(_)   :- 
-	report_message(system(0), 'FINALIZING INTERFACES!'),
+	report_message(info(0), 'FINALIZING INTERFACES!'),
 	finalizeWumpusWorldApplet(_,_),	% Finalize WUMPUS virtual world
 	finalizeStatistics,
-	report_message(system(0), 'FINALIZATION COMPLETED!').
+	report_message(info(0), 'FINALIZATION COMPLETED!').
 	
 
 
@@ -179,24 +179,24 @@ finalizeInterfaces(_)   :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialize communication with WUMPUS applet
 initializeWumpusWorldApplet(Host, Port):-
-        report_message(system(3),
+        report_message(info(3),
 		['Establishing connection to WUMPUS APPLET:',Host,'/',Port]), !,
         socket(internet, stream, comm_wumpus),
         connect(comm_wumpus, Host/Port),
         assert(listen_to(socket, comm_wumpus, comm_wumpus)),
-	report_message(system(1),
+	report_message(info(1),
                        'Connection to WUMPUS APPLET port established successfully'),
         send_command_to_wumpus(reset, _),
-	report_message(system(3), 'WUMPUS WORLD GRID RESETTED'),
+	report_message(info(3), 'WUMPUS WORLD GRID RESETTED'),
 	robot(RX,RY,_,_,_), 
 	wumpus(WX,WY,_),
         send_command_to_wumpus(robot(RX,RY), _),
         send_command_to_wumpus(wumpus(WX,WY), _), 
-	report_message(system(3),'ROBOT and WUMPUS PLACED'),
+	report_message(info(3),'ROBOT and WUMPUS PLACED'),
 	add_all_pits,
-	report_message(system(3),'ALL PITS PLACED'),
+	report_message(info(3),'ALL PITS PLACED'),
 	add_all_golds,
-	report_message(system(3),'ALL GOLDS PLACED').
+	report_message(info(3),'ALL GOLDS PLACED').
 
 add_all_pits :-
 	pit(PX,PY),	
