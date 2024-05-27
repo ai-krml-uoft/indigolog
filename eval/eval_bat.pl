@@ -69,11 +69,11 @@
 %           initialize the projector
 % -- finalizeDB/0
 %           finalize the projector
-% -- can_roll(+H1)
+% -- can_progress(+H1)
 %       check if the DB CAN roll forward
-% -- must_roll(+H1)
+% -- must_progress(+H1)
 %       check if the DB MUST roll forward
-% -- roll_db(+H1, -H2)
+% -- progress_db(+H1, -H2)
 %       perform roll forward with current history H1 and new history H2
 % -- handle_sensing(+A, +H, +S, -H2)
 %           H2 is H plus action A with sensing result S
@@ -86,7 +86,7 @@
 %
 % OTHER TOOLS (used by the transition system)::
 %
-% -- sensing(+A, -L)
+% -- sensing_action(+A, -L)
 %           action A is a sensing action with a list L of possible outcomes
 % -- sensed(+A, +S, +H)
 %           action A, when executed at history H, got sensing result S
@@ -263,7 +263,7 @@ assume(F, V, H, [e(F, V)|H]).
 system_action(e(_, _)).
 
 % Action A is a sensing action
-sensing(A, _):- senses(A, _) ; senses(A, _, _, _, _).
+sensing_action(A, _):- senses(A, _) ; senses(A, _, _, _, _).
 
 % sensed(+A, ?V, +H): action A got sensing result V w.r.t. history H
 sensed(A, V, [e(F, V2)|_]):- senses(A, F), !, V = V2.
@@ -414,7 +414,7 @@ poss(unset(F), ground(F)).
 %
 %  Rolling forward means advancing the predicate currently(-, -) and
 %  discarding the corresponding tail of the history.
-%  There are 3 parameters specified by roll_parameters(L, N, M).
+%  There are 3 parameters specified by progress_params(L, N, M).
 %     L: the history has to be longer than this, or dont bother
 %     M: if the history is longer than this, forced roll
 %     N: the length of the tail of the history to be preserved
@@ -422,20 +422,27 @@ poss(unset(F), ground(F)).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic
 	temp/2,
-	roll_parameters/3.         % Temporal predicate used for rolling forward
+	progress_params/3.         % Temporal predicate used for rolling forward
 
-% roll_parameters/3 has to be given in the domain spec.
-%roll_parameters(1, 1, 0).  % Never roll forward
-%roll_parameters(20, 40, 5). % can role after 20, must roll after 40, keep 5 actions
+% progress_params/3 has to be given in the domain spec.
+%progress_params(1, 1, 0).  % Never roll forward
+%progress_params(20, 40, 5). % can role after 20, must roll after 40, keep 5 actions
 
-can_roll(H) :-  \+ protect_history(_), roll_parameters(L, _, _), length(H, L1), L1 > L.
-must_roll(H) :- \+ protect_history(_), roll_parameters(_, M, _), length(H, L1), L1 > M.
+can_progress(H) :-
+    \+ protect_history(_),
+    progress_params(L, _, _),
+    length(H, L1),
+    L1 > L.
+must_progress(H) :-
+    \+ protect_history(_),
+    progress_params(_, M, _),
+    length(H, L1), L1 > M.
 
 % H1 is the current history (H1 = H2 + H3)
 % H2 will be the new history
 % H3 is the tail of H1 that is going to be dropped
-roll_db(H1, H2) :-
-	roll_parameters(_, _, N),
+progress_db(H1, H2) :-
+	progress_params(_, _, N),
 	split(N, H1, H2, H3),
 	preserve(H3),
 	update_cache(H3).	    % Update the cache wrt the preserved history H3
@@ -448,14 +455,14 @@ split(N, [A|H], [A|H1], H2) :- N > 0, N1 is N-1, split(N1, H, H1, H2).
 preserve([]).
 preserve([A|H]) :-
 	preserve(H),
-	roll_action(A),
+	progress_action(A),
 	update_cache([A]).
 
-% roll_action(A): roll currently/2 database with respect to action A
-roll_action(A) :-
+% progress_action(A): roll currently/2 database with respect to action A
+progress_action(A) :-
 	forall( (sets_val(A, F, V, []), prim_fluent(F), \+ temp(F, V)),
             assert(temp(F, V))),
-	forall(retract(temp(F, V)), 
+	forall(retract(temp(F, V)),
             (retractall(currently(F, _)),	% should just be one!
 	        assert(currently(F, V)))).
 
@@ -470,51 +477,19 @@ roll_action(A) :-
 %     communication). This predicate attempts to provide some basic debug
 %     and error recovery.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-debug(debug, History, _) :- !,
-    write('-------------------------------------------------------------'), nl,
-    write('********* A SNAPSHOT OF THE SYSTEM WAS REQUESTED ************'), nl,
-    errorRecoveryData(History),
-    write('-------------------------------------------------------------'), nl.
+debug_eval(H) :-
+    writeln('-------------------------------------------------------------'),
+    writeln('****** A SNAPSHOT OF THE PROJECTOR WAS REQUESTED ************'),
+    writeln('-------------------------------------------------------------'),
+    format("    Actions performed so far: ~w", [H]),
+    forall(prim_fluent(F), report_fluent_value(F, H)),
+    writeln('-------------------------------------------------------------').
 
-debug(Action, History, SensingResult) :-
-    write('** There is a problem with the RCX. It may need to be reset.'), nl,
-    errorRecoveryData(History),
-    errorRecoveryProc,
-    execute(Action, History, SensingResult). % Try action again
-
-% errorRecoveryData(+History): Extract values of primitive fluents at
-%     the point where Hist actions are performed.
-errorRecoveryData(History) :-
-    write('    Actions performed so far: '),
-    write(History), nl,
-    bagof(U, prim_fluent(U), FluentList),
-    printFluentValues(FluentList, History).
-
-% printFluentValues(+FluentList, +History): Print value of primitive fluents
-%     at the point where History actions have been performed
-printFluentValues([], _).
-
-printFluentValues([Hf | FluentList], History) :-
-    (has_value(Hf, Hv, History),    % Print all instances of Hf
-     write('    PRIMITIVE FLUENT '),
-     write(Hf),
-     write(' HAS VALUE '),
-     write(Hv), nl, fail) ;
-    printFluentValues(FluentList, History). % Continue with other fluents
-
-% errorRecoveryProc: What to do in case of error. In this case, ask the user
-%     to reposition the RCX so that last action can be re-attempted
-errorRecoveryProc:-
-    write('If you wish to abort, enter "a".'), nl,
-    write('If you wish to continue execution, place RCX in a position'), nl,
-    write('consistent with these values and hit any other key.'), nl,
-    get0(Val),
-    get0(_),                     % Clear carriage return
-    (Val == 65; Val == 97) ->    % 65 is ASCII 'A', 97 is ASCII 'a'
-         abort;
-         true.
+report_fluent_value(F, H) :-
+    has_value(F, V, H),    % Print all instances of Hf
+    format("PRIMITIVE FLUENT ~w = ~w~n", [F, V]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: Eval/evalbat.pl
+% EOF:
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

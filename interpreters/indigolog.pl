@@ -77,7 +77,7 @@
        check if the DB CAN roll forward
  -- can_roll(+H1)
        check if the DB CAN roll forward
- -- must_roll(+H1)
+ -- must_progress(+H1)
        check if the DB MUST roll forward
  -- roll_DB(+H1)
        check if the DB MUST roll forward
@@ -111,14 +111,13 @@
  -- set_debug_level(+N)    : set debug level to N
 */
 :- dynamic sensing/2,   % There may be no sensing action
-	indi_exog/1, 		% Stores exogenous events not managed yet
+	pending_event/1, 	% Stores exogenous events or sensings not yet managed
 	now/1,            	% Used to store the actual history
-	rolled_history/1, 	% Part of now/1 that was already rolled fwd
+	progressed_history/1, 	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
 	doing_step/0, 		% A step is being calculated
 	protect_history/1, 	% Protect a history to avoid rolling forward
 	pause_step/0.     	% Pause the step being calculated
-
 
 
 % Predicates that they have definitions here but they can defined elsewhere
@@ -171,30 +170,24 @@ wait_step(_) :-
 %    SOME SYSTEM BUILT-IN EXOGENOUS ACTIONS
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% BUILT-IN exogenous actions that will be mapped to system actions for the cycle
-exog_action(debug).	% Show debugging information
-exog_action(halt).		% Terminate program execution by jumping to the empty program
-exog_action(abort).		% Abort program execution by jumping to ?(false) program
-exog_action(break).		% Pause the execution of the program
-exog_action(reset).		% Reset agent execution from scratch
-exog_action(start).		% Start the execution of the program
+% BUILT-IN exogenous actions that will be mapped to SYSTEM actions for the cycle
 
-exog_action(debug_exec).	% Show debugging information
-exog_action(halt_exec).		% Terminate program execution by jumping to the empty program
-exog_action(abort_exec).		% Abort program execution by jumping to ?(false) program
-exog_action(break_exec).	% Pause the execution of the program
-exog_action(reset_exec).		% Reset agent execution from scratch
-exog_action(start_exec).		% Start the execution of the program
+% These are special actions that if they are in the current history
+% they are interpreted by the interpreter in a particular way
+% This should be seen as meta-actions that deal with the interpreter itself
+system_action(debug_indi).	% Special action to force debugging
+system_action(halt_indi).	% Action to force clean termination
+system_action(abort_indi).	% Action to force sudden nonclean termination
+system_action(start_indi).	% Action to start execution
+system_action(break_indi).	% Action to break the agent execution to top-level Prolog
+system_action(reset_indi).	% Reset agent execution from scratch
+
+exog_action(A) :- system_action(A).
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    MAIN LOOP
-%
-% The top level call is indigolog(E), where E is a program
-% The history H is a list of actions (prim or exog), initially []
-% Sensing reports are inserted as actions of the form e(fluent, value)
-%
-% indigo/2, indigo2/3, indigo3/3 implement the main architecture by
-%      defyining a 3-phase main cycle
+% INITIALIZATION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :-
 %	set_option(debug_level, 3),
@@ -218,19 +211,29 @@ fin  :-
 % Clean all exogenous actions and set the initial now/1 situation
 reset_indigolog_dbs(H) :-
 	retractall(doing_step),
-	retractall(indi_exog(_)),
+	retractall(pending_event(_)),
 	retractall(protect_history(_)),
-	retractall(rolled_history(_)),
+	retractall(progressed_history(_)),
 	retractall(now(_)),
 	update_now(H),
-	assert(rolled_history([])),
-	assert((indi_exog(_) :- fail)),
+	assert(progressed_history([])),
 	fail.
 reset_indigolog_dbs(_).
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    MAIN LOOP
+%
+% The top level call is indigolog(E), where E is a program
+% The history H is a list of actions (prim or exog), initially []
+% Sensing reports are inserted as actions of the form e(fluent, value)
+%
+% indigo/2, indigo2/3, indigo3/3 implement the main architecture by
+%      defyining a 3-phase main cycle
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%
-%% (A) INTERFACE PREDICATE TO THE TOP LEVEL MAIN CYCLE
+%% (A) INTERFACE PREDICATE TO THE TOP LEVEL MAIN CYCLE (RUNS ONCE!)
 %%
 indigolog(E) :-		% Run program E
 	(var(E) -> proc(main, E) ; true),
@@ -245,16 +248,19 @@ indigolog(E) :-		% Run program E
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
 %%
 indigolog(E, H) :-
-	handle_rolling(H, H2), !, 		% Must roll forward?
-	handle_exog(H2, H3),   !, 		% Handle pending exog. events
+	findall(E, (pending_event(exog_action(E), \+ system_action(E))), HE),
+	append(HE, H, H1),
+	findall(E, (pending_event(exog_action(E), system_action(E))), HS), !,
+	process_system_actions(HS, E, H1, E2),
+	progress_history(H1, H2),	% Must roll forward?
 	catch((assert(doing_step),
-			compute_step(E, H3, E4, H4, T),
+			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),
 	 	exog_action, T = exog),
-	(T = trans -> indigolog(H3, E4, H4) ;
+	(T = trans -> indigolog(H2, E3, H3) ;
 	 T = final -> logging(program,  "Success final.") ;
-	 T = exog  -> (logging(program, "Restarting step."), indigolog(E, H3)) ;
-	 T = none-> logging(program,  "Program fails.")
+	 T = exog -> (logging(program, "Restarting step."), indigolog(E, H3)) ;
+	 T = none -> logging(program,  "Program fails.")
 	).
 
 compute_step(E1, H1, E2, H2, T) :-
@@ -267,6 +273,20 @@ compute_step(E1, H1, E2, H2, T) :-
 	).
 
 
+process_system_actions(HS, E, H, EN) :-
+	member(debug_indi, HS),
+	logging(info(0), "Request for DEBUGGING"),
+	ignore(debug(H)),
+	format("Curent program:~w\t ~w", [E]),
+	delete(debug_indi, HS, HS2),
+	process_system_actions(HS2, EN).
+process_system_actions(HS, E, H, []) :-
+	member(halt_indi, HS),
+	logging(info(0), "Request for HALTING").
+process_system_actions(HS, E, H, [?(break)|E]) :-
+	member(break_indi, HS),
+	logging(info(0), "Request for BREAK").
+
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
@@ -276,56 +296,23 @@ compute_step(E1, H1, E2, H2, T) :-
 %% 	H2 is the history *after* the transition
 %%
 indigolog(H, E, H) :-
-	indigolog(E, H).	% The case of Trans for tests
+	indigolog(E, H).	% the case of Trans for tests
 indigolog(H, E, [sim(_)|H]) :- !,
-	indigolog(E, H).	% Drop simulated actions
+	indigolog(E, H).	% drop simulated actions
 indigolog(H, E, [wait|H]) :- !,
 	pause_or_roll(H, H1),
 	logging(info(2), "Waiting for exogenous action to ocurr..."),
+	%TODO: improve via thread_wait/2: https://github.com/ssardina-agts/indigolog/issues/3
 	repeat,
 	handle_exog(H1, H2),
 	(H2 = H1 -> fail ; true),
 	indigolog(E, H2).
-indigolog(_, E, [debug_exec|H]) :- !,
-	logging(info(0), "Request for DEBUGGING"),
-	debug(debug, H, null),
-	delete(H, debug, H2),
-	length(H2, LH2),
-	assert(debuginfo(E, H2, LH2)), !,
-	indigolog(E, H2).
-indigolog(_, _, [halt_exec|H]) :- !,
-	logging(info(0), "Request for TERMINATION of the program"),
-	indigolog([], H).
-indigolog(_, _, [abort_exec|H]) :- !,
-	logging(info(0), "Request for ABORTION of the program"),
-	indigolog([?(false)], H).
-indigolog(_, E, [break_exec|H]) :- !,
-	logging(info(0), "Request for PAUSE of the program"),
-	writeln(E),
-	break,		% BREAK POINT (CTRL+D to continue execution)
-	delete(H, pause, H2),
-	indigolog(E, H2).
-indigolog(_, _, [reset_exec|_]) :- !,
-	logging(info(0), "Request for RESETING agent execution"),
-	finalizeDB,
-	initializeDB,
-	proc(main, E),		% obtain main agent program
-	indigolog(E, []).		% restart main with empty history
 indigolog(H, E, [stop_interrupts|H]) :- !,
 	indigolog(E, [stop_interrupts|H]).
 indigolog(H, E, [A|H]) :-
 	indixeq(A, H, H1),
 	indigolog(E, H1).  % DOMAIN ACTION
 
-% This are special actions that if they are in the current history
-% they are interpreted by the interpreter in a particular way
-% This should be seen as meta-actions that deal with the interpreter itself
-system_action(debug_exec).	% Special action to force debugging
-system_action(halt_exec).	% Action to force clean termination
-system_action(abort_exec).	% Action to force sudden nonclean termination
-system_action(start_exec).	% Action to start execution
-system_action(break_exec).	% Action to break the agent execution to top-level Prolog
-system_action(reset_exec).	% Reset agent execution from scratch
 
 
 
@@ -345,62 +332,38 @@ abort_step :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
 %    history H. H2 is the new history after the execution of Act in H
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% type_action(Action, Type) : finds out the type of an action
-type_action(Act, sensing) :- sensing(Act, _), !.
-type_action(Act, system) :- system_action(Act), !.
-type_action(_, nonsensing).
-
-indixeq(Act, H, H2) :-    % EXECUTION OF SYSTEM ACTIONS: just add it to history
-        type_action(Act, system), !,
-        H2 = [Act|H],
-        update_now(H2).
-indixeq(Act, H, H2) :-    % EXECUTION OF SENSING ACTIONS
-        type_action(Act, sensing), !,
-        logging(info(1), ["Sending sensing Action *", Act, "* for execution"]),
-        execute_action(Act, H, sensing, IdAct, S), !,
-	(S = failed ->
-		logging(error, ["Action *", Act, "* FAILED to execute at history: ", H]),
+indixeq(Act, H, H2) :-    % PROCESS SYSTEM ACTIONS: just add it to history
+	system_action(Act), !,
+	H2 = [Act|H],
+	update_now(H2).
+indixeq(Act, H, H2) :-    % PROCESS OF SENSING ACTIONS
+	sensing_action(Act), !,
+	logging(info(1), "Sending sensing action for execution: ~w", [Act]),
+	execute_action(Act, H, sensing, IdAct, SR), !,
+	(	SR = failed
+	-> logging(error, "Action *~w* FAILED to execute at history.", [Act, IdAct]),
 		H2 = [abort, failed(Act)|H],	% Request abortion of program
-	        update_now(H2)
-	;
-                logging(action,
-                	["Action *", (Act, IdAct), "* EXECUTED SUCCESSFULLY with sensing outcome: ", S]),
-	        wait_if_neccessary,
-		handle_sensing(Act, [Act|H], S, H2),  % ADD SENSING OUTCOME!
+		update_now(H2)
+	;	logging(action, "Action *~w* EXECUTED with outcome: ", [[Act, IdAct], SR]),
+		handle_sensing(Act, [Act|H], SR, H2),  % ADD SENSING OUTCOME!
 		update_now(H2)
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
-        type_action(Act, nonsensing), !,
-        logging(info(1), ["Sending nonsensing action *", Act, "* for execution"]),
-        execute_action(Act, H, nonsensing, IdAct, S), !,
-	(S = failed ->
-		logging(error, ["Action *", Act, "* could not be executed at history: ", H]),
+	\+ system_action(Act), \+ sensing_action(Act), !,
+	logging(info(1), "Sending action for execution: ~w", [Act]),
+	execute_action(Act, H, normal, IdAct, S), !,
+	(	S = failed
+	->	logging(error, "Action FAILED to execute: ~w", [Act, IdAct]),
 		H2 = [abort, failed(Act)|H],
-	        update_now(H2)
-	;
-                logging(action, ["Action *", (Act, IdAct), "* COMPLETED SUCCESSFULLY"]),
-		wait_if_neccessary,
-                H2 = [Act|H],
+	    update_now(H2)
+	;   logging(action, "Action EXECUTED SUCCESFULLY: ~w", [Act, IdAct]),
+		H2 = [Act|H],
 		update_now(H2)
 	).
 
-% Simulated pause between execution of actions if requested by user
-wait_if_neccessary :-
-        wait_at_action(Sec), !,   % Wait Sec numbers of seconds
-        logging(info(2), ["Waiting at step ", Sec, " seconds"]),
-        sleep(Sec).
-wait_if_neccessary.
 
 % Updates the current history to H
-update_now(H) :-
-        %logging(info(2), ["Updating now history to: ", H]),
-        %write(H),
-        retract(now(_)) -> assert(now(H)) ; assert(now(H)).
-
-action_failed(Action, H) :-
-	logging(error, ["Action *", Action, "* could not be executed",
-	                      " at history: ", H]),
-	halt.
+update_now(H) :- retractall(now(_)), assert(now(H)).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -410,14 +373,8 @@ action_failed(Action, H) :-
 %  until they are ready to be incorporated into the history
 % History H2 is H1 with all pending exog actions placed at the front
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-handle_exog(H1, H2) :-
-	save_exog,				% Collect on-demand exogenous actions
-	exists_pending_exog_event,		% Any indi_exog/1 in the database?
-		% 1 - Collect SYSTEM exogenous actions (e.g., debug)
-	findall(A, (indi_exog(A), type_action(A, system)), LSysExog),
-		% 2 - Collect NON-SYSTEM exogenous actions (e.g., domain actions)
-	findall(A, (indi_exog(A), \+ type_action(A, system)), LNormal),
-		% 3 - Append the lists to the current hitory (system list on front)
+collect_events(LEvents) :-
+
 	append(LSysExog, LNormal, LTotal),
 	append(LTotal, H1, H2),
 	update_now(H2),
@@ -426,57 +383,37 @@ handle_exog(H1, H2) :-
 handle_exog(H1, H1). 	% No exogenous actions, keep same history
 
 
-% Collect on-demand exogenous actions: reported  by exog_occurs/1
-save_exog :- exog_occurs(L) -> store_exog(L) ; true.
-
-store_exog([]).
-store_exog([A|L]) :- assertz(indi_exog(A)), store_exog(L).
-
-% Is there any pending exogenous event?
-exists_pending_exog_event :- indi_exog(_).
-
-
-% exog_action_occurred(L) : called to report the occurrence of a list L of
-% 				exogenous actions (called from env. manager)
-%
-% First we add each exogenous event to the clause indi_exog/1 and
-% in the end, if we are performing an evolution step, we abort the step.
-exog_action_occurred([]) :- doing_step -> abortStep ; true.
-exog_action_occurred([ExoAction|LExoAction]) :-
-        assert(indi_exog(ExoAction)),
-        logging(exogaction, ["Exog. Action *", ExoAction, "* occurred"]),
-	exog_action_occurred(LExoAction).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % HANDLING OF ROLLING FORWARD
 %
-% handle_rolling/2: mandatory rolling forward
+% progress_history/2: mandatory rolling forward
 % pause_or_roll/2: optional rolling forward
 %
 % Based on the following tools provided by the evaluator used:
 %
-%	must_roll(H): we MUST roll at H
+%	must_progress(H): we MUST roll at H
 %	can_roll(H) : we COULD roll at H (if there is time)
 %	roll_db(H1, H2): roll from H1 to H2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-handle_rolling(H1, H2) :- must_roll(H1), !, roll(H1, H2).
-handle_rolling(H1, H1).
+progress_history(H1, H2) :- must_progress(H1), !, progress(H1, H2).
+progress_history(H1, H1).
 
-pause_or_roll(H1, H2) :- can_roll(H1), !, roll(H1, H2).
+pause_or_roll(H1, H2) :- can_roll(H1), !, progress(H1, H2).
 pause_or_roll(H1, H1).
 
 
-roll(H1, H2) :-
-        logging(info(0), "Rolling down the river (progressing the database)......."),
-	roll_db(H1, H2),
-        logging(info(0), "done progressing the database!"),
-        logging(info(3), ["New History: ", H2]),
+progress(H1, H2) :-
+	logging(info(0), "Rolling down the river (progressing the database)......."),
+	progress_db(H1, H2),
+	logging(info(0), "done progressing the database!"),
+	logging(info(3), "New History: ~w", [H2]),
 	update_now(H2), 			% Update the current history
 	append(H2, HDropped, H1),	% Extract what was dropped from H1
-	retract(rolled_history(HO)),		% Update the rolled_history/1 predicate to store all that has been rolled forward
-	append(HDropped, HO, HN),			% rolled_history(H): H is the full system history
-	assert(rolled_history(HN)),
+	retract(progressed_history(HO)),		% Update the progressed_history/1 predicate to store all that has been rolled forward
+	append(HDropped, HO, HN),			% progressed_history(H): H is the full system history
+	assert(progressed_history(HN)),
 	save_exog.	% Collect all exogenous actions
 
 

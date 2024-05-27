@@ -18,8 +18,7 @@
  -- initialize(env_manager)
  -- finalize(env_manager)
  -- execute_action(A, H, T, S): execute action A of type T at history H and resturn sensing outcome S
- -- exog_occurs(LA): return a list LA of exog. actions that have occurred (synchronous)
- -- indi_exog(Action): asserted whenever exog Action occurred 
+ -- pending_event(Event): exog action or sensing pending to be processed
  -- set_type_manager(+T): set the implementation type of the env manager
 
 
@@ -90,7 +89,21 @@ initialize(env_manager) :-
 	logging(info(2, em), "Loading the following devices: ~w", [LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
     logging(info(2, em), "Start EM cycle to listen to devices..."),
-	start_env_cycle.   % Start the env. manager main cycle
+	start_env_cycle.   % Start the EM main cycle (in a thread)
+
+% start_env_cycle :- stream_pool_main_loop, !.	% for debugging
+start_env_cycle :-
+	thread_create(catch(stream_pool_main_loop, E,
+			(logging(info(2, em), "EM cycle received exception: ~w", [E]),
+			close_stream_pool)), em_thread, [alias(em_thread)]).
+end_env_cycle :-
+	(	current_thread(em_thread, running)
+	-> 	thread_signal(em_thread, throw(finish)) % Signal thread to finish!
+	;	true % Already finished (because all devices were closed)
+	),
+	thread_join(em_thread, _),
+	logging(info(1, em), "EM cycle (thread) finished").
+
 
 /* Start device manager environment E
 
@@ -108,9 +121,21 @@ start_dev(E) :-
 	set_stream(ReadStream, alias(E)),	% for better reading with the device name
 	logging(info(1, em), "Device ~w initialized at ~w", [E, IP]),
 	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])),
-	add_stream_to_pool(StreamPair, handle_device(E)).	% register to listen to this stream
+	% register to stream pool
+	add_stream_to_pool(StreamPair, handle_device(E)).
 
 dev_stream(E, Stream) :- dev_data(E, L), member(stream(Stream), L).
+
+% Goal handle for stream-pool to collect data pending in a device
+%  see below handle_event/2 on how each read data is handled
+handle_device(Device) :-
+	read_term(Device, Term, []),
+	(  Term == end_of_file
+	-> !
+	;  	logging(info(5, em), "Handling event from device ~w: ~w", [Device, Term]),
+		handle_event(Device, Term)
+	).
+
 
 /* A - FINALIZATION OF DEVICES
 
@@ -120,157 +145,58 @@ dev_stream(E, Stream) :- dev_data(E, L), member(stream(Stream), L).
 	4 - Report the number of actions that were executed
 */
 finalize(env_manager) :-
-	logging(info(2, em), "1 - Closing all device managers..."),
+	logging(info(2, em), "Closing all device managers..."),
     findall(Dev, dev_data(Dev, _), LDev), % Get all current open devices
-	maplist(close_dev, LDev), 	% Close all the devices found
+	maplist([X]>>send_term(X, terminate), LDev), % send to all devices
 	sleep(3), 	% Wait to give time to devices to finish cleanly
-	close_stream_pool, !,
-	logging(info(2, em), "2 - Terminating EM cycle..."),
-	em_data(_, _, StreamPair),
-	close(StreamPair),
+	logging(info(2, em), "Close EM stream pool and socket..."),
+	close_stream_pool, !,	% should finish thread em_thread gently
+	em_data(_, _, StreamPair),	% close socket stream (and socket)
+	close(StreamPair), !,
+	logging(info(2, em), "Close EM stream pool and socket..."),
 	catch(wait_for_children, _, true), !,
-	logging(info(2, em), "3 - Closing EM server socket..."),
-    close(StreamPair), 		% Disconnect server socket
+	logging(info(2, em), "Closing EM server socket..."),
     counter_actions(N),
-    logging(info(1, em), "EM completed with *~d* executed actions", [N]).
+    logging(info(1, em), "EM completed with ~d executed actions", [N]).
 
 % keep waiting for all children to finish
 % https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
 % TODO: maybe send to each env a "exit" and wait for it to finish?
-wait_for_children :- wait(PId, S), !,
-	logging(info(3, em), "Successful proccess waiting: (~w, ~w)", [PId, S]),
+wait_for_children :- wait(PID, S), !,
+	logging(info(3, em), "Successful proccess waiting: ~w", [[PID, S]]),
 	wait_for_children.
 wait_for_children.
 
-% Tell each device to terminate
-close_dev(Env) :-
-	dev_stream(Env, S),
-	write(S, [terminate]).
 
+/* HANDLERS FOR INCOMING DATA
 
+ 	handle_event/2 states how data coming from devices are handled.
 
+	handle_event(Device, Term): Term has been read from Device
 
-/*
- We start a thread on em_cycle/1 that waits for data arriving to any of
- the open connections to the device managers. When it receives a message
- (e.g., sensing outcome, exog. action, closing message) it hanldes it.
+	Data can be:
+
+	- the ocurrance of an exogenous action
+	- the result of a sensing action
+	- a system message (e.g., end_of_file)
 */
+handle_event(Dev, sensing(A, N, SR)) :- !,
+	executing_action(N, A, _),
+	(translate_sensing(A, SR, SR2) ->  true ; SR2 = SR),
+	asserta(pending_event(sensing(A, N, SR))),
+	logging(info(5, em), "Sensing for action ~w in device ~d: ~w", [[A, N], Dev, [SR, SR2]]).
+handle_event(Dev, exog_action(A)) :-
+	(translate_exog(A, A2) -> true ; A2 = A),
+    exog_action(A2), !,
+	asserta(pending_event(exog_action(A))),
+	logging(info(3, em), "Exogenous action occurred in device ~w: ~w", [Dev, [A2, A]]).
 
-% this can be used for debugging the EM
-% start_env_cycle :- stream_pool_main_loop, !.
-
-start_env_cycle :-
-	thread_create(catch(stream_pool_main_loop, E,
-			(logging(info(2, em), "EM cycle received exception to finish: ~w", [E]),
-			close_stream_pool)), em_thread, [alias(em_thread)]).
-
-end_env_cycle :-
-	(	current_thread(em_thread, running)
-	-> 	thread_signal(em_thread, throw(finish)) % Signal thread to finish!
-	;	true % Already finished (because all devices were closed)
-	),
-	thread_join(em_thread, _),
-	logging(info(1, em), "EM cycle (thread) finished").
-
-% Collect data pending in ready environments
-handle_device(Device) :-
-	read_term(Device, Term, []),
-	(  Term == end_of_file
-	-> !
-	;  handle_event(Device, Term)
-	).
-% handle_device(Device) :-
-% 	repeat,
-% 			read(Device, Term),
-% 			(  Term == end_of_file
-% 			-> !
-% 			;  handle_event(Device, Term), fail
-% 			).
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% handle_levents(+LE, -LT): handle list of events LE and return their
-%                        types in list LT
-%
-% Up to now, events are either a exogenous events or unknown events.
-%
-% First handle all events. Then, if there were exogenous event report them
-% in a list to top-level cycle with exog_action_occurred/1
-%
-% 2) Unknown Event: just inform it with message
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Prioritized serving of a list of occurred events
-
-% 1 - First serve sensing outcomes
-handle_levents(L) :-
-	member([Sender, [sensing, N, Outcome]], L),
-	handle_event([Sender, [sensing, N, Outcome]]),
-	fail.
-
-% 2 - Second serve exogenous actions
-handle_levents(L) :-
-	member([Sender, [exog_action, CodeAction]], L),
-	handle_event([Sender, [exog_action, CodeAction]]),
-	fail.
-
-% 3 - Third serve other events
-handle_levents(L) :-
-	member([Sender, [T|R]], L),
-	\+ member(T, [sensing, exog_action]),
-	handle_event([Sender, [T|R]]),
-	fail.
-
-% 4 - Finally, signal exog_action_occurred/1 if there were exogenous actions
-handle_levents(_) :-
-	findall(ExoAction, got_exogenous(ExoAction), LExoAction),
-	LExoAction\=[],                   % There were exogenous actions
-	retractall(got_exogenous(_)),
-	exog_action_occurred(LExoAction), % Report all the actions to top-level
-	fail.
-
-% 5 - Always succeeds as the last step
-handle_levents(_).
-
-
-
-
-
-handle_event(Device, Term) :-
-	logging(info(5, em), "Handling event from device ~w: ~w", [Device, Term]).
-
-
-
-% handle_event/1: Handle each *single* event
-handle_event([_, [sensing, N, OutcomeCode]]) :- !,
-	executing_action(N, Action, _),
-	(translate_sensing(Action, OutcomeCode, Outcome) ->  true ; Outcome=OutcomeCode),
-	assert(got_sensing(N, Outcome)),
-		logging(info(5),
-			["(EM) Sensing outcome arrived for action ",
-			(N, Action), " - Sensing Outcome:: ", (OutcomeCode, Outcome)]).
-
-handle_event([_, [exog_action, CodeAction]]):-
-	(translate_exog(CodeAction, Action) -> true ; Action=CodeAction),
-    exog_action(Action), !,
-	assert(got_exogenous(Action)),
-        logging(info(5),
-	               ["(EM) Exogenous action occurred:: ", (CodeAction, Action)]).
-
-handle_event([socket(Socket), [_, end_of_file]]) :- !,  % Env has been closed!
-        dev_data(Env, _, Socket),                        % remove it
-        logging(info(2), ["(EM) Device ", Env, " has reported termination!"]),
-        delete_dev(Env).
-
-handle_event([Sender, [Type, Message]]):- !, % The event is unknown but with form
-        logging(info(5),
-        	["(EM) UNKNOWN MESSAGE! Sender: ", Sender,
-                                   " ; Type: " , Type, " ; Message: ", Message]).
-
-handle_event(Data):-                         % The event is completely unknown
-        logging(info(5), ["(EM) UNKNOWN and UNSTRUCTURED MESSAGE!:: ", Data]).
-
-
+handle_event(Dev, end_of_file) :- !,  % Env has been closed!
+	logging(info(2, em), "Device ~w has closed its connect", [Dev]),
+	delete_stream_from_pool(Dev),
+	close(Dev).
+handle_event(Dev, Data):- !, % The event is unknown but with form
+	logging(warning, "Unknown data from device ~w: ~w", [Dev, Data]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EXECUTION OF ACTIONS SECTION
@@ -320,11 +246,6 @@ map_execution(Action, _, _) :-
 
 
 
-
-% Exogenous actions are handled async., so there is no need to handle
-% sync. exogenous actions. It is always empty.
-exog_occurs([]).
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF:  Env/env_man.pl
+% EOF
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

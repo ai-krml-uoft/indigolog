@@ -184,11 +184,11 @@ handle_data(Data) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 report_exog(A) :-
         logging(exogaction, "Exogenous action occurred: ~w", [A]),
-        send_term(em_write_stream, [exog_action, A]).
+        send_term(em_write_stream, exog_action(A)).
 
-report_sensing(A, N, S) :-
-        logging(sensing, "Sending sensing action ~d to EM: ~w", [N, [A, S]]),
-        send_term(em_write_stream, [sensing, N, S]).
+report_sensing(A, N, SR) :-
+        logging(sensing, "Sending sensing action ~d to EM: ~w", [N, [A, SR]]),
+        send_term(em_write_stream, sensing(A, N, SR)).
 
 
 
