@@ -75,7 +75,7 @@
        debug routine
  -- pause_or_roll(+H1, -H2)
        check if the DB CAN roll forward
- -- can_roll(+H1)
+ -- can_progress(+H1)
        check if the DB CAN roll forward
  -- must_progress(+H1)
        check if the DB MUST roll forward
@@ -211,7 +211,7 @@ fin  :-
 % Clean all exogenous actions and set the initial now/1 situation
 reset_indigolog_dbs(H) :-
 	retractall(doing_step),
-	retractall(pending_event(_)),
+	retractall(pending(_)),
 	retractall(protect_history(_)),
 	retractall(progressed_history(_)),
 	retractall(now(_)),
@@ -248,31 +248,31 @@ indigolog(E) :-		% Run program E
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
 %%
 indigolog(E, H) :-
-	findall(E, (pending_event(exog_action(E), \+ system_action(E))), HE),
+		% process all pending exog actions, sys acitons, and sensing
+	findall(E, (pending(exog_action(E)), \+ system_action(E)), HE),
 	append(HE, H, H1),
-	findall(E, (pending_event(exog_action(E), system_action(E))), HS), !,
+	findall(E, (pending(exog_action(E)), system_action(E)), HS), !,
 	process_system_actions(HS, E, H1, E2),
-	progress_history(H1, H2),	% Must roll forward?
+		% progress the history (possibly)
+	(must_progress(H1) -> progress(H1, H2) ; H2 = H1),
+		% make a step in the program (if no exo action ocurrs)
 	catch((assert(doing_step),
 			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),
 	 	exog_action, T = exog),
 	(T = trans -> indigolog(H2, E3, H3) ;
 	 T = final -> logging(program,  "Success final.") ;
-	 T = exog -> (logging(program, "Restarting step."), indigolog(E, H3)) ;
+	 T = exog -> (logging(program, "Rester step."), indigolog(E3, H3)) ;
 	 T = none -> logging(program,  "Program fails.")
 	).
 
-compute_step(E1, H1, E2, H2, T) :-
-	(exists_pending_exog_event -> throw(T) ; true),
-	(	final(E1, H1)
-	->	T = final
-	;	trans(E1, H1, E2, H2)
-	->	T = trans
-	;	T = none
-	).
+compute_step(E1, H1, _, _, final) :- final(E1, H1).
+compute_step(E1, H1, E2, H2, trans) :- trans(E1, H1, E2, H2).
+compute_step(_, _, _, _, none).
 
 
+% process all found system actions HS at configuration (E,H)
+%	EN is the new program to keep executing
 process_system_actions(HS, E, H, EN) :-
 	member(debug_indi, HS),
 	logging(info(0), "Request for DEBUGGING"),
@@ -280,10 +280,10 @@ process_system_actions(HS, E, H, EN) :-
 	format("Curent program:~w\t ~w", [E]),
 	delete(debug_indi, HS, HS2),
 	process_system_actions(HS2, EN).
-process_system_actions(HS, E, H, []) :-
+process_system_actions(HS, _, _, []) :-
 	member(halt_indi, HS),
 	logging(info(0), "Request for HALTING").
-process_system_actions(HS, E, H, [?(break)|E]) :-
+process_system_actions(HS, E, _, [?(break)|E]) :-
 	member(break_indi, HS),
 	logging(info(0), "Request for BREAK").
 
@@ -300,13 +300,15 @@ indigolog(H, E, H) :-
 indigolog(H, E, [sim(_)|H]) :- !,
 	indigolog(E, H).	% drop simulated actions
 indigolog(H, E, [wait|H]) :- !,
-	pause_or_roll(H, H1),
+	(can_progress(H) -> progress(H, H1) ; H1 = H),
 	logging(info(2), "Waiting for exogenous action to ocurr..."),
-	%TODO: improve via thread_wait/2: https://github.com/ssardina-agts/indigolog/issues/3
-	repeat,
-	handle_exog(H1, H2),
-	(H2 = H1 -> fail ; true),
-	indigolog(E, H2).
+	% wait for an exogenous event to arrive
+	% TODO: may be better to wait for a particular one and timeout
+	(	\+ pending(exog_action(_))
+	-> thread_wait(pending(exog_action(_)), [wait_preds([pending_event/1])])
+	;	true
+	),
+	indigolog(E, H1).
 indigolog(H, E, [stop_interrupts|H]) :- !,
 	indigolog(E, [stop_interrupts|H]).
 indigolog(H, E, [A|H]) :-
@@ -365,43 +367,6 @@ indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
 % Updates the current history to H
 update_now(H) :- retractall(now(_)), assert(now(H)).
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  EXOGENOUS ACTIONS
-%
-%  Exogenous actions are stored in the local predicate indi_exog(Act)
-%  until they are ready to be incorporated into the history
-% History H2 is H1 with all pending exog actions placed at the front
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-collect_events(LEvents) :-
-
-	append(LSysExog, LNormal, LTotal),
-	append(LTotal, H1, H2),
-	update_now(H2),
-		% 4 - Remove all indi_exog/1 clauses
-	retractall(indi_exog(_)).
-handle_exog(H1, H1). 	% No exogenous actions, keep same history
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% HANDLING OF ROLLING FORWARD
-%
-% progress_history/2: mandatory rolling forward
-% pause_or_roll/2: optional rolling forward
-%
-% Based on the following tools provided by the evaluator used:
-%
-%	must_progress(H): we MUST roll at H
-%	can_roll(H) : we COULD roll at H (if there is time)
-%	roll_db(H1, H2): roll from H1 to H2
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-progress_history(H1, H2) :- must_progress(H1), !, progress(H1, H2).
-progress_history(H1, H1).
-
-pause_or_roll(H1, H2) :- can_roll(H1), !, progress(H1, H2).
-pause_or_roll(H1, H1).
 
 
 progress(H1, H2) :-
