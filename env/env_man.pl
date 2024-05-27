@@ -18,7 +18,7 @@
  -- initialize(env_manager)
  -- finalize(env_manager)
  -- execute_action(A, H, T, S): execute action A of type T at history H and resturn sensing outcome S
- -- pending_event(Event): exog action or sensing pending to be processed
+ -- pending(Event): exog action or sensing pending to be processed
  -- set_type_manager(+T): set the implementation type of the env manager
 
 
@@ -133,7 +133,10 @@ handle_device(Device) :-
 	(  Term == end_of_file
 	-> !
 	;  	logging(info(5, em), "Handling event from device ~w: ~w", [Device, Term]),
-		handle_event(Device, Term)
+		(	handle_event(Device, Term)
+		-> 	true
+		;	logging(warning, "Event ~w from device ~w not handled", [Term, Device])
+		)
 	).
 
 
@@ -183,12 +186,12 @@ wait_for_children.
 handle_event(Dev, sensing(A, N, SR)) :- !,
 	executing_action(N, A, _),
 	(translate_sensing(A, SR, SR2) ->  true ; SR2 = SR),
-	asserta(pending_event(sensing(A, N, SR))),
+	asserta(pending(sensing(A, N, SR))),
 	logging(info(5, em), "Sensing for action ~w in device ~d: ~w", [[A, N], Dev, [SR, SR2]]).
 handle_event(Dev, exog_action(A)) :-
 	(translate_exog(A, A2) -> true ; A2 = A),
     exog_action(A2), !,
-	asserta(pending_event(exog_action(A))),
+	asserta(pending(exog_action(A))),
 	logging(info(3, em), "Exogenous action occurred in device ~w: ~w", [Dev, [A2, A]]).
 
 handle_event(Dev, end_of_file) :- !,  % Env has been closed!
