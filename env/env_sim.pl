@@ -76,11 +76,10 @@ This part implements a keyboard interface to enter exogenous events in an asynch
 
 An TCL/TK independent process is initiated to read exogenous events the program exog.tcl writes each exogenous action entered to a special pipe. At that time, a sigio signal is assigned to such pipe so that whenever data arrives to the pipe an interrupt is triggered which can be cached by the main cycle to handle thestart exog action entered.
 */
-initialize_interfaces :- initialize_exog(tcltk).
+initialize_interfaces :- initialize(tcltk).
+finalize_interfaces :- finalize(tcltk).
 
-finalize_interfaces :- finalize_exog(tcltk).
-
-initialize_exog(tcltk) :-
+initialize(tcltk) :-
         printKbInstructions,
         dir(exog_tcltk_, TclFile),
         % run the TCLK window as a child and send its *output* to pipe "tcltk"
@@ -89,15 +88,14 @@ initialize_exog(tcltk) :-
         sleep(2),    % give time to TCL/TK program to appear
         assert(listen_to(tcltk, OutStream, [pid(PID)])),  % listen to tcltk
         add_stream_to_pool(tcltk, handle_stream(tcltk)).
-finalize_exog(tcltk) :-
+finalize(tcltk) :-
         logging(system(1), 'Closing TCL-TK interface.'),
 	delete_stream_from_pool(tcltk),
         listen_to(tcltk, _, L),
         member(pid(PID), L),
         process_kill(PID),
         logging(system(1), 'TCL-TK interface closed: stream and process.').
-
-finalize_exog(tcltk).	% already down
+finalize(tcltk).	% already down
 
 % printKbInstructions: Print instructions on how to enter keyboard input
 printKbInstructions :-
@@ -122,10 +120,11 @@ printKbInstructions :-
 % similar to failure-driven loop: https://www.swi-prolog.org/pldoc/doc_for?object=repeat/0
 handle_stream(tcltk) :-
         logging(info(4), "Reading term from TCL/TK interface"),
-        read(tcltk, Term),
+        read_term(tcltk, Term, []),
         (       Term == end_of_file
-        ->      finalize_exog(tcltk)
-        ;       report_exog(Term)
+        ->      finalize(tcltk)
+        ;       get_char(tcltk, '\n'), % read last \n that tcl adds at end
+                report_exog(Term)
         ).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -147,8 +147,9 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % usually, there is no need to modify it, one should implement execute/3
 handle_stream(env_manager) :-
         logging(info(3, gen), "Handling data from EM"),
-        read(em_read_stream, Data),
-        logging(info(3, gen), "Received data from EM: ~w", [Data]),
+        read_term(em_read_stream, Data, []),
+        get_code(em_read_stream, 32),   % discard the space after the full stop
+        logging(info(3, gen), "Received data from EM: ~w", [Data]), !,
         handle_data(Data).
 
 handle_data(Data) :-

@@ -99,8 +99,8 @@ system(ShellCommand) :- shell(ShellCommand).
 sh(ShellCommand)     :- shell(ShellCommand).
 
 
-
+% this will send the term, full stop, and a space
 send_term(Stream, Term) :-
-     write_term(Stream, Term, [quoted(false), fullstop(true), nl(true)]),
+     write_term(Stream, Term, [quoted(false), fullstop(true), nl(false), spacing(next_argument)]),
      flush_output(Stream).
 

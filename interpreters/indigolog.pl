@@ -316,9 +316,6 @@ indigolog(H, E, [A|H]) :-
 	indigolog(E, H1).  % DOMAIN ACTION
 
 
-
-
-
 % Abort mechanism for SWI: throw exception to main thread only
 % 	abortStep(swi) is running in the env. manager thread
 %		so by the time throw(exog_action) is executed, it could
@@ -334,24 +331,20 @@ abort_step :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
 %    history H. H2 is the new history after the execution of Act in H
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-indixeq(Act, H, H2) :-    % PROCESS SYSTEM ACTIONS: just add it to history
-	system_action(Act), !,
-	H2 = [Act|H],
-	update_now(H2).
 indixeq(Act, H, H2) :-    % PROCESS OF SENSING ACTIONS
-	sensing_action(Act), !,
+	sensing_action(Act, _), !,
 	logging(info(1), "Sending sensing action for execution: ~w", [Act]),
 	execute_action(Act, H, sensing, IdAct, SR), !,
 	(	SR = failed
-	-> logging(error, "Action *~w* FAILED to execute at history.", [Act, IdAct]),
+	-> logging(error, "Action FAILED to execute: ~w", [Act, IdAct]),
 		H2 = [abort, failed(Act)|H],	% Request abortion of program
 		update_now(H2)
-	;	logging(action, "Action *~w* EXECUTED with outcome: ", [[Act, IdAct], SR]),
+	;	logging(action, "Action EXECUTED with outcome: ~w", [[Act, IdAct], sensing(SR)]),
 		handle_sensing(Act, [Act|H], SR, H2),  % ADD SENSING OUTCOME!
 		update_now(H2)
 	).
 indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
-	\+ system_action(Act), \+ sensing_action(Act), !,
+	\+ system_action(Act), \+ sensing_action(Act, _), !,
 	logging(info(1), "Sending action for execution: ~w", [Act]),
 	execute_action(Act, H, normal, IdAct, S), !,
 	(	S = failed
