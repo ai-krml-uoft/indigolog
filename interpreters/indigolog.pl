@@ -184,6 +184,8 @@ system_action(start_indi).	% Action to start execution
 system_action(break_indi).	% Action to break the agent execution to top-level Prolog
 system_action(reset_indi).	% Reset agent execution from scratch
 
+system_action(wait_exog).
+
 exog_action(A) :- system_action(A).
 
 
@@ -314,13 +316,9 @@ indigolog(H, E, [sim(_)|H]) :- !,
 	indigolog(E, H).	% drop simulated actions
 indigolog(H, E, [wait|H]) :- !,
 	(can_progress(H) -> progress(H, H1) ; H1 = H),
-	logging(info(2), "Waiting for exogenous action to ocurr..."),
 	% wait for an exogenous event to arrive
 	% TODO: may be better to wait for a particular one and timeout
-	( 	\+ pending(exog_action(_))
-	-> 	thread_wait(pending(exog_action(_)), [wait_preds([pending/1])])
-	;	true
-	),
+	wait_exog_action,
 	indigolog(E, H1).
 indigolog(H, E, [stop_interrupts|H]) :- !,
 	indigolog(E, [stop_interrupts|H]).
@@ -333,7 +331,12 @@ indigolog(H, E, [A|H]) :- % A is a new domain action to be executed
 	),
 	indigolog(E, H1).
 
-
+wait_exog_action :-
+	logging(info(2), "Waiting for exogenous action to ocurr..."),
+	( 	\+ pending(exog_action(_))
+	-> 	thread_wait(pending(exog_action(_)), [wait_preds([pending/1])])
+	;	true
+	).
 
 % Abort mechanism for SWI: throw exception to main thread only
 % 	abortStep(swi) is running in the env. manager thread

@@ -173,7 +173,7 @@ proc(control(supersmart), [prioritized_interrupts(
          interrupt(above_floor(1), down),
          interrupt(neg(door_open), open),
         %  interrupt(true, say("Waiting at gound floor"))])]).
-         interrupt(true, ?(true))])]).
+         interrupt(true, ?(wait_exog_action))])]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
