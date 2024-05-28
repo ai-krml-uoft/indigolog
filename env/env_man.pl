@@ -1,3 +1,4 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /*  Environment Manager for the IndiGolog interpreter
 
     @author Sebastian Sardina 2003-2024 - ssardina@gmail.com
@@ -44,6 +45,7 @@
  -- logging(T, M)       : report messsage M of type T --
  send_data_socket/2 -- receive_list_data_socket/2
 */
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- ensure_loaded('../lib/utils.pl').
 
 :- dynamic
@@ -59,8 +61,8 @@
 name_env(env_manager).   % We are the "environment manager"
 counter_actions(0).  % Counter for (executed) actions
 
-
-/* A - INITIALIZATION OF DEVICES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/* INITIALIZATION OF DEVICES
 
  1. Create a TCP socket for the Environment Manager (EM) (saved in
     em_address/1)
@@ -72,7 +74,7 @@ counter_actions(0).  % Counter for (executed) actions
  store its information, including the stream to send/receive data from
  it, in predicate dev_data/2.
 */
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 initialize(env_manager) :-
 	logging(em(1), "Openinig EM server socket..."),
 		% reset all dynamic predicates
@@ -101,7 +103,7 @@ initialize(env_manager) :-
 
 % start_env_cycle :- stream_pool_main_loop, !.	% for debugging
 start_env_cycle :-
-	% We start the STREM-POOL on a separate thread
+	% We start the STREAM-POOL on a separate thread
 	%	https://www.swi-prolog.org/pldoc/man?section=stream-pools
 	% 	https://github.com/SWI-Prolog/packages-clib/blob/master/streampool.pl
 	thread_create(catch(
@@ -153,14 +155,9 @@ handle_device(Device) :-
 		)
 	).
 
-
-/* A - FINALIZATION OF DEVICES
-
-	1 - Close all the open device managers
-	2 - Terminate EM cycle
-	3 - Close EM server socket em_socket
-	4 - Report the number of actions that were executed
-*/
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% A - FINALIZATION OF DEVICES
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 finalize(env_manager) :-
 	logging(em(2), "Closing all device managers..."),
 	% send terminate to all devices
@@ -186,7 +183,7 @@ wait_for_children :- wait(PID, S), !,
 	wait_for_children.
 wait_for_children.
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /* HANDLERS FOR INCOMING DATA
 
  	handle_event/2 states how data coming from devices are handled.
@@ -199,26 +196,27 @@ wait_for_children.
 	- the result of a sensing action
 	- a system message (e.g., end_of_file)
 */
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 handle_event(Dev, sensing(A, N, SRC)) :- !,
 	(translate_sensing(A, SRC, SR) ->  true ; SR = SRC),
 	asserta(pending(sensing(A, N, SR))),
-	logging(em(5), "Sensing for action ~w in device ~w: ~w", [[A, N], Dev, SR]).
+	logging(em(5), "Sensing received: ~w", [[[A, N], device(Dev), sensing(SR)]]).
 handle_event(Dev, exog_action(AC)) :-
 	(translate_exog(AC, A) -> true ; A = AC),
     exog_action(A), !,
 	asserta(pending(exog_action(A))),
-	logging(em(3), "Exogenous action occurred in device ~w: ~w", [Dev, A]).
+	logging(em(3), "Exogenous action occurred: ~w", [[A, device(Dev)]]).
 
 handle_event(Dev, end_of_file) :- !,  % Env has been closed!
-	logging(em(2), "Device ~w has closed its connect", [Dev]),
+	logging(em(2), "Device has closed its connection: ~w", [Dev]),
 	delete_stream_from_pool(Dev),
 	close(Dev).
 handle_event(Dev, Data):- !, % The event is unknown but with form
 	logging(warning, "Unknown data from device ~w: ~w", [Dev, Data]).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EXECUTION OF ACTIONS SECTION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Tell the corresponding device to execute an action
 % how_to_execute/3 says how (which device and which action code) to
@@ -241,6 +239,6 @@ execute_action(_, _, N, failed) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

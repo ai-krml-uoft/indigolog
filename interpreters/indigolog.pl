@@ -246,9 +246,10 @@ indigolog(E) :-		% Run program E
 indigolog(E, H) :-
 	% trace,
 		% process all pending exog actions, sys acitons, and sensing
-	findall(E, (pending(exog_action(E)), \+ system_action(E)), HE),
+		% trace,
+	findall(X, (pending(exog_action(X)), \+ system_action(X)), HE),
 	append(HE, H, H1),
-	findall(E, (pending(exog_action(E)), system_action(E)), HS), !,
+	findall(X, (pending(exog_action(X)), system_action(X)), HS), !,
 	list_to_set(HS, HS2),
 	process_system_actions(HS2, E, H1, E2),
 		% progress the history (possibly)
