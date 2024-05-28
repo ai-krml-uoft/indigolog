@@ -270,10 +270,10 @@ sensing_action(A, _) :- senses(A, _) ; senses(A, _, _, _, _).
 
 % sensed(+A, ?V, +H): action A got sensing result V w.r.t. history H
 sensed(A, V, [e(F, V2)|_]) :- senses(A, F), !, V = V2.
-sensed(A, V, [_|H])      :- sensed(A, V, H).
+sensed(A, V, [_|H]) :- sensed(A, V, H).
 
 % domain/2: assigns a user-defined domain to a variable.
-domain(V, D)  :- getdomain(D, L), member(V, L).
+domain(V, D) :- getdomain(D, L), member(V, L).
 rdomain(V, D) :- getdomain(D, L), shuffle(L, L2), !, member(V, L2).
 
 % L is the list-domain associated to name D
@@ -281,7 +281,10 @@ getdomain(D, L) :- is_list(D) -> L = D ; (P  =.. [D, L], call(P)).
 
 % Computes the arguments of an action or a fluent P
 % Action/Fluent P1 is action/fluent P with all arguments evaluated
-calc_arg(P, P1, H) :- (is_an_action(P) ; prim_fluent(P)),
+calc_arg(set(F), set(F), _).
+calc_arg(unset(F), unset(F), _).
+calc_arg(P, P1, H) :-
+    (is_an_action(P) ; prim_fluent(P)),
 	(atomic(P)-> P1 = P ;
                     (P =..[Function|LArg], subfl(LArg, LArg2, H),
                      P1=..[Function|LArg2])).
@@ -311,10 +314,10 @@ is_an_action(A) :- \+ atomic(A),
                    NA =..[F|ArgV], (prim_action(NA) ; exog_action(A)).
 
 % Simulation of an action A has the same effects as action A itself
-causes_val(sim(A), F, V, C)  :- !, causes_val(A, F, V, C).
+causes_val(sim(A), F, V, C) :- !, causes_val(A, F, V, C).
 
 % Build causes_val/4 for relational fluents
-causes_val(A, F, true, C)  :- causes_true(A, F, C).
+causes_val(A, F, true, C) :- causes_true(A, F, C).
 causes_val(A, F, false, C) :- causes_false(A, F, C).
 
 % Abort if P is not grounded (to use before negations as failure)
@@ -334,26 +337,26 @@ update_cache(H) :-
 % Assumes that after sensing F, F may change but it will remain known
 % We may probably want to add some "forgeting" mechanism.. either by a
 %      state condition or special actions
-holds(kwhether(F), [])     :- !, initially(F, _).
+holds(kwhether(F), []) :- !, initially(F, _).
 holds(kwhether(F), [Act|_]) :- (senses(Act, F) ; Act = e(F, _)), !.
-holds(kwhether(F), [_|H])  :- holds(kwhether(F), H).
+holds(kwhether(F), [_|H]) :- holds(kwhether(F), H).
 
 % know(F): Fluent F evaluates to something
-holds(know(F), H)     :- !, holds(F = _, H).
+holds(know(F), H) :- !, holds(F = _, H).
 
 % holds(P, H): P holds in H
-holds(and(P1, P2), H)	:- !, holds(P1, H), holds(P2, H).
-holds(or(P1, P2), H)	:- !, (holds(P1, H) ; holds(P2, H)).
-holds(neg(P), H)	:- !, checkgr(P), \+ holds(P, H). /* Negation by failure */
-holds(some([], P), H)	:- !, holds(P, H).
-holds(some([V|L], P), H)	:- !, holds(some(V, some(L, P)), H).
-holds(some([], P), H)	:- !, holds(P, H).
-holds(some([V|L], P), H)	:- !, holds(some(V, some(L, P)), H).
-holds(some(V, P), H)	:- !, subv(V, _, P, P1), holds(P1, H).
+holds(and(P1, P2), H) :- !, holds(P1, H), holds(P2, H).
+holds(or(P1, P2), H) :- !, (holds(P1, H) ; holds(P2, H)).
+holds(neg(P), H) :- !, checkgr(P), \+ holds(P, H). /* Negation by failure */
+holds(some([], P), H) :- !, holds(P, H).
+holds(some([V|L], P), H) :- !, holds(some(V, some(L, P)), H).
+holds(some([], P), H) :- !, holds(P, H).
+holds(some([V|L], P), H) :- !, holds(some(V, some(L, P)), H).
+holds(some(V, P), H) :- !, subv(V, _, P, P1), holds(P1, H).
 holds(some((V, D), P), H) :- !, domain(O, D), subv(V, O, P, P1), holds(P1, H).
-holds(all([], P), H)	:- !, holds(P, H).
-holds(all([V|L], P), H)	:- !, holds(all(V, all(L, P)), H).
-holds(all((V, D), P), H)	:- !, holds(neg(some(V, D), neg(P)), H).
+holds(all([], P), H) :- !, holds(P, H).
+holds(all([V|L], P), H) :- !, holds(all(V, all(L, P)), H).
+holds(all((V, D), P), H) :- !, holds(neg(some(V, D), neg(P)), H).
 holds(impl(P1, P2), H) :- !, holds(or(neg(P1), P2), H).
 holds(P, H) :- proc(P, P1), !, (ground(P) -> (holds(P1, H), !) ; holds(P1, H)).
 holds(P, H) :- ground(P), rel_fluent(P), !, subf(P, true, H), !.
@@ -362,9 +365,9 @@ holds(P, H) :- ground(P), !, subf(P, P1, H), !, call(P1).
 holds(P, H) :- subf(P, P1, H), call(P1).
 
        /*  P2 is P1 with all fluents replaced by their values at H */
-subf(P1, P2, _)  :- (var(P1) ; number(P1)), !, P2 = P1.
-subf(P1, P2, H)  :- atom(P1), !, subf2(P1, P2, H).
-subf(P1, P2, H)  :- P1=..[F|L1], subfl(L1, L2, H), P3=..[F|L2], subf2(P3, P2, H).
+subf(P1, P2, _) :- (var(P1) ; number(P1)), !, P2 = P1.
+subf(P1, P2, H) :- atom(P1), !, subf2(P1, P2, H).
+subf(P1, P2, H) :- P1=..[F|L1], subfl(L1, L2, H), P3=..[F|L2], subf2(P3, P2, H).
 
 subf2(P3, P2, H) :- prim_fluent(P3), has_value(P3, P2, H).
 subf2(P2, P2, _) :- \+ prim_fluent(P2).
@@ -379,27 +382,27 @@ subfl([T1|L1], [T2|L2], H) :- subf(T1, T2, H), subfl(L1, L2, H).
 has_value(F, V, H) :- ground(F) -> (has_valg(F, V, H), !) ; has_valo(F, V, H).
 
 % has_valg/3: check cache, then normal query (for ground queries)
-has_valg(F, V, H)  :- cache(F), !,
+has_valg(F, V, H) :- cache(F), !,
 	(has_valc(F, V, H) -> true ; (has_val(F, V, H),  assert(has_valc(F, V, H))) ).
-has_valg(F, V, H)  :- has_val(F, V, H), !.  % F is a fluent with NO cache
+has_valg(F, V, H) :- has_val(F, V, H), !.  % F is a fluent with NO cache
 
 % has_valo/3: check cache, then normal query (for ground queries)
-has_valo(F, V, H)  :- cache(F), !,
+has_valo(F, V, H) :- cache(F), !,
 	(has_valc(F, V, H) ; (has_val(F, V, H),  \+ has_valc(F, V, H),  assert(has_valc(F, V, H)))).
-has_valo(F, V, H)  :- has_val(F, V, H).  % F is a fluent with NO cache
+has_valo(F, V, H) :- has_val(F, V, H).  % F is a fluent with NO cache
 
 
 % has_val/3: the usual way of reasoning using regression and sensing
-has_val(F, V, [])		:- currently(F, V).
-has_val(F, V, [A|H])	:- sets_val(A, F, V, H).
-has_val(F, V, [A|H])	:- \+ forget(A, H, F), has_value(F, V, H), \+ sets_val(A, F, _, H).
-has_val(F, V, [set(F)|_])  :- !, V = true.
+has_val(F, V, []) :- currently(F, V).
+has_val(F, V, [A|H]) :- sets_val(A, F, V, H).
+has_val(F, V, [A|H]) :- \+ forget(A, H, F), has_value(F, V, H), \+ sets_val(A, F, _, H).
+has_val(F, V, [set(F)|_]) :- !, V = true.
 has_val(F, V, [unset(F)|_]) :- !, V = false.
 
-sets_val(e(F, V), F, V, _)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_, _)
-sets_val(e(A, V), F, V, _)	:- senses(A, F).	% Action A sets F directly
-sets_val(e(A, V), F, V2, H)	:- !, senses(A, V, F, V2, P), holds(P, H). % A sets F indirectly
-sets_val(A, F, V, H)	:- causes_val(A, F, V, P), holds(P, H).   % Non-sensing reasoning
+sets_val(e(F, V), F, V, _) :- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_, _)
+sets_val(e(A, V), F, V, _) :- senses(A, F).	% Action A sets F directly
+sets_val(e(A, V), F, V2, H) :- !, senses(A, V, F, V2, P), holds(P, H). % A sets F indirectly
+sets_val(A, F, V, H) :- causes_val(A, F, V, P), holds(P, H).   % Non-sensing reasoning
 
 % So far, one forgets the value of F when it is sensed (may be improved)
 forget(Act, _, F) :- forget(Act, F).
