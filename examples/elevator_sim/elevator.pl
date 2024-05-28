@@ -32,7 +32,7 @@
 % There is nothing to do caching on (required becase cache/1 is static)
 cache(_) :- fail.
 
-/* DOMAINS-SORTS AVAILABLE */
+  /* DOMAINS-SORTS AVAILABLE */
 max_floor(10).
 fl(N) :- max_floor(M), between(1, M, N).
 
@@ -89,7 +89,7 @@ poss(look(_), true).
 prim_action(say(_)).
 poss(say(_), true).
 
-/* EXOGENOUS ACTIONS */
+  /* EXOGENOUS ACTIONS */
 exog_action(heat).            % increase temperature
 exog_action(cold).            % decrease temperature
 exog_action(smoke).           % smoke enters elevator
@@ -99,7 +99,7 @@ exog_action(on(N)) :- fl(N).  % turn on call button on floor n
 prim_action(Act) :- exog_action(Act).
 poss(Act, true) :- exog_action(Act).
 
-/* ABBREVIATIONS */
+  /* ABBREVIATIONS */
 proc(too_hot, temp > 22).
 proc(too_cold, temp < 16).
 proc(above_floor(N), floor > N).
@@ -108,7 +108,7 @@ proc(pending_floor(N), light(N)).
 proc(some_pending, some(n, light(n))).
 
 
-/* INITIAL STATE */
+  /* INITIAL STATE */
 initially(floor, 2).
 initially(light(N), true) :- fl(N), member(N, [1, 3, 7, 8]).
 initially(light(N), false) :- fl(N), \+ initially(light(N), true).

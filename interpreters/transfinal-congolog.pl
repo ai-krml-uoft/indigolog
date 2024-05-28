@@ -85,7 +85,7 @@
     /*    iconc(E)    : iterative concurrent execution of E              */
     /*    conc(E1, E2) : concurrent (interleaved) execution of E1 and E2  */
     /*    pconc(E1, E2): prioritized conc. execution of E1 and E2 (E1>E2) */
-    /*    pconc2(E1, E2, H): used to improve the performance of pconc(_, _) */
+    /*    pconc2(E1, E2, H): used to improve  performance of pconc(_, _) */
     /*                                                                   */
 final(iconc(_), _).
 final(conc(E1, E2), H) :- final(E1, H), final(E2, H).

@@ -76,7 +76,6 @@ counter_actions(0).  % Counter for (executed) actions
 */
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 initialize(env_manager) :-
-	logging(em(1), "Openinig EM server socket..."),
 		% reset all dynamic predicates
 	retractall(counter_actions(_)),
 	retractall(dev_data(_,_)),
