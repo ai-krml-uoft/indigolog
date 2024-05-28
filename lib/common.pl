@@ -41,8 +41,6 @@
 %
 %  -- subv(+X1,+X2,+T1,-T2)
 %        T2 is T1 with X1 replaced by X2
-%  -- replace_element_list(+List,+E1,+E2,-List2)
-%        List2 is List with element E1 replaced by element E2
 %  -- sublist(?SubList, +List)
 %        Succeeds if List is the list which contains all elements from SubList
 %  -- get_integer(+Low, ?N, +High)
@@ -59,15 +57,6 @@ subvl(_,_,[],[]).
 subvl(X1,X2,[T1|L1],[T2|L2]) :- subv(X1,X2,T1,T2), subvl(X1,X2,L1,L2).
 
 
-
-
-% -- replace_element_list(+List,+E1,+E2,-List2)
-%     List2 is List with element E1 replaced by element E2
-replace_element_list([],_,_,[]).
-replace_element_list([CE1|R],CE1,CE2,[CE2|RR]):- !,
-        replace_element_list(R,CE1,CE2,RR).
-replace_element_list([E|R],CE1,CE2,[E|RR]):-
-        replace_element_list(R,CE1,CE2,RR).
 
 
 
@@ -292,17 +281,32 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 % -- set_debug_level(+N) : set the debug level to N (nothing >N is shown)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic
-	debug_level/1.
+	debug_level/1,
+        debug_level/2.
 
 set_option("log_level: up to what level to report").
 set_option(log_level, N) :-
+        number(N),
         retractall(debug_level(_)),
 	assert(debug_level(N)),
-        logging(system(0), ['Debug level set to', N]).
+        logging(system(0), 'Debug level set to ~d', [N]).
+set_option(log_level, N) :-
+        N =.. [M, Level],
+        retractall(debug_level(M, _)),
+	assert(debug_level(M, Level)),
+        logging(system(0), 'Debug level for module ~w set to ~d', [M, Level]).
 
-
+% report logging using ~ formatting print
 logging(T, M) :- logging(T, M, []).
-logging(T, _, _) :- T =.. [_, Level|_], number(Level), debug_level(N), N < Level, !.
+logging(T, _, _) :-
+        T =.. [M, Level|_],
+        number(Level),
+        (       debug_level(M, N), N < Level
+        ->      !
+        ;       debug_level(N), N < Level
+        ->      !
+        ;       fail
+        ).
 logging(T, M, L) :- \+ is_list(M), !, logging(T, [M], L).
 logging(T, M, L) :-
         is_list(M), !,
