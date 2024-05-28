@@ -64,10 +64,10 @@ senses(look(N), light(N)).     % checks if light(N) is true
 
   /*  ACTIONS and PRECONDITIONS*/
 prim_action(down).
-poss(down, neg(floor = 1)).
+poss(down, and(neg(door_open), neg(floor = 1))).
 
 prim_action(up).
-poss(up, neg(floor = N)) :- max_floor(N).
+poss(up, and(neg(door_open), neg(floor = N))) :- max_floor(N).
 
 prim_action(toggle).  % toggle ring alarm
 poss(toggle, true).
@@ -121,12 +121,13 @@ initially(alarm, false).
 %  Definitions of complex actions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).
+proc(go_floor(N),
+  [if(door_open, close, []),
+    while(neg(floor = N), if(below_floor(N), up, down))]).
 proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
 
 % pick a floor that is pending to be served and serve it
 proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
-
 
 
 % DUMB: just kep serving some pending floor and then go down
@@ -171,7 +172,8 @@ proc(control(supersmart), [prioritized_interrupts(
          interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down),
          interrupt(neg(door_open), open),
-         interrupt(true, say("Waiting at gound floor"))])]).
+        %  interrupt(true, say("Waiting at gound floor"))])]).
+         interrupt(true, ?(true))])]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
