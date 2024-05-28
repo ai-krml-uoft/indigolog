@@ -74,11 +74,16 @@ counter_actions(0).  % Counter for (executed) actions
 */
 
 initialize(env_manager) :-
+	logging(em(1), "Openinig EM server socket..."),
+		% reset all dynamic predicates
 	retractall(counter_actions(_)),
-	assert(counter_actions(0)),
-	load_devices(LDevices),	% get devices to load and how many
+	retractall(dev_data(_,_)),
+	retractall(em_data(_, _, _)),
+		% get devices to load and how many (needed for the socket!)
+	load_devices(LDevices),
     length(LDevices, NoDevices),
-	logging(info(1, em), "Openinig EM server socket..."),
+		% create socket and bind to address
+	logging(em(1), "Openinig EM server socket..."),
 	tcp_socket(Socket),
     em_address(Host, Port),
 	Address = Host:Port,
@@ -86,26 +91,32 @@ initialize(env_manager) :-
     tcp_listen(Socket, NoDevices),
 	tcp_open_socket(Socket, StreamPair),	% stream use for tcp_accept/3
 	assert(em_data(Socket, Address, StreamPair)),
-	logging(info(2, em), "Loading the following devices: ~w", [LDevices]),
+		% start up each device
+	logging(em(2), "Loading ~d devices: ~w", [NoDevices, LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
-    logging(info(2, em), "Start EM cycle to listen to devices..."),
-	start_env_cycle.   % Start the EM main cycle (in a thread via stream-pool)
+    logging(em(2), "Start EM cycle to listen to devices..."),
+		% Start the EM main cycle (in a thread via stream-pool)
+	assert(counter_actions(0)),
+	start_env_cycle.
 
 % start_env_cycle :- stream_pool_main_loop, !.	% for debugging
 start_env_cycle :-
 	% We start the STREM-POOL on a separate thread
 	%	https://www.swi-prolog.org/pldoc/man?section=stream-pools
 	% 	https://github.com/SWI-Prolog/packages-clib/blob/master/streampool.pl
-	thread_create(catch(stream_pool_main_loop, E,
-			(logging(info(2, em), "EM cycle received exception: ~w", [E]),
+	thread_create(catch(
+		(stream_pool_main_loop,
+			logging(em(3), "EM cycle finished gently...", [])),
+		E,
+		(logging(em(2), "EM cycle received exception: ~w", [E]),
 			close_stream_pool)), em_thread, [alias(em_thread)]).
 end_env_cycle :-
 	(	current_thread(em_thread, running)
-	-> 	thread_signal(em_thread, throw(finish)) % Signal thread to finish!
-	;	true % Already finished (because all devices were closed)
+	-> 	thread_signal(em_thread, throw(finish))
+	;	true % Already finished (because all devices closed?)
 	),
 	thread_join(em_thread, _),
-	logging(info(1, em), "EM cycle (thread) finished").
+	logging(em(1), "EM cycle (thread) finished").
 
 
 /* Start device manager environment E
@@ -122,7 +133,7 @@ start_dev(E) :-
 	tcp_open_socket(SocketFrom, StreamPair),	% can read/write from/to the device
 	stream_pair(StreamPair, ReadStream, _),
 	set_stream(ReadStream, alias(E)),	% for better reading with the device name
-	logging(info(1, em), "Device ~w initialized at ~w", [E, IP]),
+	logging(em(1), "Device ~w initialized at ~w", [E, IP]),
 	assert(dev_data(E, [socket(SocketFrom), stream(StreamPair)|InfoEnv])),
 	% register to stream pool
 	add_stream_to_pool(StreamPair, handle_device(E)).
@@ -135,7 +146,7 @@ handle_device(Device) :-
 	read_term(Device, Term, []),
 	(  Term == end_of_file
 	-> !
-	;  	logging(info(5, em), "Handling event from device ~w: ~w", [Device, Term]),
+	;  	logging(em(5), "Handling event from device ~w: ~w", [Device, Term]),
 		(	handle_event(Device, Term)
 		-> 	true
 		;	logging(warning, "Event ~w from device ~w not handled", [Term, Device])
@@ -151,25 +162,27 @@ handle_device(Device) :-
 	4 - Report the number of actions that were executed
 */
 finalize(env_manager) :-
-	logging(info(2, em), "Closing all device managers..."),
+	logging(em(2), "Closing all device managers..."),
 	% send terminate to all devices
     findall(S, dev_stream(_, S), LDevWriteStreams),
 	maplist([X]>>send_term(X, terminate), LDevWriteStreams),
 	sleep(3), 	% Wait to give time to devices to finish cleanly
-	logging(info(2, em), "Close EM stream pool and socket..."),
+	logging(em(2), "Close EM stream pool and socket..."),
 	close_stream_pool, !,	% should finish thread em_thread gently
+	thread_join(em_thread, Status),
+	logging(em(2), "EM thread joined with status: ~w", [Status]),
 	em_data(_, _, StreamPair),	% close socket stream (and socket)
 	close(StreamPair), !,
-	logging(info(2, em), "Joining with device processes..."),
+	logging(em(2), "Joining with device processes..."),
 	catch(wait_for_children, _, true), !,
-	logging(info(2, em), "Closing EM server socket..."),
+	logging(em(2), "Closing EM server socket..."),
     counter_actions(N),
-    logging(info(1, em), "EM completed with ~d executed actions", [N]).
+    logging(em(1), "EM completed with ~d executed actions", [N]).
 
 % keep waiting for all children to finish
 % 	https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
 wait_for_children :- wait(PID, S), !,
-	logging(info(3, em), "Successful proccess waiting: ~w", [[PID, S]]),
+	logging(em(3), "Successful proccess waiting: ~w", [[PID, S]]),
 	wait_for_children.
 wait_for_children.
 
@@ -189,15 +202,15 @@ wait_for_children.
 handle_event(Dev, sensing(A, N, SRC)) :- !,
 	(translate_sensing(A, SRC, SR) ->  true ; SR = SRC),
 	asserta(pending(sensing(A, N, SR))),
-	logging(info(5, em), "Sensing for action ~w in device ~w: ~w", [[A, N], Dev, SR]).
+	logging(em(5), "Sensing for action ~w in device ~w: ~w", [[A, N], Dev, SR]).
 handle_event(Dev, exog_action(AC)) :-
 	(translate_exog(AC, A) -> true ; A = AC),
     exog_action(A), !,
 	asserta(pending(exog_action(A))),
-	logging(info(3, em), "Exogenous action occurred in device ~w: ~w", [Dev, A]).
+	logging(em(3), "Exogenous action occurred in device ~w: ~w", [Dev, A]).
 
 handle_event(Dev, end_of_file) :- !,  % Env has been closed!
-	logging(info(2, em), "Device ~w has closed its connect", [Dev]),
+	logging(em(2), "Device ~w has closed its connect", [Dev]),
 	delete_stream_from_pool(Dev),
 	close(Dev).
 handle_event(Dev, Data):- !, % The event is unknown but with form
@@ -215,13 +228,13 @@ execute_action(Action, _H, N, SR) :-
 	retract(counter_actions(N2)), N is N2 + 1, assert(counter_actions(N)),
 		% Find how to execute + send "execute" message to corresponding device
 	how_to_execute(Action, Env, ActionCode),   % PROVIDED BY DOMAIN!
-	logging(info(2, em), "Send action to execute: ~w", [[N, Action, Env, ActionCode]]),
+	logging(em(2), "Send action to execute: ~w", [[N, Action, Env, ActionCode]]),
 	dev_stream(Env, StreamEnv),
 	send_term(StreamEnv, execute(N, ActionCode)),
 		% Wait EM cycle posts the sensing outcome for the action
 	thread_wait(pending(sensing(A, N, SR)), [wait_preds([pending/1])]), !,
 	retract(pending(sensing(A, N, SR))),
-	logging(info(2, em),
+	logging(em(2),
 		"Action ~w completed with outcome: ~w", [[N, Action, Env, ActionCode], SR]).
 execute_action(_, _, N, failed) :- 
 	counter_actions(N). % same number as it was updated rule above

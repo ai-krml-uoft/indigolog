@@ -97,16 +97,15 @@ proc(too_hot, temp > 22).
 proc(too_cold, tmp < 16).
 proc(above_floor(N), floor > N).
 proc(below_floor(N), floor < N).
-proc(floor_to_serve(N), light(N)).
+proc(pending_floor(N), light(N)).
 
 
 /* INITIAL STATE */
 initially(floor, 2).
+initially(light(N), true) :- fl(N), member(N, [1, 3, 7, 8]).
+initially(light(N), false) :- fl(N), \+ initially(light(N), true).
 initially(temp, 2).
 initially(fan, false).
-initially(light(N), false) :- fl(N), \+ member(N, [1, 3]).
-initially(light(3), true).
-initially(light(1), true).
 initially(alarm, false).
 
 
@@ -117,6 +116,9 @@ initially(alarm, false).
 proc(go_floor(N), while(neg(floor = N), if(below_floor(N), up, down))).
 proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
 
+% pick a floor that is pending to be served and serve it
+proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
+
 proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
     ndet(  [?(and(neg(some(n, light(n)=on)), Max>=floor-1)), go_floor(1), open],
             pi(n, pi(m, [ ?(and(light(n)=on, m is Max - abs(floor-n))),
@@ -125,6 +127,11 @@ proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
                           handle_reqs(m) ] )))).
 
 
+% BASIC CONTROLLER: while there are some light on, pick one and serve it
+proc(control(basic),
+   [ while( some(n, light(n)), serve_some_floor ),
+     go_floor(1), % go to floor 1 to park
+     open ] ).
 
 
 /*  This is the original elevator with no exogenous events, no sensing  */
@@ -146,7 +153,7 @@ proc(controller(3), prioritized_interrupts(
         [interrupt(and(too_hot, neg(fan)), toggle),
          interrupt(and(too_cold, fan), toggle),
          interrupt(alarm=on, ring),
-         interrupt(n, floor_to_serve(n), serve_floor(n)),
+         interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down)])).
 
 /*  This is the elevator with no exogenous events, but with sensing   	*/
@@ -155,7 +162,7 @@ proc(controller(4),
   [ check_buttons,
     while(or(some(n, light(n)=on), above_floor(1)),
       if(some(n, light(n)=on), serve_a_floor, [down, check_buttons])) ]).
-proc(serve_a_floor, pi(n, [?(floor_to_serve(n)), go_floor(n), off(n)])).
+proc(serve_a_floor, pi(n, [?(pending_floor(n)), go_floor(n), off(n)])).
 proc(check_buttons,
 	[look(1), look(2), look(3), look(4), look(5), look(6), look(7), look(8), look(9), look(10)]).
 

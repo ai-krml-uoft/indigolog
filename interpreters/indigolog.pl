@@ -214,11 +214,8 @@ reset_indigolog_dbs(H) :-
 	retractall(pending(_)),
 	retractall(protect_history(_)),
 	retractall(progressed_history(_)),
-	update_now(H),
 	assert(progressed_history([])),
-	fail.
-reset_indigolog_dbs(_).
-
+	update_now(H).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    MAIN LOOP
