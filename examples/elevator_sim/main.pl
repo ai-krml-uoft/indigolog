@@ -85,7 +85,7 @@ translate_sensing(_, SR, SR).
 
 % main/0: Gets IndiGolog to evaluate a chosen mainControl procedure
 main :-
-    findall(C, proc(controller(C), _), L),
+    findall(C, proc(control(C), _), L),
     repeat,
     format('Controllers available: ~w\n', [L]),
     write('Select controller: '),
@@ -94,7 +94,7 @@ main :-
 	format('Executing controller: *~w*\n', [S]), !,
     main(Ctrl).
 
-main(C) :- assert(controller(C)), indigolog(C).
+main(C) :- assert(control(C)), indigolog(C).
 
 
 :- set_option(log_level, 5).

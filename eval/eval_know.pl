@@ -328,7 +328,7 @@ kholds(P,H) :-	ground(P) ->
 % negation normal form transformation
 holds(neg(or(P1,P2)),H)   :- !, holds(and(neg(P1),neg(P2)),H). 	/* Loyd-Topor Transf */
 holds(neg(and(P1,P2)),H)  :- !, holds(or(neg(P1),neg(P2)),H).  	/* Loyd-Topor Transf */
-holds(neg(neg(P)),H)      :- !, holds(P,H). 			/* Loyd-Topor Transf */
+holds(neg(neg(P)),H)      :- !, holds(P,H). 					/* Loyd-Topor Transf */
 holds(neg(all(V,D,P)),H)  :- !, holds(some(V,D,neg(P)),H).     	/* Loyd-Topor Transf */
 holds(neg(some(V,D,P)),H) :- !, holds(all(V,D,neg(P)),H).      	/* Loyd-Topor Transf */
 holds(neg(impl(P1,P2)),H) :- !, holds(and(P1,neg(P2)),H).      	/* Loyd-Topor Transf */

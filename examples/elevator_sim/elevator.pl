@@ -49,7 +49,7 @@ rel_fluent(fan).                   % trie if fan is on
 causes_true(toggle,   fan, neg(fan)).
 causes_false(toggle,  fan, fan).
 
-fun_fluent(alarm).              % true if alarm is on
+rel_fluent(alarm).              % true if alarm is on
 causes_true(smoke, alarm, true).
 causes_false(resetAlarm, alarm, true).
 
@@ -98,6 +98,7 @@ proc(too_cold, tmp < 16).
 proc(above_floor(N), floor > N).
 proc(below_floor(N), floor < N).
 proc(pending_floor(N), light(N)).
+proc(some_pending, some(n, light(n))).
 
 
 /* INITIAL STATE */
@@ -119,33 +120,30 @@ proc(serve_floor(N), [go_floor(N), open, close, off(N)]).
 % pick a floor that is pending to be served and serve it
 proc(serve_some_floor, pi(n, [?(pending_floor(n)), serve_floor(n)])).
 
+
+
+% DUMB: just kep serving some pending floor and then go down
+%     NO REACTION TO EXOGENOUS ACTIONS OR SENSING
+proc(control(dumb),
+   [ while(some_pending, serve_some_floor ),
+     go_floor(1), % go to floor 1 to park
+     open ] ).
+
+% SMART: build a shorter plan and then execute it all
+%     NO REACTION TO EXOGENOUS ACTIONS OR SENSING
+proc(control(smart_control), search(minimize_motion(0)) ).  /* eventually succeeds */
+
 proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
-    ndet(  [?(and(neg(some(n, light(n)=on)), Max>=floor-1)), go_floor(1), open],
-            pi(n, pi(m, [ ?(and(light(n)=on, m is Max - abs(floor-n))),
+    ndet(  [?(and(neg(some_pending), Max >= floor - 1)), go_floor(1), open],
+            pi(n, pi(m, [ ?(and(light(n), m is Max - abs(floor-n))),
                           ?(m > 0),
                           serve_floor(n),
                           handle_reqs(m) ] )))).
 
 
-% BASIC CONTROLLER: while there are some light on, pick one and serve it
-proc(control(basic),
-   [ while( some(n, light(n)), serve_some_floor ),
-     go_floor(1), % go to floor 1 to park
-     open ] ).
-
-
-/*  This is the original elevator with no exogenous events, no sensing  */
-/*  The smart controller uses search to minimize the up-down motion     */
-/*  The dumb controller tries without search but commits too soon       */
-proc(controller(1), dumb_control).
-proc(controller(2), smart_control).
 
 proc(minimize_motion(Max),  /* iterative deepening search */
     ndet( handle_reqs(Max), pi(m, [?(m is Max+1), minimize_motion(m)]))).
-
-proc(dumb_control, minimize_motion(0) ).           /* always fails */
-proc(smart_control, search(minimize_motion(0)) ).  /* eventually succeeds */
-
 
 /*  This is the elevator that appears in the IJCAI-97 paper on ConGolog */
 /*  It uses exogenous actions for temperature, smoke, and call buttons  */

@@ -248,6 +248,7 @@ finalize(evaluator) :-  retractall(currently(_, _)), clean_cache.
 
 % eval(P, H, B): this is the interface of the projector
 eval(P, H, true) :- holds(P, H).
+eval(P, H, false) :- holds(neg(P), H).
 
 % Change the history H to encode the sensing result of action A at H
 %handle_sensing(A, H, Sr, [e(F, Sr)|H]) :- senses(A, F). (OLD WAY)
