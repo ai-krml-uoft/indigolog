@@ -253,7 +253,9 @@ indigolog(E, H) :-
 		% process all pending exog actions, and process sys actions
 	findall(X, (pending(exog_action(X)), \+ system_action(X)), HE),
 	append(HE, H, H1),
+	(HE \= [] -> logging(indi(0), "Received exog actions: ~w", [HE]) ; true),
 	findall(X, (pending(exog_action(X)), system_action(X)), HS), !,
+	(HS \= [] -> logging(indi(0), "Received sys actions: ~w", [HS]) ; true),
 	retractall(pending(exog_action(_))),
 	list_to_set(HS, HS2),
 	process_system_actions(HS2, E, H1, E2),
