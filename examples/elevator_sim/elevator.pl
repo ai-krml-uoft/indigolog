@@ -41,17 +41,21 @@ fun_fluent(floor).              % the floor the elevator is on
 causes_val(up,   floor, N, N is floor+1).
 causes_val(down, floor, N, N is floor-1).
 
+rel_fluent(door_open).  % true if door is open
+causes_true(open,   door_open, true).
+causes_false(close,  door_open, true).
+
 fun_fluent(temp).               % the temperature of the elevator
 causes_val(heat, temp, X, X is temp+5).
 causes_val(cold, temp, X, X is temp-5).
 
-rel_fluent(fan).                   % trie if fan is on
+rel_fluent(fan).                   % true if fan is on
 causes_true(toggle,   fan, neg(fan)).
 causes_false(toggle,  fan, fan).
 
 rel_fluent(alarm).              % true if alarm is on
 causes_true(smoke, alarm, true).
-causes_false(resetAlarm, alarm, true).
+causes_false(reset, alarm, true).
 
 rel_fluent(light(N)) :- fl(N).  % floor is pending
 causes_true(on(N),  light(N), true).
@@ -83,10 +87,10 @@ prim_action(look(N)) :- fl(N).  % sense floor N light
 poss(look(_), true).
 
 /* EXOGENOUS ACTIONS */
-exog_action(heat).               % increase temperature
-exog_action(cold).               % decrease temperature
-exog_action(smoke).              % smoke enters elevator
-exog_action(resetAlarm).         % smoke detector alarm is reset
+exog_action(heat).            % increase temperature
+exog_action(cold).            % decrease temperature
+exog_action(smoke).           % smoke enters elevator
+exog_action(reset).           % smoke detector alarm is reset
 exog_action(on(N)) :- fl(N).  % turn on call button on floor n
 
 prim_action(Act) :- exog_action(Act).
@@ -94,7 +98,7 @@ poss(Act, true) :- exog_action(Act).
 
 /* ABBREVIATIONS */
 proc(too_hot, temp > 22).
-proc(too_cold, tmp < 16).
+proc(too_cold, temp < 16).
 proc(above_floor(N), floor > N).
 proc(below_floor(N), floor < N).
 proc(pending_floor(N), light(N)).
@@ -131,7 +135,10 @@ proc(control(dumb),
 
 % SMART: build a shorter plan and then execute it all
 %     NO REACTION TO EXOGENOUS ACTIONS OR SENSING
-proc(control(smart_control), search(minimize_motion(0)) ).  /* eventually succeeds */
+proc(control(smart), search(minimize_motion(0)) ).  /* eventually succeeds */
+
+proc(minimize_motion(Max),  /* iterative deepening search */
+    ndet( handle_reqs(Max), pi(m, [?(m is Max + 1), minimize_motion(m)]))).
 
 proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
     ndet(  [?(and(neg(some_pending), Max >= floor - 1)), go_floor(1), open],
@@ -140,19 +147,28 @@ proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
                           serve_floor(n),
                           handle_reqs(m) ] )))).
 
-
-
-proc(minimize_motion(Max),  /* iterative deepening search */
-    ndet( handle_reqs(Max), pi(m, [?(m is Max+1), minimize_motion(m)]))).
-
-/*  This is the elevator that appears in the IJCAI-97 paper on ConGolog */
-/*  It uses exogenous actions for temperature, smoke, and call buttons  */
-proc(controller(3), prioritized_interrupts(
+% REACTIVE: This is the elevator that appears in the IJCAI-97 paper on ConGolog
+%  It uses exogenous actions for temperature, smoke, and call buttons 
+%   OBS: bestFloor(N) is replaced with any button that is pending
+proc(control(congolog), [prioritized_interrupts(
         [interrupt(and(too_hot, neg(fan)), toggle),
          interrupt(and(too_cold, fan), toggle),
          interrupt(alarm, ring),
          interrupt(n, pending_floor(n), serve_floor(n)),
-         interrupt(above_floor(1), down)])).
+         interrupt(above_floor(1), down)]),
+         open]).
+
+% REACTIVE: This is the elevator that appears in the IJCAI-97 paper on ConGolog
+%  It uses exogenous actions for temperature, smoke, and call buttons 
+%   OBS: bestFloor(N) is replaced with any button that is pending
+proc(control(supersmart), [prioritized_interrupts(
+        [interrupt(and(too_hot, neg(fan)), toggle),
+         interrupt(and(too_cold, fan), toggle),
+         interrupt(alarm, ring),
+         interrupt(n, pending_floor(n), serve_floor(n)),
+         interrupt(above_floor(1), down),
+         interrupt(neg(door_open), open),
+         interrupt(true, ?(true))])]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

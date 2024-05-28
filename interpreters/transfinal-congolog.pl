@@ -85,7 +85,7 @@
     /*    iconc(E)    : iterative concurrent execution of E              */
     /*    conc(E1, E2) : concurrent (interleaved) execution of E1 and E2  */
     /*    pconc(E1, E2): prioritized conc. execution of E1 and E2 (E1>E2) */
-    /*    bpconc(E1, E2, H): used to improve the performance of pconc(_, _) */
+    /*    pconc2(E1, E2, H): used to improve the performance of pconc(_, _) */
     /*                                                                   */
 final(iconc(_), _).
 final(conc(E1, E2), H) :- final(E1, H), final(E2, H).
@@ -94,15 +94,15 @@ trans(iconc(E), H, conc(E1, iconc(E)), H1) :- trans(E, H, E1, H1).
 
 trans(conc(E1, E2), H, conc(E, E2), H1) :- trans(E1, H, E, H1).
 trans(conc(E1, E2), H, conc(E1, E), H1) :- trans(E2, H, E, H1).
-trans(pconc(E1, E2), H, E, H1) :-    % bpconc(E1, E2, H) is for when E1 blocked at H
-    trans(E1, H, E3, H1) -> E = pconc(E3, E2) ; trans(bpconc(E1, E2, H), H, E, H1).
+trans(pconc(E1, E2), H, E, H1) :-    % pconc2(E1, E2, H) is for when E1 blocked at H
+    trans(E1, H, E3, H1) -> E = pconc(E3, E2) ; trans(pconc2(E1, E2, H), H, E, H1).
 
-% bpconc(E1, E2, H) does not reconsider process E1 as long as the history
+% pconc2(E1, E2, H) does not reconsider process E1 as long as the history
 % remains being H (at H, E1 is already known to be blocked)
-trans(bpconc(E1, E2, H), H, E, H1) :- !,
+trans(pconc2(E1, E2, H), H, E, H1) :- !,
     trans(E2, H, E3, H1),  % blocked history H
-    (H1 = H -> E = bpconc(E1, E3, H) ; E = pconc(E1, E3)).
-trans(bpconc(E1, E2, _), H, E, H1) :- trans(pconc(E1, E2), H, E, H1).
+    (H1 = H -> E = pconc2(E1, E3, H) ; E = pconc(E1, E3)).
+trans(pconc2(E1, E2, _), H, E, H1) :- trans(pconc(E1, E2), H, E, H1).
 
 
        /* INTERRUPTS (page 121 CONGOLOG paper*/
@@ -133,11 +133,11 @@ expand_interrupts([], stop_interrupts). % if all bocked: stop interrupts!
 expand_interrupts([X|L], pconc(X, E)) :-
     expand_interrupts(L, E).
 
-% correct with paper but inefficient
-% trans(stop_interrupts, H, [], [stop_interrupts|H]).
-% final(stop_interrupts, _) :- fail, !.
+% trans(stop_interrupts, H, [], [stop_interrupts|H]).   % as paper, but inefficient
 
-final(stop_interrupts, _) :- retract(interrupts_running).
+% action must be in history to unlock pconc2() and flush all interrupts!
+trans(stop_interrupts, H, [], [stop_interrupts|H]) :- retract(interrupts_running).
+final(stop_interrupts, _) :- fail, !.
 
 % we must load this BEFORE any holds/2 from projector!
 holds(interrupts_running, _) :- !, interrupts_running.
@@ -170,7 +170,8 @@ final(pi(V, D, E), H) :- domain(W, D), subv(V, W, E, E2), !, final(E2, H).
 final(E, H) :- proc(E, E2), !, final(E2, H).
 
 
-trans([E|L], H, E1, H2) :- \+ L= [], final(E, H), trans(L, H, E1, H2).
+trans([E|L], H, E1, H2) :- \+ L = [], final(E, H), trans(L, H, E1, H2).
+trans([E], H, E1, H1) :- !, trans(E, H, E1, H2). % avoids lots nested lists on whiles()
 trans([E|L], H, [E1|L], H2) :- trans(E, H, E1, H2).
 trans(?(P), H, [], H) :- holds(P, H).
 trans(ndet(E1, E2), H, E, H1) :- trans(E1, H, E, H1) ; trans(E2, H, E, H1).

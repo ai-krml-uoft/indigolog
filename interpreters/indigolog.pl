@@ -248,10 +248,11 @@ indigolog(E) :-		% Run program E
 %%
 indigolog(E, H) :-
 	% trace,
-		% process all pending exog actions, sys acitons, and sensing
+		% process all pending exog actions, and process sys actions
 	findall(X, (pending(exog_action(X)), \+ system_action(X)), HE),
 	append(HE, H, H1),
 	findall(X, (pending(exog_action(X)), system_action(X)), HS), !,
+	retractall(pending(exog_action(_))),
 	list_to_set(HS, HS2),
 	process_system_actions(HS2, E, H1, E2),
 		% progress the history (possibly)
@@ -262,10 +263,16 @@ indigolog(E, H) :-
 			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),
 	 	exog_action, T = exog), !, % done, next cycle
-	(T = trans -> indigolog(H2, E3, H3) ;
-	 T = final -> logging(program,  "Success final.") ;
-	 T = exog -> (logging(program, "Rester step."), indigolog(E3, H3)) ;
-	 T = none -> logging(program,  "Program fails.")
+	(	T = trans
+	-> 	indigolog(H2, E3, H3)
+	;	T = final
+	-> 	logging(program,  "Success final.")
+	;	T = exog
+	-> 	logging(program, "Restart step (exog action ocurred!)."),
+		indigolog(E3, H3)
+	;	T = none
+	-> 	logging(program,  "Program fails: \n\t~w\n ...at history:\n\t ~w", [E2, H2]),
+		assert(failed_program(E2, H2))
 	).
 
 compute_step(E1, H1, _, _, final) :- final(E1, H1).
