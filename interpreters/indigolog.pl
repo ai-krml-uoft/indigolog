@@ -285,8 +285,8 @@ compute_step(_, _, _, _, none).
 process_system_actions(HS, E, H, EN) :-
 	member(debug_indi, HS),
 	logging(info(0), "Request for DEBUGGING"),
-	ignore(debug(H)),
-	format("Curent program:~w\t ~w", [E]),
+	ignore(debug_eval(H)),
+	format("\n\tCurent program:\n\t\t~w\n\n\tCurrent History: \n\t\t~w", [E, H]),
 	delete(debug_indi, HS, HS2),
 	process_system_actions(HS2, EN).
 process_system_actions(HS, _, _, []) :-

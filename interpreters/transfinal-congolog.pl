@@ -171,7 +171,7 @@ final(E, H) :- proc(E, E2), !, final(E2, H).
 
 
 trans([E|L], H, E1, H2) :- \+ L = [], final(E, H), trans(L, H, E1, H2).
-trans([E], H, E1, H1) :- !, trans(E, H, E1, H2). % avoids lots nested lists on whiles()
+trans([E], H, E1, H1) :- !, trans(E, H, E1, H1). % avoids lots nested lists on whiles()
 trans([E|L], H, [E1|L], H2) :- trans(E, H, E1, H2).
 trans(?(P), H, [], H) :- holds(P, H).
 trans(ndet(E1, E2), H, E, H1) :- trans(E1, H, E, H1) ; trans(E2, H, E, H1).

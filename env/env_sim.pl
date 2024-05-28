@@ -148,6 +148,8 @@ execute(sense(A), _, Sensing) :- !,
         logging(action, 'EXECUTE SENSING ACTION: ~w', [A]),
         write('\t---------> Enter Sensing value, terminate with ".": '),
         read(Sensing), nl.
+execute(say(M), _, ok) :- !,
+        logging(action, 'SAY: ~w', [M]).
 execute(A, _, ok) :-
         logging(action, 'EXECUTE ACTION: ~w', [A]).
 

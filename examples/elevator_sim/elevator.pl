@@ -86,6 +86,9 @@ poss(close, true).
 prim_action(look(N)) :- fl(N).  % sense floor N light
 poss(look(_), true).
 
+prim_action(say(_)).
+poss(say(_), true).
+
 /* EXOGENOUS ACTIONS */
 exog_action(heat).            % increase temperature
 exog_action(cold).            % decrease temperature
@@ -168,7 +171,7 @@ proc(control(supersmart), [prioritized_interrupts(
          interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down),
          interrupt(neg(door_open), open),
-         interrupt(true, ?(true))])]).
+         interrupt(true, say("Waiting at gound floor"))])]).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

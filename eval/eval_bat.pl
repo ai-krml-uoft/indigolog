@@ -63,7 +63,7 @@
 % -- eval(P, H, B)  (MAIN PREDICATE, used by the transition system)
 %           B is the truth value of P at history H
 %
-% SYSTEM TOOLS (used by the top-level cycle)::
+% SYSTEM TOOLS (used by the no-level cycle)::
 %
 % -- initializeDB/0
 %           initialize the projector
