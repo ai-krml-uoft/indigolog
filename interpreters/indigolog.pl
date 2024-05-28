@@ -117,12 +117,15 @@
 
 
 % Predicates that they have definitions here but they can defined elsewhere
-:- multifile(set_option/1),
-   multifile(set_option/2),
-   multifile(initialize/1),
-   multifile(finalize/1),
-   multifile(exog_action/1),
-   multifile(system_action/1).
+:- 	multifile(set_option/1),
+   	multifile(set_option/2),
+   	multifile(initialize/1),
+   	multifile(finalize/1),
+   	multifile(exog_action/1),
+   	multifile(system_action/1),
+	% Holds/2 is defined mostly by projector but also in transfinal
+	%  	to efficiently support certain constructs (e.g., prioritized-concurrency)
+	multifile(holds/2).
 
 
 
@@ -246,7 +249,6 @@ indigolog(E) :-		% Run program E
 indigolog(E, H) :-
 	% trace,
 		% process all pending exog actions, sys acitons, and sensing
-		% trace,
 	findall(X, (pending(exog_action(X)), \+ system_action(X)), HE),
 	append(HE, H, H1),
 	findall(X, (pending(exog_action(X)), system_action(X)), HS), !,
@@ -255,6 +257,7 @@ indigolog(E, H) :-
 		% progress the history (possibly)
 	(must_progress(H1) -> progress(H1, H2) ; H2 = H1),
 		% make a step in the program (if no exo action ocurrs)
+	% trace,
 	catch((assert(doing_step),
 			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),

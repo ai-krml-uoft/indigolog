@@ -33,7 +33,7 @@
 % -- report_message(T, M) : report message M of type T
 %
 % FROM TEMPORAL PROJECTOR:
-% -- isTrue(+C, +H) 
+% -- holds(+C, +H) 
 %           Conditio C is true at history H
 % -- calc_arg(+A, -A2, +H) 
 %           calculate the arguments of action A at history H
@@ -120,22 +120,22 @@ final(gexec(_,E), H) :- final(E,H).
 trans(gexec(P,E), H, gexec2(P,E1), H1) :- 	% P needs to be a simple fluent
         assume(P, true, H, H2),    % Set P to be TRUE
         trans(E, H2, E1, H1).
-final(gexec2(P,E), H) :- isTrue(neg(P),H) ; final(E,H).
-trans(gexec2(P,E), H, gexec2(P,E1), H1) :- isTrue(P,H), trans(E,H,E1,H1).
+final(gexec2(P,E), H) :- holds(neg(P),H) ; final(E,H).
+trans(gexec2(P,E), H, gexec2(P,E1), H1) :- holds(P,H), trans(E,H,E1,H1).
 
 
 % goal(PSucc,E,PFail,ERec): full guarded execution
 %	PSucc 	: finalize successfully if PSucc holds
 %	E	: the program to be executed
 %	PFail	: Terminate the program E and execute recovery procedure ERec
-final(goal(PSucc,E,_,_), H) :- isTrue(PSucc,H) ; final(E,H).
+final(goal(PSucc,E,_,_), H) :- holds(PSucc,H) ; final(E,H).
 trans(goal(PSucc,_,PFail,ERec), H, E2, H2) :-
-	isTrue(neg(PSucc),H),
-	isTrue(PFail,H),
+	holds(neg(PSucc),H),
+	holds(PFail,H),
 	trans(ERec,H, E2, H2).
 trans(goal(PSucc,E,PFail,ERec), H, goal(PSucc,E2,PFail,ERec), H2) :-
-	isTrue(neg(PSucc),H),
-	isTrue(neg(PFail),H),
+	holds(neg(PSucc),H),
+	holds(neg(PFail),H),
 	trans(E,H,E2,H2).
 
 % Abort process identified with P by setting P to false in H
@@ -155,7 +155,7 @@ final(for(_,[],_),_).
 final(for(V,[F|L],P),H):- subv(V,F,P,P1), final(P1,H), final(for(V,L,P),H).
 
 % A test action that leaves a mark in the history
-trans(??(P),H,[],[test(P)|H]):- isTrue(P,H). 
+trans(??(P),H,[],[test(P)|H]):- holds(P,H). 
 
 % Simulation of exogenous actions E
 trans(sim(E),H,[],[sim(E)|H]):- !, calc_arg(E,E1,H), exog_action(E1).
@@ -182,7 +182,7 @@ final(ttime(E,Sec),H) :- final(time(E,Sec),H).
 % requires exog_interruptable/3 from main cycle
 final(exogint(E,_Cond),H) :- final(E,H).
 trans(exogint(E,Cond),H,exogint(E2,Cond),H2) :- 
-	exog_interruptable(trans(E,H,E2,H2), isTrue(Cond,H), Status),
+	exog_interruptable(trans(E,H,E2,H2), holds(Cond,H), Status),
 	(Status=ok -> 
 		true 
 	; 

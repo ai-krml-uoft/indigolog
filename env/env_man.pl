@@ -108,7 +108,7 @@ start_env_cycle :-
 	% 	https://github.com/SWI-Prolog/packages-clib/blob/master/streampool.pl
 	thread_create(catch(
 		(stream_pool_main_loop,
-			logging(em(3), "EM cycle finished gently...", [])),
+			logging(em(3), "EM cycle finished gently...")),
 		E,
 		(logging(em(2), "EM cycle received exception: ~w", [E]),
 			close_stream_pool)), em_thread, [alias(em_thread)]).

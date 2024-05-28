@@ -23,7 +23,7 @@
 
 :- dir(indigolog, F), consult(F).
 :- dir(env_manager, F), consult(F).
-:- dir(eval_bat, F), consult(F).
+:- dir(eval_bat, F), consult(F).    % after interpreter always!
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

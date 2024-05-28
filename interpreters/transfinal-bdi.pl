@@ -30,7 +30,7 @@
 % -- report_message(T, M) : report message M of type T
 %
 % FROM TEMPORAL PROJECTOR:
-% -- isTrue(+C, +H) 
+% -- holds(+C, +H) 
 %           Conditio C is true at history H
 % -- calc_arg(+A, -A2, +H) 
 %           calculate the arguments of action A at history H

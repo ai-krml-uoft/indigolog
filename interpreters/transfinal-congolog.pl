@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FILE    : Interpreters/transfinal-congolog.pl
 %
 %       IndiGolog TRANS & FINAL Implementation for the ConGolog language.
@@ -14,7 +14,7 @@
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  This file provides:
 %
@@ -37,7 +37,7 @@
 % -- report_message(T, M) : report message M of type T
 %
 % FROM TEMPORAL PROJECTOR:
-% -- isTrue(+C, +H)
+% -- holds(+C, +H)
 %           Conditio C is true at history H
 % -- calc_arg(+A, -A2, +H)
 %           calculate the arguments of action A at history H
@@ -71,14 +71,14 @@
 % -- shuffle/2 : shuffle a list into another list in a random way
 %
 % -- call_with_time_limit(+Sec, +Goal): True if Goal completes within Time.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                            TRANS and FINAL
 % Trans(E, H, E1, H1) ->  One execution step of program E from history H
 %			 leads to program E1 with history H1.
 % Final(E, H)       ->  Program E at history H is final.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
     /* CONGOLOG CONSTRUCTS                                           */
@@ -105,7 +105,10 @@ trans(bpconc(E1, E2, H), H, E, H1) :- !,
 trans(bpconc(E1, E2, _), H, E, H1) :- trans(pconc(E1, E2), H, E, H1).
 
 
-       /* INTERRUPTS */
+       /* INTERRUPTS (page 121 CONGOLOG paper*/
+% realized with an if-then-else construct bc test ?(.) is not blocking!
+% we make the check for interrupts_running more efficiently via assert/retract
+% TODO: check issue: https://github.com/ssardina-agts/indigolog/issues/4
 trans(interrupt(Trigger, Body), H, E1, H1) :-
     trans(while(interrupts_running, if(Trigger, Body, ?(neg(true)))), H, E1, H1).
 
@@ -119,28 +122,27 @@ final(interrupt(Trigger, Body), H) :-
 final(interrupt(V, Trigger, Body), H) :-
     final(while(interrupts_running, pi(V, if(Trigger, Body, ?(neg(true))))), H).
 
-% Note these fluents (e.g., halt) and special actions (e.g., halt_exec) need to be defined already.
+% convert prioritized_interrupts into a nested pconc/2 of simple interrupts
+%   pconc(interrupt(.), pconc(interrupt(.), pconc(interrup(.),...)))
 trans(prioritized_interrupts(L), H, E1, H1) :-
-    expand_interrupts([interrupt(haveExecuted(halt),  halt_exec),
-    		       interrupt(haveExecuted(abort), abort_exec),
-    		       interrupt(haveExecuted(pause), break_exec),
-    		       interrupt(haveExecuted(reset), reset_exec),
-		       interrupt(haveExecuted(debug), debug_exec)|L], E), !,
-    trans(E, H, E1, H1).
-
-trans(prioritized_interrupts_simple(L), H, E1, H1) :-
-%    expand_interrupts([interrupt(haveExecuted(halt), halt_exec)|L], E), !,
+    assert(interrupts_running),
     expand_interrupts(L, E), !,
     trans(E, H, E1, H1).
 
-expand_interrupts([], stop_interrupts).
-
+expand_interrupts([], stop_interrupts). % if all bocked: stop interrupts!
 expand_interrupts([X|L], pconc(X, E)) :-
     expand_interrupts(L, E).
 
-% trans and final for system actions (e.g., show_debug, halt_exec, etc.)
-trans(stop_interrupts, H, [], [stop_interrupts|H]).
-final(stop_interrupts, _) :- fail, !.
+% correct with paper but inefficient
+% trans(stop_interrupts, H, [], [stop_interrupts|H]).
+% final(stop_interrupts, _) :- fail, !.
+
+final(stop_interrupts, _) :- retract(interrupts_running).
+
+% we must load this BEFORE any holds/2 from projector!
+holds(interrupts_running, _) :- !, interrupts_running.
+holds(neg(interrupts_running), H) :- !, \+ holds(interrupts_running, H).
+
 
 
 
@@ -154,10 +156,10 @@ final(star(_), _).
 final(star(_, _), _).
 final([E|L], H) :- final(E, H), final(L, H).
 final(ndet(E1, E2), H) :- final(E1, H) ; final(E2, H).
-final(if(P, E1, E2), H) :- ground(P), !, (isTrue(P, H) -> final(E1, H) ; final(E2, H)).
-final(if(P, E1, _), H) :- isTrue(P, H), final(E1, H).
-final(if(P, _, E2), H) :- isTrue(neg(P), H), final(E2, H).
-final(while(P, E), H) :- isTrue(neg(P), H) ; final(E, H).
+final(if(P, E1, E2), H) :- ground(P), !, (holds(P, H) -> final(E1, H) ; final(E2, H)).
+final(if(P, E1, _), H) :- holds(P, H), final(E1, H).
+final(if(P, _, E2), H) :- holds(neg(P), H), final(E2, H).
+final(while(P, E), H) :- holds(neg(P), H) ; final(E, H).
 
 final(pi([], E), H) :- !, final(E, H).
 final(pi([V|L], E), H) :- !, final(pi(L, pi(V, E)), H).
@@ -168,20 +170,19 @@ final(pi(V, D, E), H) :- domain(W, D), subv(V, W, E, E2), !, final(E2, H).
 final(E, H) :- proc(E, E2), !, final(E2, H).
 
 
-
-trans([E|L], H, E1, H2) :- \+ L=[], final(E, H), trans(L, H, E1, H2).
+trans([E|L], H, E1, H2) :- \+ L= [], final(E, H), trans(L, H, E1, H2).
 trans([E|L], H, [E1|L], H2) :- trans(E, H, E1, H2).
-trans(?(P), H, [], H) :- isTrue(P, H).
+trans(?(P), H, [], H) :- holds(P, H).
 trans(ndet(E1, E2), H, E, H1) :- trans(E1, H, E, H1) ; trans(E2, H, E, H1).
 trans(if(P, E1, E2), H, E, H1) :- ground(P), !,
-	(isTrue(P, H) -> trans(E1, H, E, H1) ;  trans(E2, H, E, H1)).
-trans(if(P, E1, E2), H, E, H1) :- !,
-	((isTrue(P, H), trans(E1, H, E, H1)) ; (isTrue(neg(P), H), trans(E2, H, E, H1))).
+	(holds(P, H) -> trans(E1, H, E, H1) ;  trans(E2, H, E, H1)).
+trans(if(P, E1, _), H, E, H1) :- holds(P, H), !, trans(E1, H, E, H1).
+trans(if(P, _, E2), H, E, H1) :- !, holds(neg(P), H), trans(E2, H, E, H1).
 trans(star(E, 1), H, E1, H1) :- !, trans(E, H, E1, H1).
-trans(star(E, N), H, [E1, star(E, M)], H1) :- N>1, trans(E, H, E1, H1), M is N-1.
+trans(star(E, N), H, [E1, star(E, M)], H1) :- N > 1, M is N - 1, trans(E, H, E1, H1).
 trans(star(E), H, E1, H1) :- trans(E, H, E1, H1).
 trans(star(E), H, [E1, star(E)], H1) :- trans(E, H, E1, H1).
-trans(while(P, E), H, [E1, while(P, E)], H1) :- isTrue(P, H), trans(E, H, E1, H1).
+trans(while(P, E), H, [E1, while(P, E)], H1) :- holds(P, H), trans(E, H, E1, H1).
 
 trans(pi([], E), H, E1, H1) :- !, trans(E, H, E1, H1).
 trans(pi([V|L], E), H, E1, H1) :- !, trans(pi(L, pi(V, E)), H, E1, H1).
@@ -191,24 +192,22 @@ trans(pi(V, D, E), H, E1, H1) :- !, domain(W, D), subv(V, W, E, E2), trans(E2, H
 trans(pi(V, E), H, E1, H1) :- subv(V, _, E, E2), !, trans(E2, H, E1, H1).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % LAST TRANS FOR PROCEDURES AND PRIMITIVE ACTIONS (everything else failed)
 % Replace the arguments by their value, check that it is a primitive action
 % and finally check for preconditions.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 trans(E, H, E1, H1) :- proc(E, E2), !, trans(E2, H, E1, H1).
 trans(A, H, [], [A|H]) :- system_action(A), !.
 final(A, _) :- system_action(A), !, fail.
 
-trans(E, H, [], [E1|H]) :-
-	calc_arg(E, E1, H),
-	prim_action(E1),
-	poss(E1, P),
-	isTrue(P, H).
+% E is an action whose precondition is true!
+trans(A, H, [], [A1|H]) :-
+	calc_arg(A, A1, H),
+	prim_action(A1),
+	poss(A1, P),
+	holds(P, H).
 
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF: Interpreters/transfinal-congolog.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

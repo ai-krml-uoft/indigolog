@@ -105,7 +105,6 @@
    multifile(final/2).
 
 
-
 :- ensure_loaded('transfinal-ext').  	% Load extended constructs
 :- ensure_loaded('transfinal-search').  % Load search constructs (IndiGolog)
 :- ensure_loaded('transfinal-bdi').  	% Load BDI extensions (Yves Lesperance)
@@ -114,39 +113,9 @@
 :- ensure_loaded('transfinal-congolog').
 
 
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% isTrue(P, H) : interface with the projector used. Is P true at H?
-%%
-%% Currently hooked to eval/3, which should be provided by the projector
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% SPECIAL PROJECTOR CASES FOR SYSTEM-WIDE FLUENTS
-isTrue(interrupts_running, H) :- !, \+ (H = [stop_interrupts|_]).
-isTrue(neg(interrupts_running), H) :- !, \+ isTrue(interrupts_running, H).
-%isTrue(last(A), S) :- !, S=[A|_]. % true if the last executed action was A
-isTrue(haveExecuted(A), S) :- !, member(A, S). % true if the A has been executed
-isTrue(neg(haveExecuted(A)), S) :- !, \+ isTrue(haveExecuted(A), S).
-
-% GENERAL PROJECTOR
-isTrue(C, H) :- eval(C, H, true).
-
-%isTrue(C, H) :- eval(C, H, B),          % Base case, use the temporal projector
-%	      (B = true    -> true ;
-%	       B = false   -> fail ;
-%              B = unknown -> unknown(C, H)).
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% OTHER TOOLS
-%%
-%% do(E, H, H3) : Golog and ConGolog Do/3 macro
-%% trans_star/4: transitive clousure of trans/4
-%% trans_starn/5: n steps of trans/4
-%% final_star/2: transitive clousure of trans/4 and final/2 combined
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% OTHER TS TOOLS ON TOP OF TRANS/FINAL
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Added for KR course....(Golog-like do/3)
 do(E, H, H3) :-

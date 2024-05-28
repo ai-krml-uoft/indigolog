@@ -150,21 +150,9 @@ proc(minimize_motion(Max),  /* iterative deepening search */
 proc(controller(3), prioritized_interrupts(
         [interrupt(and(too_hot, neg(fan)), toggle),
          interrupt(and(too_cold, fan), toggle),
-         interrupt(alarm=on, ring),
+         interrupt(alarm, ring),
          interrupt(n, pending_floor(n), serve_floor(n)),
          interrupt(above_floor(1), down)])).
-
-/*  This is the elevator with no exogenous events, but with sensing   	*/
-/*  actions for each call button of the elevator                      	*/
-proc(controller(4),
-  [ check_buttons,
-    while(or(some(n, light(n)=on), above_floor(1)),
-      if(some(n, light(n)=on), serve_a_floor, [down, check_buttons])) ]).
-proc(serve_a_floor, pi(n, [?(pending_floor(n)), go_floor(n), off(n)])).
-proc(check_buttons,
-	[look(1), look(2), look(3), look(4), look(5), look(6), look(7), look(8), look(9), look(10)]).
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
