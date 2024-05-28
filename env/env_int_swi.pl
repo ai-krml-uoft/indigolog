@@ -696,6 +696,7 @@ find_pos_web(URL, T, PAfter, Pos) :-
 % Retrives SResult wrt two flexible Delimiters and after a Position
 retrive_string_delim_web(URL, Del1, Del2, SResult, PAfter, Pos):-
         get_page(URL, string, S),
+		% TODO: use regexp library to match: https://www.swi-prolog.org/pldoc/doc_for?object=section(%27packages/pcre.html%27)
         extract_substring(S, Del1, Del2, SResult, PAfter, Pos).
 
 
@@ -726,7 +727,9 @@ retrive_bet_apos(URL, Del1, Del2, P, SResult) :-
 % Post processing of a string: remove spaces and line breaks at the beginning
 % 	                       and at the end of the string
 post_process(T, T1):- 
+		% TODO: replace with re_split/4
         split_string(T, ``, ` `, [T2]),
+		%TODO: replace with re_replace/4
         string_replace(T2,'\n','',T1).    % Remove end_of_line
 
 
@@ -796,6 +799,7 @@ extract_name(LContent, NameClean) :-
 		% First just get the Name2
 	extract_name2(LContent,Name2),
 		% Clean up spaces in Name
+	% TODO: replace with atom_split/3
 	split_atom(Name2,' ','',L1),
 	delete(L1,'',L2),
 	join_atom(L2,' ',NameClean).	

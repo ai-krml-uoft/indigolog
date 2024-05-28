@@ -316,6 +316,7 @@ path1_graph(E, X, [Y | Path1]) :-
 %   the (possibly) incomplete graph G2 is an exact subgraph of G1 under mapping Map
 sub_graph(graph(_, Edges1), G2, Map) :-
 	abstract_graph(G2, graph(_,AEdges2, ANEdges2), Map),
+	% TODO: use sublist/2: https://www.swi-prolog.org/pldoc/doc_for?object=sicstus_lists%3Asublist/2
 	sublist(AEdges2, Edges1),
 	\+ (member(E, ANEdges2), member(E, Edges1)).
 
