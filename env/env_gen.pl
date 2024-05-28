@@ -152,7 +152,7 @@ handle_stream(env_manager) :-
         handle_data(env_manager, Data).
 
 handle_data(env_manager, Data) :-
-        member(Data, [finish, end_of_file]), !,
+        member(Data, [terminate, finish, end_of_file]), !,
         logging(info(2, gen), "Termination requested from EM: ~w", [Data]),
         close_stream_pool.
 handle_data(env_manager, execute(N, Action)) :- !,

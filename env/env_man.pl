@@ -56,7 +56,7 @@
 	translate_sensing/3, % Translates sensing outcome to high-level sensing
 	how_to_execute/3.   % Defines how to execute each high-level action
 
-name_env(manager).   % We are the "environment manager"
+name_env(env_manager).   % We are the "environment manager"
 counter_actions(0).  % Counter for (executed) actions
 
 
@@ -152,14 +152,15 @@ handle_device(Device) :-
 */
 finalize(env_manager) :-
 	logging(info(2, em), "Closing all device managers..."),
-    findall(Dev, dev_data(Dev, _), LDev), % Get all current open devices
-	maplist([X]>>send_term(X, terminate), LDev), % send to all devices
+	% send terminate to all devices
+    findall(S, dev_stream(_, S), LDevWriteStreams),
+	maplist([X]>>send_term(X, terminate), LDevWriteStreams),
 	sleep(3), 	% Wait to give time to devices to finish cleanly
 	logging(info(2, em), "Close EM stream pool and socket..."),
 	close_stream_pool, !,	% should finish thread em_thread gently
 	em_data(_, _, StreamPair),	% close socket stream (and socket)
 	close(StreamPair), !,
-	logging(info(2, em), "Close EM stream pool and socket..."),
+	logging(info(2, em), "Joining with device processes..."),
 	catch(wait_for_children, _, true), !,
 	logging(info(2, em), "Closing EM server socket..."),
     counter_actions(N),

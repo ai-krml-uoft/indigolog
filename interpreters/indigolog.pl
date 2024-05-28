@@ -119,8 +119,10 @@
 % Predicates that they have definitions here but they can defined elsewhere
 :- multifile(set_option/1),
    multifile(set_option/2),
-   multifile(exog_action/1), 	% Many modules can register exog. actions
-   multifile(system_action/1).  % Many modules can register system actions
+   multifile(initialize/1),
+   multifile(finalize/1),
+   multifile(exog_action/1),
+   multifile(system_action/1).
 
 
 
@@ -155,7 +157,7 @@ wait_step(0) :-
 	retractall(wait_at_action(_)).
 wait_step(S) :-
 	number(S),
-	logging(info(0), ["** Wait-at-action enable to ", S, " seconds."]),
+	logging(info(0), "Set wait-at-action enable to: ~d seconds.", [S]),
 	retractall(wait_at_action(_)),
 	assert(wait_at_action(S)).
 wait_step(_) :-
@@ -172,7 +174,8 @@ wait_step(_) :-
 % they are interpreted by the interpreter in a particular way
 % This should be seen as meta-actions that deal with the interpreter itself
 system_action(debug_indi).	% Special action to force debugging
-system_action(halt_indi).	% Action to force clean termination
+system_action(halt_indi).	% Action to force terminateion top level
+system_action(end_indi).	% Action to force clean termination
 system_action(abort_indi).	% Action to force sudden nonclean termination
 system_action(start_indi).	% Action to start execution
 system_action(break_indi).	% Action to break the agent execution to top-level Prolog
@@ -185,23 +188,24 @@ exog_action(A) :- system_action(A).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % INITIALIZATION
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-init :-
+initialize(indigolog) :-
 %	set_option(debug_level, 3),
-	logging(info(0), "Starting ENVIRONMENT MANAGER..."),
+	logging(init, "Starting ENVIRONMENT MANAGER..."),
 	initialize(env_manager),    	  	% Initialization of environment
-	logging(info(0), "ENVIRONMENT MANAGER was started successfully."),
-	logging(info(0), "Starting PROJECTOR EVALUATOR..."),
+	logging(init, "ENVIRONMENT MANAGER was started successfully."),
+	logging(init, "Starting PROJECTOR EVALUATOR..."),
 	initialize(evaluator),             	% Initialization of projector
-	logging(info(0), "PROJECTOR was started successfully."),
+	logging(init, "PROJECTOR was started successfully."),
 	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
 
-fin  :-
-	logging(info(0), "Finalizing PROJECTOR..."),
+finalize(indigolog)  :-
+	logging(end, "IndiGolog is finishing..."),
+	logging(end, "Finalizing PROJECTOR..."),
 	finalize(evaluator),               	% Finalization of projector
-	logging(info(0), "PROJECTOR was finalized successfully."),
-	logging(info(0), "Finalizing ENVIRONMENT MANAGER..."),
+	logging(end, "PROJECTOR was finalized successfully."),
+	logging(end, "Finalizing ENVIRONMENT MANAGER..."),
 	finalize(env_manager),      		% Finalization of environment
-	logging(info(0), "ENVIRONMENT MANAGER was finalized successfully.").
+	logging(end, "ENVIRONMENT MANAGER was finalized successfully.").
 
 
 % Clean all exogenous actions and set the initial now/1 situation
@@ -210,7 +214,6 @@ reset_indigolog_dbs(H) :-
 	retractall(pending(_)),
 	retractall(protect_history(_)),
 	retractall(progressed_history(_)),
-	retractall(now(_)),
 	update_now(H),
 	assert(progressed_history([])),
 	fail.
@@ -233,29 +236,31 @@ reset_indigolog_dbs(_).
 %%
 indigolog(E) :-		% Run program E
 	(var(E) -> proc(main, E) ; true),
-	init,
-	logging(info(0), "Starting to execute main program"),
+	initialize(indigolog),
+	logging(init, "Starting to execute main program"),
 	indigolog(E, []), !,
-	logging(info(0), "Execution finished. Closing modules..."),
-	fin, !,
-	logging(info(0), "Everything finished - HALTING TOP-LEVEL CONTROLLER").
+	logging(end, "Execution finished. Closing modules..."),
+	finalize(indigolog), !,
+	logging(end, "Everything finished - HALTING TOP-LEVEL CONTROLLER").
 
 %%
 %% (B) MAIN CYCLE: check exog events, roll forward, make a step.
 %%
 indigolog(E, H) :-
+	% trace,
 		% process all pending exog actions, sys acitons, and sensing
 	findall(E, (pending(exog_action(E)), \+ system_action(E)), HE),
 	append(HE, H, H1),
 	findall(E, (pending(exog_action(E)), system_action(E)), HS), !,
-	process_system_actions(HS, E, H1, E2),
+	list_to_set(HS, HS2),
+	process_system_actions(HS2, E, H1, E2),
 		% progress the history (possibly)
 	(must_progress(H1) -> progress(H1, H2) ; H2 = H1),
 		% make a step in the program (if no exo action ocurrs)
 	catch((assert(doing_step),
 			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),
-	 	exog_action, T = exog),
+	 	exog_action, T = exog), !, % done, next cycle
 	(T = trans -> indigolog(H2, E3, H3) ;
 	 T = final -> logging(program,  "Success final.") ;
 	 T = exog -> (logging(program, "Rester step."), indigolog(E3, H3)) ;
@@ -277,16 +282,20 @@ process_system_actions(HS, E, H, EN) :-
 	delete(debug_indi, HS, HS2),
 	process_system_actions(HS2, EN).
 process_system_actions(HS, _, _, []) :-
-	member(halt_indi, HS),
-	logging(info(0), "Request for HALTING").
+	member(end_indi, HS),
+	logging(info(0), "Request for smooth END").
+process_system_actions(HS, _, _, []) :-
+	member(end_indi, HS),
+	logging(info(0), "Request for HALTING"),
+	halt.
 process_system_actions(HS, E, _, [?(break)|E]) :-
 	member(break_indi, HS),
 	logging(info(0), "Request for BREAK").
-
+process_system_actions(_, E, _, E).
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
-%% indigolog(+H1, +E, +H2): called from indigo/2 only after a successful Trans on the program
+%% indigolog(+H1, +E, +H2): called from indigo/2 only after a lful Trans on the program
 %% 	H1 is the history *before* the transition
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition
@@ -309,7 +318,13 @@ indigolog(H, E, [stop_interrupts|H]) :- !,
 	indigolog(E, [stop_interrupts|H]).
 indigolog(H, E, [A|H]) :- % A is a new domain action to be executed
 	indi_execute(A, H, H1),
+	(	wait_at_action(S)
+	->	logging(info(2), "Waiting step for ~d seconds...", [S]),
+		sleep(S)
+	;	true
+	),
 	indigolog(E, H1).
+
 
 
 % Abort mechanism for SWI: throw exception to main thread only
@@ -332,7 +347,7 @@ indi_execute(A, H, H2) :-    % PROCESS OF SENSING ACTIONS
 	(	SR = failed
 	-> logging(action(error), "Action FAILED to execute: ~w", [A, N]),
 		H2 = [failed(A)|H]	% Mark failure of action in history
-	;	logging(action, "Action EXECUTED: ~w", [[A, N], sensing(SR)]),
+	;	logging(action, "Action EXECUTED: ~w", [[[A, N], sensing(SR)]]),
 		handle_sensing(A, [A|H], SR, H2)  % ADD SENSING OUTCOME!
 	),
 	update_now(H2).
@@ -341,7 +356,9 @@ indi_execute(A, _, _) :-
 	halt.
 
 % Updates the current history to H
-update_now(H) :- retract(now(_)), assert(now(H)).
+update_now(H) :-
+	retractall(now(_)), assert(now(H)),
+	logging(info(5), "History updated to: ~w", [H]).
 
 
 

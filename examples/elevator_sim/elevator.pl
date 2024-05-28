@@ -33,7 +33,7 @@
 cache(_) :- fail.
 
 /* DOMAINS-SORTS AVAILABLE */
-max_floor(3).
+max_floor(10).
 fl(N) :- max_floor(M), between(1, M, N).
 
   /*  FLUENTS and CAUSAL LAWS */
@@ -53,7 +53,7 @@ fun_fluent(alarm).              % true if alarm is on
 causes_true(smoke, alarm, true).
 causes_false(resetAlarm, alarm, true).
 
-rel_fluent(light(N)) :- floor(N).  % floor is pending
+rel_fluent(light(N)) :- fl(N).  % floor is pending
 causes_true(on(N),  light(N), true).
 causes_false(off(N), light(N), true).
 senses(look(N), light(N)).     % checks if light(N) is true
@@ -71,7 +71,7 @@ poss(toggle, true).
 prim_action(ring).    % do one ring
 poss(ring, true).
 
-prim_action(off(N)) :- floor(N).    % turn off call button on floor n
+prim_action(off(N)) :- fl(N).    % turn off call button on floor n
 poss(off(N), and(floor = N, light(N))).
 prim_action(open).		% open door
 poss(open, true).
@@ -79,7 +79,7 @@ poss(open, true).
 prim_action(close).   % close door
 poss(close, true).
 
-prim_action(look(N)) :- floor(N).  % sense floor N light
+prim_action(look(N)) :- fl(N).  % sense floor N light
 poss(look(_), true).
 
 /* EXOGENOUS ACTIONS */
@@ -87,7 +87,7 @@ exog_action(heat).               % increase temperature
 exog_action(cold).               % decrease temperature
 exog_action(smoke).              % smoke enters elevator
 exog_action(resetAlarm).         % smoke detector alarm is reset
-exog_action(on(N)) :- floor(N).  % turn on call button on floor n
+exog_action(on(N)) :- fl(N).  % turn on call button on floor n
 
 prim_action(Act) :- exog_action(Act).
 poss(Act, true) :- exog_action(Act).
@@ -104,7 +104,7 @@ proc(floor_to_serve(N), light(N)).
 initially(floor, 2).
 initially(temp, 2).
 initially(fan, false).
-initially(light(N), false) :- floor(N), \+ member(N, [1, 3]).
+initially(light(N), false) :- fl(N), \+ member(N, [1, 3]).
 initially(light(3), true).
 initially(light(1), true).
 initially(alarm, false).

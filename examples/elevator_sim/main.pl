@@ -98,7 +98,7 @@ main(C) :- assert(controller(C)), indigolog(C).
 
 
 :- set_option(log_level, 5).
-:- set_option(wait_step, 3).
+:- set_option(wait_step, 5).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF

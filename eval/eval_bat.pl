@@ -252,7 +252,7 @@ eval(P, H, true) :- holds(P, H).
 % Change the history H to encode the sensing result of action A at H
 %handle_sensing(A, H, Sr, [e(F, Sr)|H]) :- senses(A, F). (OLD WAY)
 handle_sensing(A, H, SR, [e(A, SR)|H]) :- sensing_action(A, _).
-handle_sensing(A, _, _, _) :- \+ sensing_action(A, _).
+handle_sensing(A, H, _, H) :- \+ sensing_action(A, _).
 
 
 % clean_cache: remove all has_valc/3

@@ -97,12 +97,12 @@ initialize(tcltk) :-
         assert(listen_to(tcltk, OutStream, [pid(PID)])),  % listen to tcltk
         add_stream_to_pool(tcltk, handle_stream(tcltk)).
 finalize(tcltk) :-
-        logging(system(2), 'Closing TCL-TK interface.'),
+        logging(info(2), 'Closing TCL-TK interface.'),
 	delete_stream_from_pool(tcltk),
         listen_to(tcltk, _, L),
         member(pid(PID), L),
         process_kill(PID),
-        logging(system(2), 'TCL-TK interface closed: stream and process.').
+        logging(info(2), 'TCL-TK interface closed: stream and process.').
 finalize(tcltk).	% already down
 
 print_instructions :-
