@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % FILE: Env/dev_managers.pl
 %
@@ -11,7 +11,7 @@
 %
 % Definition of defaults device managers for different environments
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %                             July 9, 2002
 %
@@ -45,7 +45,7 @@
 % CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %
 % The following definition are required:
@@ -58,35 +58,35 @@
 %         Retract comand C for environment P on plataform P with
 %         manager listeling at address Host/Port
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- discontiguous device_manager/4.
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % RCX LEGO MINDSTORM DEVICE
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(rcx, eclipse, Command, [Host, Port]):-
         main_dir(Dir),
         concat_atom([Dir, 'Env/env_rcx.pl'], File),
 		build_call(eclipse, Host, Port, File, '', xterm, Command).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % INTERNET/SYSTEM DEVICE
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(internet, Platform, Command, [Host, Port]):-
         main_dir(Dir),
         concat_atom([Dir, 'Env/env_int.pl'], File),
 		build_call(Platform, Host, Port, File, '', xterm, Command).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % ER1 DEVICE: to control the Evolution ER1 robot
 %
@@ -108,7 +108,7 @@ device_manager(internet, Platform, Command, [Host, Port]):-
 %
 % ER1 account at CS: er1 / come1er1
 % ER1 account at evolution web page: er1uoft@cs.toronto.edu / come1er1
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(er1, swi, Command, [Host, Port]):-
         main_dir(Dir),
         er1_location(IPER1, PORTER1),
@@ -124,11 +124,11 @@ er1_location('er1.cs.toronto.edu', 9000).
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % WUMPUS WORLD SIMULATOR DEVICE
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 wumpus_location('127.0.0.1', 9002).
 
 % With terminal
@@ -164,9 +164,9 @@ device_manager(virtual_wumpus_silent, swi, Command, [Host, Port]):-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CLIMA GAME SIMULATOR DEVICE: to communicate with the game simulator
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         main_dir(Dir),
         clima_location(IPCLIMA, PORTCLIMA),
@@ -208,9 +208,9 @@ device_manager(clima07(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % MESSENGER SERVER
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
         main_dir(Dir),
         mess_location(IPMESS, PORTMESS),
@@ -253,10 +253,10 @@ device_manager(messenger(LOptions), swi, (Command, LArgs), [HostEM, PortEM]):-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JAVA SWING SIMULATOR DEVICE: to communicate with a java swing
 % Stefano from Rome 2008
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % requires swing_location/2.
 device_manager(javaswing, swi, Command, [Host, Port]):-
     main_dir(Dir),
@@ -268,10 +268,10 @@ device_manager(javaswing, swi, Command, [Host, Port]):-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JAVA MULTISWING SIMULATOR DEVICE: to communicate with a java swing
 % Stefano from Rome 2008
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % requires swing_location/2.
 device_manager(javaswings(Id), swi, Command, [Host, Port]):-
     main_dir(Dir),
@@ -286,6 +286,6 @@ device_manager(javaswings(Id), swi, Command, [Host, Port]):-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Env/dev_managers.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

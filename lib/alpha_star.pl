@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % FILE    : lib/alpha_star.pl
 %
@@ -9,7 +9,7 @@
 %    ORIGINAL:	     http://www.csupomona.edu/~jrfisher/www/prolog_tutorial/5_1.html
 %    LAST REVISED:	 Stavros Vassos (March 8st, 2005)
 %    
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %
 %    MAIN PREDICATE: pathfind(+Start, +End, -Solution)
@@ -30,7 +30,7 @@
 %                  D is the depth of the node
 %                  F is the evaluation function value
 %                  A is the ancestor list for the node
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 :- multifile pathfind_f_function/6.
 	
@@ -126,6 +126,6 @@ pathfind_expand_adv(State#D#_#S#Path#T,Goal,Type,Lim,All_My_Children) :-
            	All_My_Children).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: lib/alpha_star.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FILE    : Interpreters/transfinal-search.pl
 %
 %       IndiGolog TRANS & FINAL Implementation for
@@ -13,7 +13,7 @@
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  This file provides:
 %
@@ -51,12 +51,12 @@
 % -- sensed(+A, ?V, ?H)
 %           action A got sensing result V w.r.t. history H
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D) INDIGOLOG SEARCH CONSTRUCTS
 %%
 %% (D.1) search(E, M)  : linear search on E, with message M
@@ -73,19 +73,19 @@
 %% (D.4) fullSearch   : INTERRUPTABLE SEARCH (BETA VERSION)
 %%			still not attached to any Golog construct
 %% (D.5) searchr(E, LGoals, FluentAssum, M): RATIONAL SEARCH (BETA VERSION)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.1) TRADITIONAL SEARCH (From [De Giacomo & Levesque 99])
 %%
 %% Linear plans, ignore sensing
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % search(E): search on E, using caching and replanning only when
 %		situation is not the expected one
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Search with a message
 final(search(E, _), H) :- final(search(E), H).
@@ -130,9 +130,9 @@ trans(followpath(E, [E, H, E1, H1|L]), H, followpath(E1, [E1, H1|L]), H1) :- !.
 trans(followpath(E, _), H, E1, H1) :- trans(search(E), H, E1, H1). /* redo search */
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% searchext(P, Opt) : search for E with options Opt
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 trans(searchn(E, LOptions), H, mnt(E, H, followpath(E1, L), LOptions), H1) :-
         trans(E, H, E1, H1),
         findpathn(E1, H1, L, LOptions),
@@ -200,9 +200,9 @@ dropPrefixHistory([E, H|L], HDropped, followpath(E, [E, HNew|L2])) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% searchg(P, E) : search for E with replanning when P holds only
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 final(searchg(_, E, _), H) :- final(search(E), H).
 final(searchg(_, E), H) :- final(E, H).
 
@@ -248,7 +248,7 @@ repair_expected([E1, H1|L], HNExp, [E1, H11|LN]) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.2) CONDITIONAL SEARCH: Conditional plans with sensing
 %%
 %% From [Sardina LPAR-01] and based on sGolog [Lakemeyer 99]
@@ -260,7 +260,7 @@ repair_expected([E1, H1|L], HNExp, [E1, H11|LN]) :-
 %% commit   : no backtracking on the already found partial CPP
 %% sim(A)   : A is a simulated exogenous action, don't add it to the CPP
 %% test(P)  : a test ?(P) should be left in the CPP (from ??(P))
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 final(searchc(E, _), H) :- final(searchc(E), H).
 final(searchc(E), H) :- final(E, H).
 
@@ -310,11 +310,11 @@ extendCPP(E, S, [A|C], [A|C2]) :- prim_action(A), !, extendCPP(E, [A|S], C, C2).
 extendCPP(E, S, [], C) :- calcCPP(E, S, C).	/* We are on a leaf of the CPP */
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.3) CONDITIONAL PLANNER WSCP: conditional planner (Hector Levesque)
 %%
 %% Requires loading the library for WSCP
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- ensure_loaded(wscplan).  % Load the WSCP Planner
 
 % Transitions for the case(A, CondPlan) construct
@@ -348,12 +348,12 @@ trans(achieve(G, Max, LOptions), H, E, H) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.4) INTERRUPTABLE SEARCH (BETA VERSION)
 %%
 %% Developed first by Hector Levesque (2003)
 %% Fixed and improved by Sebastian Sardina (2003-2004)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  This is code to incrementally go through a search tree
 %%
 %% Tree is a list [node_k children_k-1 node_k-1 ... children_1 node_1]
@@ -366,7 +366,7 @@ trans(achieve(G, Max, LOptions), H, E, H) :-
 %%   - xtndSearch(Tree, Tree1) succeeds iff the search from Tree can
 %%     progress one step to Tree1: either extend a leaf of Tree using
 %%     Trans or pop the tree (as necessary) if the leaf goes nowhere
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 fullSearch(T, T) :- doneSearch(T).
 fullSearch(T, T1) :- xtndSearch(T, T2), !, fullSearch(T2, T1).
 
@@ -405,11 +405,11 @@ buildPath([C], [C]).
 buildPath([C, _|R], [C|RP]) :- buildPath(R, RP).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (D.5) RATIONAL SEARCH (BETA VERSION)
 %%
 %% From [Sardina & Shapiro AAMAS-2003]
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Computes the "best" CPP for a program wrt a set of goals
 %%
 %% The rational search construct needs
@@ -420,7 +420,7 @@ buildPath([C, _|R], [C|RP]) :- buildPath(R, RP).
 %%                this set identifies the set of possible worlds for
 %%                which all solutions will be tested/evaluated
 %% - M: a message for the user when the search starts (optional)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Version with a message
 trans(searchr(E, SetGoals, FluentAssum, M), S, CPP, S) :-
@@ -462,9 +462,9 @@ bestPlan(CPP) :-
 
 %trans(searchr(mainControl(0), [[safeOpen=true, 10], [neg(exploded), 5]], [[combNum0, [true, false]]]), [], E, S).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CODE FOR EVALUATING PLANS WRT A SET OF GOALS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % calc_vector_utility(+CPP, +H, +SetAssumptions, +SetGoal, -LVectorU)
 %    Computes the vector of utilities of a CPP at H wrt the SetGoals
@@ -553,6 +553,6 @@ extract_trace([A|E], H, H2) :-   % It is an action followed by a CPP
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Interpreters/transfinal-search.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

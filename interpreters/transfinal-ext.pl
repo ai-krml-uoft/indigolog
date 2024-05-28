@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FILE    : Interpreters/transfinal-ext.pl
 %
 %       IndiGolog TRANS & FINAL Implementation for 
@@ -15,7 +15,7 @@
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  This file provides:
 %
@@ -45,16 +45,16 @@
 % -- sensed(+A, ?V, ?H) 
 %           action A got sensing result V w.r.t. history H
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %                            TRANS and FINAL                           
 % Trans(E,H,E1,H1) ->  One execution step of program E from history H  
 %			 leads to program E1 with history H1.           
 % Final(E,H)       ->  Program E at history H is final.                
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     /* (A) EXTENDED CONSTRUCTS                                           	*/
     /*    wndet(E1,E2) : Weak nondeterministic choice of program         	*/
@@ -207,9 +207,9 @@ trans(?(printHistory),H,[],H) :- !,
 	write('CURRENT HISTORY: '), 
 	writeln(H).
 	
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% (E) SYNCHRONIZATION CONSTRUCT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%  Syncronize a set of configuration pairs
 %%
 %% trans(sync(EL),H,sync(EL2),H2):
@@ -224,7 +224,7 @@ trans(?(printHistory),H,[],H) :- !,
 %%  configurations (Ei,Hi) can advance to (Eii,Hii) by doing action A
 %%    syncfinal([E1,E2,...],[H1,H2,...])
 %%  configurations (Ei,Hi) can all terminate
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 trans(sync(LE),H,sync(EL2),[A|H]) :-
 	length(LE,LL),
 	buildListRepeat(LL,H,LH),
@@ -248,6 +248,6 @@ syncfinal([E],[H])       :- !, final_star(E,H).
 syncfinal([E|LP],[H|LH]) :- final_star(E,H), syncfinal(LP,LH).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Interpreters/transfinal-ext.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  FILE    : Eval/eval_know.pl
 %
@@ -14,7 +14,7 @@
 %
 %  Copyright (C): 1999-2005, University of Toronto
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %           This file allows for the projection of conditions wrt
 % 	    basic action theories with possible values.
@@ -26,7 +26,7 @@
 %           For more information on Golog and some of its variants, see:
 %               http://www.cs.toronto.edu/~cogrobo/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %                             March, 2002
 %
@@ -61,7 +61,7 @@
 % CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % This file provides the following:
 %
@@ -112,7 +112,7 @@
 % -- assume(+F, +V, +H1, -H2)
 %           H2 is the history resulting from assuming fluent F to
 %           have value V at history H1
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %  A basic action theory (BAT) is described with:
 %
@@ -171,7 +171,7 @@
 % -- subv(X1,X2,T1,T2) :  T2 is T1 with X1 replaced by X2
 % -- multifile/1
 % -- get0/1
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% :- module(evalbat,
 %%           [eval/3,
 %%            initializeDB/0,
@@ -202,9 +202,9 @@
 %:- multifile(exog_action/1).
 :- multifile(poss/2).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Predicates to be exported
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
    /* Move initially(-,-) to currently(-,-) and clear exog actions  */
 initializeDB:-
@@ -265,9 +265,9 @@ before(H1,H2):- append(_,H1,H2).
 inconsistent(_):- fail.
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Other predicates neede but not exported
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % A primitive fluent is either a relational or a functional fluent
 prim_fluent(P):- fun_fluent(P).
@@ -299,9 +299,9 @@ update_cache(H) :-
 update_cache(_).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Evaluation procedure for projection (START)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %---------------------------------------------------------------------------
 % kholds(+P,+H): P is known to be true at H (i.e., P holds at H)
@@ -417,10 +417,10 @@ subfl([],[],_).
 subfl([T1|L1],[T2|L2],H) :- subf(T1,T2,H), subfl(L1,L2,H).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Implementation of top-level has_value/3
 % has_value(+F,?V,+H): V is a possible value for F at history H  (top-level predicate)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 has_value(F,V,H) :-
 	ground(F) ->
 		has_valgc(F,V,H)
@@ -464,9 +464,9 @@ has_valg(F, V, [_|H]):- has_value(F,V,H).
 sets_val(A,F,V,H)		:- causes(A,F,_,_), !, causes(A,F,V,C), holds(C,H).
 sets_val(e(A,S),F,V,[A|H])	:- settles(A,S,F,V1,C), kholds(C,H), !, V=V1.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  End of has_value/3 implementation
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
@@ -481,7 +481,7 @@ poss(unset(F), ground(F)).
 has_val(F,V,[set(F)|_])  :- !, V=true.
 has_val(F,V,[unset(F)|_]):- !, V=false.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  ROLL DATABASE FORWARD
 %
 %  Rolling forward means advancing the predicate currently(-,-) and
@@ -491,7 +491,7 @@ has_val(F,V,[unset(F)|_]):- !, V=false.
 %     M: if the history is longer than this, forced roll (M >= L)
 %     N: the length of the tail of the history to be preserved
 %		(set N=0 to never roll forward)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic temp/2.         % Temporal predicate used for rolling forward
 
 % roll_parameters(1,1,0).  % Never roll forward
@@ -522,7 +522,7 @@ preserve([A|H]) :- preserve(H), roll_action(A), update_cache([A]).
 
 
 %%%%%%%%%%% THIS NEEDS SUBSTANTIAL MORE WORK, IT IS FULLY UNTESTED!!
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % roll_action(A): Roll Currently/2 database with respect to action A
 roll_action(e(A,S)) :-
@@ -567,16 +567,16 @@ roll_action_fluent(_, _).
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % DEBUG ROUTINES
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % debug(+Action, +History, -SensingResult):
 % If Action=debug then a snapshot of the system is printed out
 % Otherwise, the sendRcxActionNumber/2
 %     predicate failed (RCX panicked or there was a problem with the
 %     communication). This predicate attempts to provide some basic debug
 %     and error recovery.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 debug(debug, History, _) :- !,
     write('-------------------------------------------------------------'), nl,
     write('********* A SNAPSHOT OF THE SYSTEM WAS REQUESTED ************'), nl,
@@ -621,6 +621,6 @@ errorRecoveryProc:-
          abort;
          true.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Eval/eval_know.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

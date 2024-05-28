@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %       World Smallest Iterative Deeping Forward Filtering 
 %		Conditional Planner		
@@ -8,7 +8,7 @@
 %	c) Hector J. Levesque      Many rights reserved		(Nov 2001)
 % Modified by Sebastian Sardina    Many rights reserved		(Jan 2002)
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This file provides the following:
 % 
 %  --- wscp(Name,Goal,Max,IA,SimNo,S,Plan):  Plan for Goal up to depth Max
@@ -46,12 +46,12 @@
 %  --- handle_sensing(A,H,Sr,H2): alter the history H to encode the sensing 
 %                                 result of action A at H
 %  --- fix_term(A): fix all of some of the variables in A (optional)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic simulator/3,          % These predicates may be not defined
            fix_term/1,
            restrict_actions/6. 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  The planner (extended)
 % Differences with the original version:
 %    1) change good_state/3 for the more general restrict_actions/5
@@ -61,7 +61,7 @@
 %       on what theory of action is used
 %    4) inconsistent situations is now handle via type-theory inconsistent/1 
 %    5) 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % PLANNER TOP LEVEL.
 % wscp/5 plans for a Goal up to some Max depth. 
@@ -136,25 +136,25 @@ simulate_exog(_,_,[]).
 % WSCP only considers true projection. Ignore false or unknowns.
 holds_wscp(C,H):- eval(C,H,true).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  Plan & Print plan (Name is the name of the planning problem)
 % pplan(Name,Goal,Max)    : plan for Goal up to Max depth
 % pplan(Name,Goal,Max,End): plan for Goal up to Max depth. At the end print
 %                   the plan using End as the final condition to print out
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pplan(Goal,Max)      :- pplan(Goal, Goal,Max,true).  % Make Name=Goal
 pplan(Name,Goal,Max) :- pplan(Name,Goal,Max,true).
 pplan(Name,Goal,Max,End) :- wscp(Name,Goal,Max,[],Plan), nl, 
 	write('Planning name is '), write(Name), nl,
 	write('Goal is '), write(Goal), nl, nl, pp(0,Plan,[],End), nl.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  pp(I,Plan,S,E): Pretty print of a plan Pt
 %         - I is the initial indentation
 %         - Plan is the plan to print
 %         - S is the initial situation
 %         - E is the final condition to print out
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 pp(_,[],_,true) :- !.
 pp(N,[],S,End) :- subf(End,P,S), tab(N), write('*** '), call(P), nl.
 pp(N,[case(A,L)],S,End) :- !, tab(N), 
@@ -168,9 +168,9 @@ pp2(N,[if(V,P)|L],A,S,End) :- tab(N), write(V), write(' => '), nl, N2 is N+1,
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  run/3 extracts each potential history-path in a conditional plan 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % H is a potential history after executing the CPP 
 % (i.e, H is a history after executing "some" branch in CPP)
 run(CPP,H):- run(CPP,[],H).

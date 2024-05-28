@@ -1,11 +1,11 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %       STATISTICS TOOLS FOR DEBUGGING 
 %       Tested with ECLIPSE 5.3 and SWI Prolog over Linux RH 7.0-7.2
 %
 %	c) Sebastian Sardina      Many rights reserved		(Dec 2001)
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % This library provides predicates to "inspect" where a Prolog program is 
 % "spending" the execution time      
@@ -27,7 +27,7 @@
 %
 % The following predicates are required:
 %  --- stime(T): returns system time T              
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :-dynamic time/3,   % stores each goal call using a label
           ttime/3.  % stores the total time of a goal
                     % labeled and the no of times called

@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FILE    : Examples/Wumpus/wumpus.pl
 %
 %       Axiomatization of the Wumpus World 
@@ -9,7 +9,7 @@
 %  WWW    : www.cs.toronto.edu/cogrobo
 %  TYPE   : system independent code
 %  TESTED : SWI Prolog 5.0.10 http://www.swi-prolog.org
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %                             May 18, 2001
 %
@@ -44,11 +44,11 @@
 % CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 % CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 
 %  A possible-value basic action theory (KBAT) is described with:
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 /* IndiGolog caching: fluents that are heavily used should be cached */
 cache(locWumpus).
@@ -57,9 +57,9 @@ cache(locRobot).
 %cache(isGold(_)).
 cache(_):-fail.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  0 - DEFINITIONS OF DOMAINS/SORTS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic gridsize/1.
 
 gridsize(8).
@@ -70,9 +70,9 @@ gridindex(V) :-
 direction(V) :- member(V,[up,down,left,right]).
 location(loc(I,J)) :- gridindex(I), gridindex(J).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  1 - ACTIONS AND PRECONDITIONS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 prim_action(smell).
 poss(smell, true).
 senses(smell). 		% Perceived at a square iff the Wumpus is at this square or in its neighbourhood.
@@ -118,9 +118,9 @@ poss(reset, true).
 exog_action(scream).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  2 - FUNCTIONAL FLUENTS AND CAUSAL LAWS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % inDungeon: robot is inside the dungeon
 fun_fluent(inDungeon).
@@ -186,13 +186,13 @@ causes(reset, visited(L), true, locRobot=L).
 fun_fluent(tries).
 causes(reset, tries, V, V is tries+1).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  3 - ABBREVIATIONS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  4 - INITIAL STATE
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	% Robot state
 initially(locRobot,loc(1,1)).
 initially(dirRobot, right).
@@ -213,9 +213,9 @@ initially(visited(R),true) :- R=loc(1,1).
 initially(visited(R),false):- location(R), \+ R=loc(1,1).
 
 	
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  5 - MAIN ROUTINE CONTROLLERS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % THIS IS THE MAIN PROCEDURE FOR INDIGOLOG
 proc(main,  mainControl(N)) :- controller(N), !.
@@ -280,9 +280,9 @@ proc(mainControl(6),
 
 % This controller uses mainControl(4) and tries twice if no gold was obtained
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  6 - EXTRA AUXILIARLY PROGRAMS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 proc(move(D),  [search([star(turn,4),?(dirRobot=D),moveFwd])]).
 proc(shoot(D), [search([star(turn,4),?(dirRobot=D),shootFwd])]).
@@ -385,9 +385,9 @@ proc(explore_limit2(N,MAX),
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  PROLOG SPECIFIC TOOLS USED
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 /* Map Definitions */
 up(loc(X,Y),loc(X,YN))    :- YN is Y+1, location(loc(X,YN)). 
@@ -443,9 +443,9 @@ pathfind_heuristic(loc(I,J), loc(I2,J2), H):-
 	H is AbsDiffI+AbsDiffJ.
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  OLD STUFF
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 proc(mainControl(1), L) :-
 reverse([climb, shootFwd, turn, moveFwd, moveFwd, moveFwd, turn, turn, senseGold, senseBreeze, smell, moveFwd, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, moveFwd, turn, turn, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, moveFwd, turn, turn, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, moveFwd, turn, turn, senseGold, senseBreeze, smell, moveFwd, senseGold, senseBreeze, smell, moveFwd, turn, turn, turn, senseGold, senseBreeze, smell],L).
@@ -485,16 +485,16 @@ proc(lessRandomWalk,
 	).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  INFORMATION FOR THE EXECUTOR
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Translations of domain actions to real actions (one-to-one)
 actionNum(X,X).	
 	
 		
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF: Examples/Wumpus/wumpus.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 

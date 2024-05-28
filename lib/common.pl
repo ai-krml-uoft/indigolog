@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % FILE: lib/common.pl
 %
 %       COMMON LIBRARY TOOLS for Prolog
@@ -10,7 +10,7 @@
 %  TESTED : SWI Prolog 5.0.10 http://www.swi-prolog.org
 %           ECLIPSE 5.4 http://www.icparc.ic.ac.uk/eclipse/
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % This files contains system independent predicates that are used by
 % several files (e.g., projectors, interpreters, etc.)
@@ -31,12 +31,12 @@
 %  -- maplist/3
 %  -- call_to_exec/3
 %  -- get_integer/3
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 1 - GENERAL
 %
 %  -- subv(+X1,+X2,+T1,-T2)
@@ -47,7 +47,7 @@
 %        Succeeds if List is the list which contains all elements from SubList
 %  -- get_integer(+Low, ?N, +High)
 %        N is an integer between Low and High
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
        /*  T2 is T1 with X1 replaced by X2  */
 subv(X1,X2,T1,T2) :- var(T1), T1 == X1, !, T2 = X2.
@@ -107,7 +107,7 @@ extract_option(LOptions,NameOption,Value,_Default) :-
 	Option =.. [NameOption|[Value]].
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 2 - STRINGS AND ATOMS
 %
 % -- extract_substring(+String1, +Del1, +Del2, -String2, +PAfter, -Pos)
@@ -126,7 +126,7 @@ extract_option(LOptions,NameOption,Value,_Default) :-
 % -- split_atom(+Atom, +SepChars, +PadChars, -SubAtoms)
 %       Decompose atom Atom into SubAtoms according to separators SepChars
 %       and padding characters PadChars.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % String1= ......... Del11 ***** Del12 String2 Del21 ****** Del22
@@ -213,13 +213,13 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 3 - OPERATING SYSTEM: processes, files
 %
 % -- proc_exists(+Pid)
 % -- proc_term(+Pid)
 % -- proc_kill(+Pid)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Process Pid exists if it's listed by <ps -f pid>
 % proc_exists(Pid):-
@@ -255,7 +255,7 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 4 - SOCKET COMMUNICATION PROTOCOL
 %
 %
@@ -278,19 +278,19 @@ split_atom(Atom, SepChars, PadChars, SubAtoms) :-
 %       Read 1 Message from the Socket (block if there is nothing yet)
 %
 % OBS: Requires name_env/1 to be on the DB to recognize the sender
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic name_env/1. % Stores the name of the current module
 
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 5 - TOOL FOR REPORTING MESSAGES
 %
 % -- logging(+T, +M)
 %       Report messsage M of type T
 % -- set_debug_level(+N) : set the debug level to N (nothing >N is shown)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic
 	debug_level/1.
 
@@ -319,8 +319,8 @@ id_logging(T, TS) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 4 - OTHER TOOLS
 %
 % -- turn_on_gc/0
@@ -330,8 +330,8 @@ id_logging(T, TS) :-
 %       Set the backquoted_string flag to true (transparent predicate)
 % -- catch_succ(+Call,+Message)
 % -- catch_fail(+Call,+Message)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Turn on/off the automatic garbage collector
 turn_on_gc  :- set_prolog_flag(gc, true).
@@ -350,11 +350,11 @@ catch_call(Goal, Message, Goal2) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % OTHER TOOLS
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
