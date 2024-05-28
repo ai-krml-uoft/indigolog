@@ -239,13 +239,13 @@ final(sync(LE),H) :-
 buildListRepeat(0,_,[])    :- !.
 buildListRepeat(N,H,[H|L]) :- N2 is N-1, buildListRepeat(N2,H,L).
 
-synctrans([E],[H],[E2],[A|H],A)   :- !, ttrans(E,H,E2,[A|H]).
+synctrans([E],[H],[E2],[A|H],A)   :- !, trans_star(E,H,E2,[A|H]).
 synctrans([E|LP],[H|LH],[E2|LP2],[[A|H]|LH2],A) :- 
-	ttrans(E,H,E2,[A|H]), 
+	trans_star(E,H,E2,[A|H]), 
 	synctrans(LP,LH,LP2,LH2,A).
 
-syncfinal([E],[H])       :- !, tfinal(E,H).
-syncfinal([E|LP],[H|LH]) :- tfinal(E,H), syncfinal(LP,LH).
+syncfinal([E],[H])       :- !, final_star(E,H).
+syncfinal([E|LP],[H|LH]) :- final_star(E,H), syncfinal(LP,LH).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

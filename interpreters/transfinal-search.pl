@@ -187,7 +187,7 @@ recover(EO,HO,LOpt,EFollow,H,mnt(EO,HO,followpath(Ex,ListRecovered),LOpt),H) :-
 	dropPrefixHistory([Ex,Hx|L],HDropped,ListRecovered).
 recover(EO,HO,LOpt,_,H,EN,HN) :-
 	writeln('======> Full recovering......'),		% Full re-planning is required
-	transstar(conc(EO,star(pi(a,[?(exog_action(a)),a]))),HO,conc(E1,_),H),	% respect actions already done
+	trans_star(conc(EO,star(pi(a,[?(exog_action(a)),a]))),HO,conc(E1,_),H),	% respect actions already done
 	trans(searchn(E1,LOpt),H,EN,HN).
 
 dropPrefixHistory([],_,[]).

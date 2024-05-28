@@ -143,37 +143,37 @@ isTrue(C, H) :- eval(C, H, true).
 %% OTHER TOOLS
 %%
 %% do(E, H, H3) : Golog and ConGolog Do/3 macro
-%% ttrans/4: transitive clousure of trans/4
-%% ttransn/5: n steps of trans/4
-%% tfinal/2: transitive clousure of trans/4 and final/2 combined
+%% trans_star/4: transitive clousure of trans/4
+%% trans_starn/5: n steps of trans/4
+%% final_star/2: transitive clousure of trans/4 and final/2 combined
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Added for KR course....
+
+% Added for KR course....(Golog-like do/3)
 do(E, H, H3) :-
 	trans(search(E), H, E2, H2),
-	ttrans(E2, H2, E3, H3),
+	trans_star(E2, H2, E3, H3),
 	final(E3, H3).
 
 % Transitive clousure of trans/4
-transstar(E, H, E1, H1) :- ttrans(E, H, E1, H1).
-ttrans(E, H, E, H).
-ttrans(E, H, E1, H1) :-
+trans_star(E, H, E, H).
+trans_star(E, H, E1, H1) :-
 	trans(E, H, E2, H2),
 	(var(H1) ->
 		true 			% always succ if var(H1)
 	;
 		once(before(H2, H1))	% If H1 is given, H2 is a subhistory of H1
-	), 				% Avoid infinite ttrans steps
-    ttrans(E2, H2, E1, H1).
+	), 				% Avoid infinite trans_star steps
+    trans_star(E2, H2, E1, H1).
 
-% transitive version of trans/4 and final/2 combined
-tfinal(E, H) :- final(E, H).
-tfinal(E, H) :- ttrans(E, H, E2, H), E2 \= E, tfinal(E2, H).
+% transitive version of final/2 combined
+final_star(E, H) :- final(E, H).
+final_star(E, H) :- trans_star(E, H, E2, H), E2 \= E, final_star(E2, H).
 
-% transn/5 performs a defined number N of consequitives trans steps
-transn(E, H, E, H, 0) :- !.
-transn(E, H, E1, H1, N) :-
+% trans/5 performs a defined number N of consequitives trans steps
+trans(E, H, E, H, 0) :- !.
+trans(E, H, E1, H1, N) :-
 	N2 is N-1,
-	transn(E, H, E2, H2, N2),
+	trans(E, H, E2, H2, N2),
 	trans(E2, H2, E1, H1).
 
 
@@ -184,7 +184,7 @@ store_node(Id, E, H) :-
 	assert(counter(N2)).
 
 % Evolve (E, H) as much as possible until (E2, H2)
-tttrans(E, H, E2, H2) :- ttrans(E, H, E2, H2), \+ trans(E2, H2, _, _).
+trans_block(E, H, E2, H2) :- trans_star(E, H, E2, H2), \+ trans(E2, H2, _, _).
 
 
 
