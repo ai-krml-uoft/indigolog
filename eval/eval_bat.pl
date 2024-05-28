@@ -122,7 +122,7 @@
 % -- exog_action(action)    : for each exogenous action (ground)
 %
 %           e.g., prim_action(clean(C)) :- domain(C, country).
-%           e.g., exog_action(painte(C, B)):- domain(C, country), domain(B, color).
+%           e.g., exog_action(painte(C, B)) :- domain(C, country), domain(B, color).
 %
 % -- senses(action, fluent)  : for each sensing action that senses fluent directly
 %
@@ -148,7 +148,7 @@
 % -- initially(fluent, value): fluent has value in S0 (ground)
 %								(at least 1 clause is required)
 %
-%          e.g., initially(painted(C), false):- domain(C, country), C\=3.
+%          e.g., initially(painted(C), false) :- domain(C, country), C\=3.
 %                initially(painted(3), true).
 %                initially(color(3), blue).
 %
@@ -247,11 +247,13 @@ finalize(evaluator) :-  retractall(currently(_, _)), clean_cache.
 % finalizeDB.
 
 % eval(P, H, B): this is the interface of the projector
-eval(P, H, true):- holds(P, H).
+eval(P, H, true) :- holds(P, H).
 
 % Change the history H to encode the sensing result of action A at H
-%handle_sensing(A, H, Sr, [e(F, Sr)|H]):- senses(A, F). (OLD WAY)
-handle_sensing(A, H, Sr, [e(A, Sr)|H]).
+%handle_sensing(A, H, Sr, [e(F, Sr)|H]) :- senses(A, F). (OLD WAY)
+handle_sensing(A, H, SR, [e(A, SR)|H]) :- sensing_action(A, _).
+handle_sensing(A, _, _, _) :- \+ sensing_action(A, _).
+
 
 % clean_cache: remove all has_valc/3
 clean_cache :- retractall(has_valc(_, _, _)).
@@ -263,10 +265,10 @@ assume(F, V, H, [e(F, V)|H]).
 system_action(e(_, _)).
 
 % Action A is a sensing action
-sensing_action(A, _):- senses(A, _) ; senses(A, _, _, _, _).
+sensing_action(A, _) :- senses(A, _) ; senses(A, _, _, _, _).
 
 % sensed(+A, ?V, +H): action A got sensing result V w.r.t. history H
-sensed(A, V, [e(F, V2)|_]):- senses(A, F), !, V = V2.
+sensed(A, V, [e(F, V2)|_]) :- senses(A, F), !, V = V2.
 sensed(A, V, [_|H])      :- sensed(A, V, H).
 
 % domain/2: assigns a user-defined domain to a variable.
@@ -278,16 +280,16 @@ getdomain(D, L) :- is_list(D) -> L = D ; (P  =.. [D, L], call(P)).
 
 % Computes the arguments of an action or a fluent P
 % Action/Fluent P1 is action/fluent P with all arguments evaluated
-calc_arg(P, P1, H):- (is_an_action(P) ; prim_fluent(P)),
+calc_arg(P, P1, H) :- (is_an_action(P) ; prim_fluent(P)),
 	(atomic(P)-> P1 = P ;
                     (P =..[Function|LArg], subfl(LArg, LArg2, H),
                      P1=..[Function|LArg2])).
 
 % History H1 is a previous history of H2
-before(H1, H2):- append(_, H1, H2).
+before(H1, H2) :- append(_, H1, H2).
 
 % No action can make a history inconsistent (simplification)
-inconsistent(_):- fail.
+inconsistent(_) :- fail.
 
 
 
@@ -297,13 +299,13 @@ inconsistent(_):- fail.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % A primitive fluent is either a relational or a functional fluent
-prim_fluent(P):- rel_fluent(P) ; fun_fluent(P).
+prim_fluent(P) :- rel_fluent(P) ; fun_fluent(P).
 
 % Check if A has "the form" of a primitive action, though, its arguments
 % may need to be evaluated yet
 % We need to do  this hack because actions are defined all ground
-is_an_action(A):- \+ \+ (prim_action(A) ; exog_action(A)), !.
-is_an_action(A):- \+ atomic(A),
+is_an_action(A) :- \+ \+ (prim_action(A) ; exog_action(A)), !.
+is_an_action(A) :- \+ atomic(A),
 	           A =..[F|Arg], length(Arg, LArg), length(ArgV, LArg),
                    NA =..[F|ArgV], (prim_action(NA) ; exog_action(A)).
 
@@ -315,7 +317,7 @@ causes_val(A, F, true, C)  :- causes_true(A, F, C).
 causes_val(A, F, false, C) :- causes_false(A, F, C).
 
 % Abort if P is not grounded (to use before negations as failure)
-checkgr(P):- ground(P)-> true ; once(warn(['CWA applied to formula: ', P])).
+checkgr(P) :- ground(P)-> true ; once(warn(['CWA applied to formula: ', P])).
 
 
 % Update the cache information by stripping out the subhistory H
@@ -332,7 +334,7 @@ update_cache(H) :-
 % We may probably want to add some "forgeting" mechanism.. either by a
 %      state condition or special actions
 holds(kwhether(F), [])     :- !, initially(F, _).
-holds(kwhether(F), [Act|_]):- (senses(Act, F) ; Act = e(F, _)), !.
+holds(kwhether(F), [Act|_]) :- (senses(Act, F) ; Act = e(F, _)), !.
 holds(kwhether(F), [_|H])  :- holds(kwhether(F), H).
 
 % know(F): Fluent F evaluates to something
@@ -391,7 +393,7 @@ has_val(F, V, [])		:- currently(F, V).
 has_val(F, V, [A|H])	:- sets_val(A, F, V, H).
 has_val(F, V, [A|H])	:- \+ forget(A, H, F), has_value(F, V, H), \+ sets_val(A, F, _, H).
 has_val(F, V, [set(F)|_])  :- !, V = true.
-has_val(F, V, [unset(F)|_]):- !, V = false.
+has_val(F, V, [unset(F)|_]) :- !, V = false.
 
 sets_val(e(F, V), F, V, _)	:- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_, _)
 sets_val(e(A, V), F, V, _)	:- senses(A, F).	% Action A sets F directly

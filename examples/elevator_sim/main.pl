@@ -60,7 +60,10 @@ load_device(simulator, Host:Port, [pid(PID)]) :-
 % HOW TO EXECUTE ACTIONS: Environment + low-level Code
 %        how_to_execute(Action, Environment, Code)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-how_to_execute(Action, simulator, Action).
+how_to_execute(Action, simulator, sense(Action)) :-
+    sensing_action(Action, _).
+how_to_execute(Action, simulator, Action) :-
+    \+ sensing_action(Action, _).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -71,8 +74,9 @@ how_to_execute(Action, simulator, Action).
 %
 % OBS: If not present, then the translation is 1-1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-translate_exog(CodeAction, Action) :- actionNum(Action, CodeAction).
-translate_sensing(_, SensorValue, SensorValue).
+translate_exog(ActionCode, Action) :- actionNum(Action, ActionCode), !.
+translate_exog(A, A).
+translate_sensing(_, SR, SR).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

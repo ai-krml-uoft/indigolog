@@ -26,10 +26,6 @@
  		report exogenous event A with message M to the environment manager
  -- report_sensing(+A, +N, +S, +M)
 		report sensing outcome S from action A with number N and message M
- -- change_action_state(+A, +N, +State, +Sensing, +LExogEvents):
-         change the state of Action-N to State, set its Sensing and the list of
-         exogenous events generated due to the action
-
 
 
  plus handle_stream(env_manager) for handling messages from the
@@ -64,24 +60,26 @@ opts_spec(env_gen,
         [opt(debug), shortflags([d]), longflags(['debug']), type(integer), default(100),
                 help('Debug level')]], []).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 wait_until_close(5). % how many seconds to wait until closing the device manager
 
 
 start :- catch(run, E, (logging(error, "Error in device manager: ~w", [E]), trace)).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%% START OF STANDARD SECTION %%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% START OF STANDARD SECTION
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % Run at the beginning of the environment setting
 % It initializes the communication with the environment manager and
 % it initializes every source of input (rcx, tcl/tk, etc.)
 run :- name_dev(EnvId),
-        logging(info(1), "Initializing environment ~w", [EnvId]),
+        logging(info(1, gen), "Initializing environment ~w", [EnvId]),
                 % 1 - Process CLI options
         current_prolog_flag(argv, Argsv),
         opts_spec(env_gen, OptsSpec, PositionalArgs),
@@ -133,11 +131,12 @@ break_device :-
 % order termination of the device manager
 order_device_termination :- terminate -> true ; assert(terminate).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % HANDLERS FOR INPUT ON STREAMS (event manager and interfaces)
 %
 % This section implements how each stream is handled when input arrives
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 :- dynamic handle_stream/1.  % NEEDED BECAUSE IT MAY BE DEFINED IN 2 FILES!
 :- discontiguous handle_stream/1.
 :- multifile(handle_stream/1).
@@ -146,31 +145,29 @@ order_device_termination :- terminate -> true ; assert(terminate).
 % called when the environment manager sent something
 % usually, there is no need to modify it, one should implement execute/3
 handle_stream(env_manager) :-
-        logging(info(3, gen), "Handling data from EM"),
+        logging(info(4, gen), "Handling data from EM"),
         read_term(em_read_stream, Data, []),
         get_code(em_read_stream, 32),   % discard the space after the full stop
         logging(info(3, gen), "Received data from EM: ~w", [Data]), !,
-        handle_data(Data).
+        handle_data(env_manager, Data).
 
-handle_data(Data) :-
+handle_data(env_manager, Data) :-
         member(Data, [finish, end_of_file]), !,
         logging(info(2, gen), "Termination requested from EM: ~w", [Data]),
         close_stream_pool.
-handle_data([execute, N, Type, Action]) :- !,
-        change_action_state(Action, N, orderExecution, null, []),
-        logging(info(2, gen), "About to execute action ~d: ~w", [N, Action]),
-        (       execute(Action, Type, N, SR)     % actual execution!
-        ->      logging(info(1, gen), "Action ~w executed with outcome: ~w", [N, [Action, SR]]),
-                (SR \= null -> report_sensing(Action, N, SR) ; true)
-        ;       logging(error, "Action ~w failed to execute (assumed failed)", [[Action, N]]),
+handle_data(env_manager, execute(N, Action)) :- !,
+        logging(info(3, gen), "About to execute action ~d: ~w", [N, Action]),
+        (       execute(Action, N, SR)     % PROVIDED BY DOMAIN!
+        ->      logging(action, "Action ~w executed with outcome: ~w", [N, [Action, SR]])
+        ;       logging(action, "Action ~w FAILED to execute (assumed failed)", [[Action, N]]),
                 SR = failed
         ),
-        change_action_state(Action, N, finalExecution, SR, []).
-handle_data(Data) :-
-        logging(info(2, gen), "No rule for handling data: ~w", [Data]).
+        report_sensing(Action, N, SR).
+handle_data(env_manager, Data) :-
+        logging(warning, "No rule for handling data: ~w", [Data]).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TOOL FOR REPORTING EXOGENOUS EVENT AND SENSING TO THE ENVIRONMENT MANAGER
 %
 %  report_exog_event(A, M)
@@ -182,7 +179,7 @@ handle_data(Data) :-
 % The device managers use this tool to report the occurrence of exogenous
 % events/actions and action sensing outcomes.
 % Message is a message that should be printed in the device manager output.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 report_exog(A) :-
         logging(exogaction, "Exogenous action occurred: ~w", [A]),
         send_term(em_write_stream, exog_action(A)).
@@ -192,30 +189,6 @@ report_sensing(A, N, SR) :-
         send_term(em_write_stream, sensing(A, N, SR)).
 
 
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% change_action_state(A, N, State, Sensing, LExogEvents):
-%    change the state of Action-N to State, set its Sensing and the list of
-%    exogenous events generated due to the action
-%
-% State can be:
-%      orderExecution  : order of execution received but still not executed
-%      finalExecute    : action finished execution with sensing outcome S
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Stores action number, state, sensing outcome, and associated exogenous events
-:- dynamic actionState/4.
-
-change_action_state(_, N, orderExecution, _, _) :- !,
-	assert(actionState(N, orderExecution, null, [])).
-change_action_state(_, N, State, Sensing, LExog) :-
-	retract(actionState(N, OldState, OldSensing, OldExog)),
-	(var(State)   -> NewState=OldState ; NewState=State),
-	(var(Sensing) -> NewSensing=OldSensing ; NewSensing=Sensing),
-	(var(LExog)   -> NewExog=OldExog ; append(LExog, OldExog, NewExog)),
-	assert(actionState(N, NewState, NewSensing, NewExog)).
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% EOF:  Env/env_gen.pl
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% EOF
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

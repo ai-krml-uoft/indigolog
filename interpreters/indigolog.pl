@@ -55,19 +55,15 @@
 
  FROM ENVIRONMENT MANAGER (eng_man.pl):
 
- -- execute_action(+A, +H, +T, -Id, -S)
-	execute action A of type T at history H and resturn sens.
-       	S is the sensing outcome, or "failed" if the execution failed
-		Id is the identification for the action from the EM
+ -- execute_action(+A, +H, -N, -SR)
+	execute action A at history H;
+	N is the number of action and SR sensing
  -- exog_occurs(-L)
 	return a list L of exog. actions that have occurred (sync)
- -- initializeEM/0
+ -- initialize(env_manager)/0
 	environment initialization
- -- finalizeEM/0
+ -- finalize(env_manager)/0
 	environment finalization
- -- set_type_manager(+T)
-       set the implementation type of the env manager
-
 
  FROM TEMPORAL PROJECTOR (evalxxx.pl):
 
@@ -111,7 +107,7 @@
  -- set_debug_level(+N)    : set debug level to N
 */
 :- dynamic sensing/2,   % There may be no sensing action
-	pending_event/1, 	% Stores exogenous events or sensings not yet managed
+	pending/1, 	% Stores exogenous events or sensings not yet managed
 	now/1,            	% Used to store the actual history
 	progressed_history/1, 	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
@@ -132,11 +128,11 @@
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    CONFIGURATION SECTION
 %
 % This tools allow the user to tune different global options
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set_option/1/2 are used to define parameters the user can set
 % set_option/1 is used for the help tool set_option/0
 % set_option/2 is the actual definition of the parameter configuration
@@ -166,9 +162,9 @@ wait_step(_) :-
 	logging(warning, "Wait-at-action cannot be set!").
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    SOME SYSTEM BUILT-IN EXOGENOUS ACTIONS
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % BUILT-IN exogenous actions that will be mapped to SYSTEM actions for the cycle
 
@@ -186,9 +182,9 @@ exog_action(A) :- system_action(A).
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % INITIALIZATION
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 init :-
 %	set_option(debug_level, 3),
 	logging(info(0), "Starting ENVIRONMENT MANAGER..."),
@@ -221,7 +217,7 @@ reset_indigolog_dbs(H) :-
 reset_indigolog_dbs(_).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    MAIN LOOP
 %
 % The top level call is indigolog(E), where E is a program
@@ -230,7 +226,7 @@ reset_indigolog_dbs(_).
 %
 % indigo/2, indigo2/3, indigo3/3 implement the main architecture by
 %      defyining a 3-phase main cycle
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%
 %% (A) INTERFACE PREDICATE TO THE TOP LEVEL MAIN CYCLE (RUNS ONCE!)
@@ -304,16 +300,16 @@ indigolog(H, E, [wait|H]) :- !,
 	logging(info(2), "Waiting for exogenous action to ocurr..."),
 	% wait for an exogenous event to arrive
 	% TODO: may be better to wait for a particular one and timeout
-	(	\+ pending(exog_action(_))
-	-> thread_wait(pending(exog_action(_)), [wait_preds([pending_event/1])])
+	( 	\+ pending(exog_action(_))
+	-> 	thread_wait(pending(exog_action(_)), [wait_preds([pending/1])])
 	;	true
 	),
 	indigolog(E, H1).
 indigolog(H, E, [stop_interrupts|H]) :- !,
 	indigolog(E, [stop_interrupts|H]).
-indigolog(H, E, [A|H]) :-
-	indixeq(A, H, H1),
-	indigolog(E, H1).  % DOMAIN ACTION
+indigolog(H, E, [A|H]) :- % A is a new domain action to be executed
+	indi_execute(A, H, H1),
+	indigolog(E, H1).
 
 
 % Abort mechanism for SWI: throw exception to main thread only
@@ -324,41 +320,28 @@ indigolog(H, E, [A|H]) :-
 %		case the event should not be raised
 abort_step :- thread_signal(main, (doing_step -> throw(exog_action) ; true)).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  EXECUTION OF ACTIONS
 %
-%  indixeq(+Act, +H, -H2) is called when action Act should be executed at
-%    history H. H2 is the new history after the execution of Act in H
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  indi_execute(+A, +H, -H2): execute A at H with new history being H2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-indixeq(Act, H, H2) :-    % PROCESS OF SENSING ACTIONS
-	sensing_action(Act, _), !,
-	logging(info(1), "Sending sensing action for execution: ~w", [Act]),
-	execute_action(Act, H, sensing, IdAct, SR), !,
+indi_execute(A, H, H2) :-    % PROCESS OF SENSING ACTIONS
+	logging(info(2), "Sending action for execution: ~w", [A]),
+	execute_action(A, H, N, SR), !,
 	(	SR = failed
-	-> logging(error, "Action FAILED to execute: ~w", [Act, IdAct]),
-		H2 = [abort, failed(Act)|H],	% Request abortion of program
-		update_now(H2)
-	;	logging(action, "Action EXECUTED with outcome: ~w", [[Act, IdAct], sensing(SR)]),
-		handle_sensing(Act, [Act|H], SR, H2),  % ADD SENSING OUTCOME!
-		update_now(H2)
-	).
-indixeq(Act, H, H2) :-         % EXECUTION OF NON-SENSING ACTIONS
-	\+ system_action(Act), \+ sensing_action(Act, _), !,
-	logging(info(1), "Sending action for execution: ~w", [Act]),
-	execute_action(Act, H, normal, IdAct, S), !,
-	(	S = failed
-	->	logging(error, "Action FAILED to execute: ~w", [Act, IdAct]),
-		H2 = [abort, failed(Act)|H],
-	    update_now(H2)
-	;   logging(action, "Action EXECUTED SUCCESFULLY: ~w", [Act, IdAct]),
-		H2 = [Act|H],
-		update_now(H2)
-	).
-
+	-> logging(action(error), "Action FAILED to execute: ~w", [A, N]),
+		H2 = [failed(A)|H]	% Mark failure of action in history
+	;	logging(action, "Action EXECUTED: ~w", [[A, N], sensing(SR)]),
+		handle_sensing(A, [A|H], SR, H2)  % ADD SENSING OUTCOME!
+	),
+	update_now(H2).
+indi_execute(A, _, _) :-
+	logging(error, "Action couldn't be executed by interpreter: ~w", [A]),
+	halt.
 
 % Updates the current history to H
-update_now(H) :- retractall(now(_)), assert(now(H)).
+update_now(H) :- retract(now(_)), assert(now(H)).
 
 
 
@@ -375,9 +358,9 @@ progress(H1, H2) :-
 	save_exog.	% Collect all exogenous actions
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  OTHER PREDICATES PROVIDED
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % H is a past situation w.r.t. the actual situation (stored in clause now/1)
 pasthist(H) :- now(ActualH), before(H, ActualH).
@@ -390,6 +373,6 @@ error(M) :-
 warn(M) :-
         logging(warning, M).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

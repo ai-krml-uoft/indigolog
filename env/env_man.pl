@@ -17,7 +17,7 @@
 
  -- initialize(env_manager)
  -- finalize(env_manager)
- -- execute_action(A, H, T, S): execute action A of type T at history H and resturn sensing outcome S
+ -- execute_action(A, H, T, N, S): execute action A of type T at history H and resturn sensing outcome S
  -- pending(Event): exog action or sensing pending to be processed
  -- set_type_manager(+T): set the implementation type of the env manager
 
@@ -89,10 +89,13 @@ initialize(env_manager) :-
 	logging(info(2, em), "Loading the following devices: ~w", [LDevices]),
     maplist(start_dev, LDevices), !, % Start each of the devices used
     logging(info(2, em), "Start EM cycle to listen to devices..."),
-	start_env_cycle.   % Start the EM main cycle (in a thread)
+	start_env_cycle.   % Start the EM main cycle (in a thread via stream-pool)
 
 % start_env_cycle :- stream_pool_main_loop, !.	% for debugging
 start_env_cycle :-
+	% We start the STREM-POOL on a separate thread
+	%	https://www.swi-prolog.org/pldoc/man?section=stream-pools
+	% 	https://github.com/SWI-Prolog/packages-clib/blob/master/streampool.pl
 	thread_create(catch(stream_pool_main_loop, E,
 			(logging(info(2, em), "EM cycle received exception: ~w", [E]),
 			close_stream_pool)), em_thread, [alias(em_thread)]).
@@ -163,8 +166,7 @@ finalize(env_manager) :-
     logging(info(1, em), "EM completed with ~d executed actions", [N]).
 
 % keep waiting for all children to finish
-% https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
-% TODO: maybe send to each env a "exit" and wait for it to finish?
+% 	https://www.swi-prolog.org/pldoc/doc_for?object=wait/2
 wait_for_children :- wait(PID, S), !,
 	logging(info(3, em), "Successful proccess waiting: ~w", [[PID, S]]),
 	wait_for_children.
@@ -183,16 +185,15 @@ wait_for_children.
 	- the result of a sensing action
 	- a system message (e.g., end_of_file)
 */
-handle_event(Dev, sensing(A, N, SR)) :- !,
-	executing_action(N, A, _),
-	(translate_sensing(A, SR, SR2) ->  true ; SR2 = SR),
+handle_event(Dev, sensing(A, N, SRC)) :- !,
+	(translate_sensing(A, SRC, SR) ->  true ; SR = SRC),
 	asserta(pending(sensing(A, N, SR))),
-	logging(info(5, em), "Sensing for action ~w in device ~d: ~w", [[A, N], Dev, [SR, SR2]]).
-handle_event(Dev, exog_action(A)) :-
-	(translate_exog(A, A2) -> true ; A2 = A),
-    exog_action(A2), !,
+	logging(info(5, em), "Sensing for action ~w in device ~w: ~w", [[A, N], Dev, SR]).
+handle_event(Dev, exog_action(AC)) :-
+	(translate_exog(AC, A) -> true ; A = AC),
+    exog_action(A), !,
 	asserta(pending(exog_action(A))),
-	logging(info(3, em), "Exogenous action occurred in device ~w: ~w", [Dev, [A2, A]]).
+	logging(info(3, em), "Exogenous action occurred in device ~w: ~w", [Dev, A]).
 
 handle_event(Dev, end_of_file) :- !,  % Env has been closed!
 	logging(info(2, em), "Device ~w has closed its connect", [Dev]),
@@ -209,43 +210,20 @@ handle_event(Dev, Data):- !, % The event is unknown but with form
 % how_to_execute/3 says how (which device and which action code) to
 %    execute a high-level action
 % if the action is a sensing action, it waits until observing its outcome
-execute_action(Action, H, Type, N2, Outcome) :-
-		% Increment action counter by 1 and store action information
-	retract(counter_actions(N)),
-	N2 is N + 1,
-	assert(counter_actions(N2)), 	% Update action counter
-	assert(executing_action(N2, Action, H)), % Store new action to execute
-		% Learn how Action should be executed (Env, Code of action)
-	map_execution(Action, Env, Code),   % From domain spec
-		% Send "execute" message to corresponding device
-	logging(info(2, em),
-		"Start to execute the following action: ~w", [N2, Action, Env, Code]),
+execute_action(Action, _H, N, SR) :-
+	retract(counter_actions(N2)), N is N2 + 1, assert(counter_actions(N)),
+		% Find how to execute + send "execute" message to corresponding device
+	how_to_execute(Action, Env, ActionCode),   % PROVIDED BY DOMAIN!
+	logging(info(2, em), "Send action to execute: ~w", [[N, Action, Env, ActionCode]]),
 	dev_stream(Env, StreamEnv),
-	send_term(StreamEnv, [execute, N2, Type, Code]),
-	logging(info(3, em),
-		"Action ~w sent to device ~w (waiting for sensing outcome)", [N2, Env]), !,
-		% Busy waiting for sensing outcome to arrive (ALWAYS)
-	repeat,
-	got_sensing(N2, Outcome),
-	retract(executing_action(N2, _, _)),
-	retract(got_sensing(N2, _)), !,
+	send_term(StreamEnv, execute(N, ActionCode)),
+		% Wait EM cycle posts the sensing outcome for the action
+	thread_wait(pending(sensing(A, N, SR)), [wait_preds([pending/1])]), !,
+	retract(pending(sensing(A, N, SR))),
 	logging(info(2, em),
-		"Action ~w completed with outcome: ~w", [[N2, Action, Env, Code], Outcome]).
-execute_action(_, _, _, N, failed) :- counter_actions(N).
-
-
-% Find an adequate device manager that can execute Action and it is active
-map_execution(Action, Env, Code) :-
-        how_to_execute(Action, Env, Code),
-        dev_data(Env, _, _), !.  % The device is running
-% Otherwise, try to run Action in the simulator device
-map_execution(Action, simulator, Action) :- dev_data(simulator, _, _), !.
-
-% Otherwise, try to run Action in the simulator device
-map_execution(Action, _, _) :-
-        logging(warning, ["(EM) Action *", Action,
-	                      "* cannot be mapped to any device for execution!"]),
-	fail.
+		"Action ~w completed with outcome: ~w", [[N, Action, Env, ActionCode], SR]).
+execute_action(_, _, N, failed) :- 
+	counter_actions(N). % same number as it was updated rule above
 
 
 
