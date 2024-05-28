@@ -84,6 +84,24 @@ wscp(Name,Goal,Max,InitState,Plan,LOptions) :-	% THE MAIN RULE
 	extract_option(LOptions,actions,LAct,_AnyLAct), 
 	idplan(Name,Goal,0,Max,InitState,Plan,LAct,SimId).
 
+%%	extract_option(+LOptions,?Name,?Value,+Default)
+%%	extract_option(+LOptions,?Name,?Value)
+%
+%	Extract Value of option Name(Value) from list of options LOptions
+%	If the option is not mentioned in the list, assume value Default
+%
+extract_option(LOptions,NameOption,Value) :-
+	extract_option(LOptions,NameOption,Value,_),
+	\+ var(Value).
+extract_option(LOptions,NameOption,Value,Default) :-
+	ground(NameOption),
+	Option =.. [NameOption|[ValueOption]],
+	member(Option,LOptions) -> Value=ValueOption ; Value=Default.
+extract_option(LOptions,NameOption,Value,_Default) :-
+	\+ ground(NameOption),
+	member(Option,LOptions),
+	Option =.. [NameOption|[Value]].
+
 
 % Iterative deeping planner (on top of depth-search dfplan/7)
 idplan(Name,Goal,N,_Max,InitState,Plan,LAct,SimId) :- 
