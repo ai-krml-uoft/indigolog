@@ -1,3 +1,4 @@
+
 /*
   Complex elevator domain as per the original IndiGolog code
 
@@ -46,8 +47,8 @@ causes_true(open,   door_open, true).
 causes_false(close,  door_open, true).
 
 fun_fluent(temp).               % the temperature of the elevator
-causes_val(heat, temp, X, X is temp+5).
-causes_val(cold, temp, X, X is temp-5).
+causes_val(heat, temp, X, X is temp + 5).
+causes_val(cold, temp, X, X is temp - 5).
 
 rel_fluent(fan).                   % true if fan is on
 causes_true(toggle,   fan, neg(fan)).
