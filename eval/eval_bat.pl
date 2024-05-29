@@ -396,9 +396,9 @@ has_valo(F, V, H) :- has_val(F, V, H).  % F is a fluent with NO cache
 has_val(F, V, []) :- currently(F, V).
 has_val(F, V, [A|H]) :- sets_val(A, F, V, H).
 has_val(F, V, [A|H]) :- \+ forget(A, H, F), has_value(F, V, H), \+ sets_val(A, F, _, H).
-has_val(F, V, [set(F)|_]) :- !, V = true.
-has_val(F, V, [unset(F)|_]) :- !, V = false.
 
+sets_val(set(F), F, true, _) :- !.
+sets_val(unset(F), F, false, _) :- !.
 sets_val(e(F, V), F, V, _) :- prim_fluent(F), !.  		% Fluent V is explicitly set by e(_, _)
 sets_val(e(A, V), F, V, _) :- senses(A, F).	% Action A sets F directly
 sets_val(e(A, V), F, V2, H) :- !, senses(A, V, F, V2, P), holds(P, H). % A sets F indirectly

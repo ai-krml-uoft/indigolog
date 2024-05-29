@@ -62,6 +62,11 @@ causes_true(on(N),  light(N), true).
 causes_false(off(N), light(N), true).
 senses(look(N), light(N)).     % checks if light(N) is true
 
+
+rel_fluent(new_request).          % true if some light becomes true
+causes_true(on(N),   new_request, neg(light(N))).
+
+
   /*  ACTIONS and PRECONDITIONS*/
 prim_action(down).
 poss(down, and(neg(door_open), neg(floor = 1))).
@@ -89,6 +94,7 @@ poss(look(_), true).
 prim_action(say(_)).
 poss(say(_), true).
 
+
   /* EXOGENOUS ACTIONS */
 exog_action(heat).            % increase temperature
 exog_action(cold).            % decrease temperature
@@ -115,6 +121,7 @@ initially(light(N), false) :- fl(N), \+ initially(light(N), true).
 initially(temp, 2).
 initially(fan, false).
 initially(alarm, false).
+initially(new_request, false).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -151,25 +158,60 @@ proc(handle_reqs(Max),      /* handle all elevator reqs in Max steps */
                           serve_floor(n),
                           handle_reqs(m) ] )))).
 
-% REACTIVE: This is the elevator that appears in the IJCAI-97 paper on ConGolog
-%  It uses exogenous actions for temperature, smoke, and call buttons 
-%   OBS: bestFloor(N) is replaced with any button that is pending
+/* REACTIVE CONTROLLER:
+
+This is an extension of the elevator that appears in the IJCAI-97 AND
+AIJ-03 papers on ConGolog
+
+It uses exogenous actions for temperature, smoke, and call buttons. It
+also uses prioritized interrupts to handle the exogenous events and the
+call buttons.
+
+The serving of floors is still naive: just serve some pending floor
+
+It is extended to:
+
+  - track the state of the door
+  - wait at ground floor for more requests
+
+*/
 proc(control(congolog), [prioritized_interrupts(
         [interrupt(and(too_hot, neg(fan)), toggle),
          interrupt(and(too_cold, fan), toggle),
          interrupt(alarm, ring),
          interrupt(n, pending_floor(n), serve_floor(n)),
-         interrupt(above_floor(1), down)]),
-         open]).
+         interrupt(above_floor(1), down),
+         interrupt(neg(door_open), open),
+        %  interrupt(true, say("Waiting at gound floor"))])]).
+         interrupt(true, ?(wait_exog_action))])]).
 
-% REACTIVE: This is the elevator that appears in the IJCAI-97 paper on ConGolog
-%  It uses exogenous actions for temperature, smoke, and call buttons 
-%   OBS: bestFloor(N) is replaced with any button that is pending
-proc(control(supersmart), [prioritized_interrupts(
+
+/* REACTIVE CONTROLLER:
+
+This is an extension of the elevator that appears in the IJCAI-97 AND
+AIJ-03 papers on ConGolog
+
+It uses exogenous actions for temperature, smoke, and call buttons. It
+also uses prioritized interrupts to handle the exogenous events and the
+call buttons.
+
+The serving of floors is still naive: just serve some pending floor
+
+It is extended to:
+
+  - track the state of the door
+  - wait at ground floor for more requests
+
+*/
+proc(control(congolog_smart), [prioritized_interrupts(
         [interrupt(and(too_hot, neg(fan)), toggle),
          interrupt(and(too_cold, fan), toggle),
          interrupt(alarm, ring),
-         interrupt(n, pending_floor(n), serve_floor(n)),
+        %  interrupt(some_pending, search(minimize_motion(0))),
+          interrupt(some_pending,
+            [ unset(new_request),
+              gexec(neg(new_request), search(minimize_motion(0), "Searching for plan"))
+              ]),
          interrupt(above_floor(1), down),
          interrupt(neg(door_open), open),
         %  interrupt(true, say("Waiting at gound floor"))])]).

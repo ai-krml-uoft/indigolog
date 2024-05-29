@@ -117,7 +117,7 @@ final(atomic(E), H) :- final(E, H).
 
 % Execute program E as long as condition P holds; finish E if neg(P) holds
 final(gexec(C, E), H) :- holds(neg(C), H) ; final(E, H).
-trans(gexec(P, E), H, gexec(P, E1), H1) :- holds(P, H), trans(E, H, E1, H1).
+trans(gexec(C, E), H, gexec(C, E1), H1) :- holds(C, H), trans(E, H, E1, H1).
 
 
 % goal(PSucc, E, PFail, ERec): full guarded execution
