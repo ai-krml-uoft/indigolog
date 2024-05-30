@@ -28,68 +28,56 @@ However, both systems (and some variants) were meant to solve programs completel
 
 ## Pre-requisites & setup
 
-The IndiGolog engine and action theory reasoner is all written in Prolog.
+The IndiGolog engine and action theory reasoner is all written in Prolog and tested in a Linux system.
 
-Most of the code was designed and tested with the [SWI-Prolog](http://www.swi-prolog.org/). Nevertheless, the whole architecture should also run with [ECLiPSe](http://eclipse.https://eclipseclp.org/), which is more tailored towards constraint programming.
+Particularly, the framework is written for [SWI-Prolog](http://www.swi-prolog.org/) (SWIPL) and makes use of several advanced features, like [multi-threading](https://www.swi-prolog.org/pldoc/man?section=threads) and [sockets](https://www.swi-prolog.org/pldoc/man?section=process), [process](https://www.swi-prolog.org/pldoc/man?section=process) management, [stream pools](https://www.swi-prolog.org/pldoc/man?section=stream-pools), etc. So we recommend having a ful install of SWIPL, and in particular its [clib library](https://github.com/SWI-Prolog/packages-clib).
 
-To run the IndiGolog architecture:
+In Ubuntu-based system:
 
-1. Change the file `lib/systemvar.pl` to set your particular paths to some executables that may be used, such as SWI-Prolog, ECLiPSe, xterm, etc. For example, SWI-Prolog executable is assumed to be `/usr/bin/pl`
- but it can be changed by modifying the `executable_path/2` predicate in `lib/systemvar.pl` file.
+```shell
+$ sudo apt install swi-prolog swi-prolog-nox
+```
 
-2. TCP/IP is used for most applications (though not the Elevator-Vanilla).
-   For SWI Prolog, make sure it is compiled with TCP/IP support. (This means
-   that the library CLIB must be installed).
+Some configuration variables are defined in file [`config.pl`](config.pl). In most cases this file does not need to be changed.
 
-3. Extract indigolog-linux-vvv.tar.gz to some path <mypath> 
-       cd <mypath>
-       tar -xzf indigolog-linux-vvv.tar.gz
-   where vvv is the version of Indigolog being installed. 
+### Dir structure
 
-4. Set an environment variable PATH_INDIGOLOG to <mypath>/indigolog-linux-vvv
-   For example, if <mypath> is /home/ssardina/code/ then in bash you do this:
-       export PATH_INDIGOLOG=/home/ssardina/code/indigolog-linux-vvv
-
-5. Set the right options for predicate executable_path/2 in file lib/systemvar.pl
-so that IndiGolog knows where certain programs are (e.g., xterm)
-
-
-
-For some applications, you will also need to do the following:
-
-1. Install Tcl/Tk and the 'wish' executable.  (This is used by the simulator
-   environment to enter exogenous actions.)
-
-2. Install a Java Runtime Environment (JRE) on your system.  Make sure that
-   'java' invokes the Java application launcher.  Also, note that JRE1.5 from
-   SUN is known to work, while the GNU Java Compiler (GJC) is reported to fail
-   when executing the script at step 5.  (This is used in the Wumpus example.)
-
-3. If the application uses ECLIPSE Prolog (e.g., Wumpus-FLUX), the environment
-   variable ECLIPSELIBRARYPATH should be set to $PATH_INDIGOLOG/lib.
-   This is where ECLIPSE will look for user libraries.
-
-
-
-## Dir structure
-
-
-- `Doc/`: Documentation and manuals.
-- `Env/`: Code forhandling of external environments (e.g., simulation, LEGO environment, ER1 environment, etc.).
-- `Eval/`: Temporal projectors or evaluation procedures.
-- `Interpreters/`: IndiGolog interpreter, including transition systems available.
+- `doc/`: Documentation and manuals.
+- `env/`: Code forhandling of external environments (e.g., simulation, LEGO environment, ER1 environment, etc.).
+- `eval/`: Temporal projectors or evaluation procedures.
+- `interpreters/`: IndiGolog interpreter, including transition systems available.
 - `lib/`: Compatibility and tool libraries, global definitions.
-- `Examples/`: Domain applications (e.g., elevator controller, Wumpus World)
-  - Each example application has its own sub-directory. By convention, an application is loaded by  consulting a file with a name of the form `main_xxx.pl` where `xxx` denotes the specific Prolog platform (e.g., `main_swi.pl` for SWI-Prolog and `main_ecl.pl` for ECLIPSe).
+- `examples/`: Domain applications (e.g., elevator controller).
 
-## Examples
+## Application development
 
-There are three example applications that work as simulations in console. You should try to run these before trying IndiGolog on a "real" external platform:
+An application can be generally specified in a main file, e.g., `main.pl` that loads the following components:
 
-1. `Examples/Elevator-Vanilla`: This is the simplest application and it uses the vanilla IndiGolog interpreter (`indigolog-vanilla.pl`). It does not require any advanced features (like TCP/IP, Tcl/Tk, Java, or threads).
-2. `Examples/ElevatorSim-BAT`: This is the same example as the vanilla one, but with a more sophisticated implementation.  There is now a special simulation environment that opens a new terminal window and a Tcl/Tk
-interface where the user can enter exogenous actions asynchronously.
-3. `Examples/ElevatorWumpus-KBAT`: This is the Wumpus World implementation. It uses a simulated world and results are displayed in a Java window.
+1. `config.pl`: general configuration settings and constants.
+2. `interpreter/indigolog.pl`: the **main IndiGolog interpreter**, which itself will include:
+  - `interpreter/env_man.pl`: the **environment manager** in charge of starting and operating with all devices used by the application via network communication (file `interpreter/env_man.pl`).
+  - `interpreter/transfinal.pl`: the **transition system** semantics of the IndiGolog language.
+3. The **evaluator projector** to be used, implementing predicate `holds/2`. For example, `eval/eval_bat.pl` implements a situation calculus Basic Action Theory projector.
+4. The **application domain** specification, including the action theory of the domain and the high-level programs to be used.
+
+In addition, the main application domain should specify:
+
+1. the host and port where the environment manager should attach and communicate with the various devices to be usedl
+2. which devices to load (via `load_devices/1`) and how to start them up (via ` load_devices/2`);
+3. the domain specification including the action theory and high-level program specifications;
+4. how each action term must be executed (via `how_to_execute/3`): in which device and under which action code to be sent to the device manager;
+5. how exogenous action messages received is to be translated to domain exogenous action terms (via `translate_exog/2`); and
+6. how sensing data received is to be translated to domain sending terms (via `translate_sensing/3`).
+
+Additionally, the main file can set-up some configurations, like log level, via `set_option/2`.
+
+Please refer to the elevator example under [`examples/elevator_sim`](examples/elevator_sim) that implements a controller for an elevator system executing in a simulation environment. The main file is 
+[`examples/elevator_sim/main.pl`](examples/elevator_sim/main.pl).
+
+The overall architecture and modules in the architecture is as follows:
+
+![IndiGolog architecture](doc/architecture_img/indigolog_arch.png)
+
 
 ## Contributors
 
