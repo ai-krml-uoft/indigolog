@@ -1,113 +1,73 @@
-/* IndiGolog Interpreter
+/* 	IndiGolog Interpreter
 
-   The main tool provided in this file is the following predicate:
+	This is the main file for the IndiGolog interpreter, responsible for
+	starting up all devices of an application domain and run teh IndiGolog
+	program in those devices.
 
- -- indigolog(E): run IndiGolog program E
-
-           For more information on Golog and some of its variants, see:
+	For more information on Golog and some of its variants, see:
                http://www.cs.toronto.edu/~cogrobo/
 
-
-	@contributors 2001-
+	@contributors 2001-2024
 		Sebastian Sardina - ssardina@cs.toronto.edu
 		Hector Levesque
 		Giuseppe De Giacomo
 		Yves Lesperance
 		Maurice Pagnucco
+		Stavros Vassos
 
-  This files provides:
+	Refer to LICENSE file in repo.
 
- -- indigolog(+E)
-       run IndiGolog program E in the main cycle
- -- now(-H)
-       H is the current history
- -- pasthist(?H)
-       H is a past situation w.r.t. the current one
- -- doingStep
-       the main cycle is computing a step
- -- exog_action_occurred(LExoAction)
-	to report a list of exog. actions LExogAction to the top-level
+   	The main tool provided in this file is the following predicate:
 
- -- exists_pending_exog
-       there are exogenous events pending to be dealt
- -- set_option(+O, +V)
-       set option O to value V. Current options are:
+	-- indigolog(E): run IndiGolog program E in the framework. It will
+	initialize all devices and run the program in those devices. This file
+	is consulted by the main application file, e.g., main.pl
 
-	+ wait_step 	number of seconds to wait between steps
-	+ debug_level 	level for debug messages
-	+ type_manager 	define the type of the environment manager (thread/signal)
+	Example run:
 
- -- error(+M)
-       an error has occurred with message M
- -- warn(+M)
-       warn the user of event M
+	$ swipl examples/elevator_sim/main.pl
+	SYSTEM(0): Debug level set to 5
+	SYSTEM(0): Debug level for module em set to 1
+	INFO(0): Set wait-at-action enable to: 1 seconds.
+	Welcome to SWI-Prolog (threaded, 64 bits, version 9.2.5)
+	SWI-Prolog comes with ABSOLUTELY NO WARRANTY. This is free software.
+	Please run ?- license. for legal details.
 
+	For online help and background, visit https://www.swi-prolog.org
+	For built-in help, use ?- help(Topic). or ?- apropos(Word).
 
+	?- indigolog(control(congolog_smart)).
 
-  The following should be provided for this file:
+	INIT: Starting ENVIRONMENT MANAGER...
+	EM(1): Openinig EM server socket...
+	INFO(5,APP): Command to initialize device simulator: xterm -e [-e,swipl,-t,start,/home/ssardina/PROJECTS/sitcalc/IndiGolog/indigolog.git/env/dev_sim.pl,--host,localhost,--port,8000]
+	EM(1): Device simulator initialized at ip(127,0,0,1)
+	INIT: ENVIRONMENT MANAGER was started successfully.
+	INIT: Starting PROJECTOR EVALUATOR...
+	INIT: PROJECTOR was started successfully.
+	INFO(5): History updated to: []
+	INIT: Starting to execute main program
+	INFO(2): Sending action for execution: unset(new_request)
 
- LANGUAGE CONSTRUCTS IMPLEMENTATION (transition system):
+	To set-up options:
 
- -- trans(+P, +H, -P2, -H2)
-       configuration (P, H) can perform a single step to configuration (P2, H2)
- -- final(+P, +H)
-       configuration (P, H) is terminating
+	?- set_option.
+	set_option(Option, V): sets Option to value V, where Options may be:
 
- FROM ENVIRONMENT MANAGER (eng_man.pl):
+	log_level: up to what level to report
+	wait_step : pause V seconds after each prim. action execution.
+	true.
 
- -- execute_action(+A, +H, -N, -SR)
-	execute action A at history H;
-	N is the number of action and SR sensing
- -- exog_occurs(-L)
-	return a list L of exog. actions that have occurred (sync)
- -- initialize(env_manager)/0
-	environment initialization
- -- finalize(env_manager)/0
-	environment finalization
+	?- set_option(log_level, em(3)).
+	SYSTEM(0): Debug level for module em set to 3
+	true.
 
- FROM TEMPORAL PROJECTOR (evalxxx.pl):
-
- -- debug(+A, +H, -S)
-       debug routine
- -- pause_or_roll(+H1, -H2)
-       check if the DB CAN roll forward
- -- can_progress(+H1)
-       check if the DB CAN roll forward
- -- must_progress(+H1)
-       check if the DB MUST roll forward
- -- roll_DB(+H1)
-       check if the DB MUST roll forward
- -- initializeDB/0
-       initialize projector
- -- finalizeDB/0
-       finalize projector
- -- handle_sensing(+A, +H, +Sr, -H2)
-	change history H to H2 when action A is executed in history
-	H with Sr as returning sensing value
- -- sensing(+A, -SL)	    :
-       action A is a sensing action with possible sensing outcome list SL
- -- system_action(+A)      :
-       action A is an action used by the system
-       e.g., the projector may use action e(_, _) to store sensing outcomes
-
- FROM THE SPECIFIC DOMAIN OR APPLICATION:
-
- -- simulate_sensing(+A)
-       sensing outcome for action A is simulated
- -- type_prolog(+P)
-       name of prolog being used (ecl, swi, vanilla, etc)
-
- OTHERS TOOLS (PROLOG OR LIBRARIES):
-
- -- sleep(Sec)             : wait for Sec seconds
- -- turn_on_gc             : turns on the automatic garbage collector
- -- turn_off_gc            : turns off the automatic garbage collector
- -- garbage_collect        : perform garbage collection (now)
- -- logging(+T, +M) : report message M of type T
- -- set_debug_level(+N)    : set debug level to N
+	?- set_option(wait_step, 5).
+	INFO(0): Set wait-at-action enable to: 5 seconds.
+	true ;
 */
 :- dynamic sensing/2,   % There may be no sensing action
-	pending/1, 	% Stores exogenous events or sensings not yet managed
+	pending/1, 			% Stores exogenous events or sensings not yet managed
 	now/1,            	% Used to store the actual history
 	progressed_history/1, 	% Part of now/1 that was already rolled fwd
 	wait_at_action/1, 	% Wait some seconds after each action
@@ -128,8 +88,8 @@
 	multifile(holds/2).
 
 
-
-:- ensure_loaded(transfinal).  % Load the TRANS and FINAL definitions
+:- ensure_loaded(env_man). 	 	% Load environment maanger
+:- ensure_loaded(transfinal).	% Load the TRANS and FINAL definitions
 
 
 
@@ -153,7 +113,7 @@ set_option.
 
 % Set the wait-at-action to pause after the execution of each prim action
 set_option("wait_step : pause V seconds after each prim. action execution.").
-set_option(wait_step, N) :- wait_step(N).
+set_option(wait_step, N) :- wait_step(N), !.
 
 wait_step(0) :-
 	logging(info(0), "** Wait-at-action disabled"),
@@ -374,7 +334,8 @@ update_now(H) :-
 	logging(info(5), "History updated to: ~w", [H]).
 
 
-
+% progress initial state by cutting down last actions in H1. 
+% H2 is new (shorter history)
 progress(H1, H2) :-
 	logging(info(0), "Rolling down the river (progressing the database)......."),
 	progress_db(H1, H2),
@@ -387,21 +348,6 @@ progress(H1, H2) :-
 	assert(progressed_history(HN)),
 	save_exog.	% Collect all exogenous actions
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%  OTHER PREDICATES PROVIDED
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% H is a past situation w.r.t. the actual situation (stored in clause now/1)
-pasthist(H) :- now(ActualH), before(H, ActualH).
-
-% Deal with an unknown configuration (P, H)
-error(M) :-
-        logging(error, M),
-        logging(error, "Execution will be aborted!"), abort.
-
-warn(M) :-
-        logging(warning, M).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF

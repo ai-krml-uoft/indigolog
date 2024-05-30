@@ -37,13 +37,14 @@ dir(indigolog, F) :-
 dir(env_manager, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "env/env_man.pl", F).
+
+dir(dev_simulator, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "env/dev_sim.pl", F).
+
 dir(eval_bat, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "eval/eval_bat.pl", F).
-
-dir(dev_managers, F) :-
-	root_indigolog(Dir),
-	directory_file_path(Dir, "env/dev_managers", F).
 
 dir(exog_tcltk_, F) :-
 	root_indigolog(Dir),

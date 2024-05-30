@@ -50,7 +50,7 @@ simple TCL/TK program where exogenous action can be typed at any time.
     -- wish for running TCL/TK applications
     -- exog.tcl TCL/TK script
 */
-:- include(env_gen).      % INCLUDE THE CORE OF THE DEVICE MANAGER
+:- include(dev_gen).      % INCLUDE THE CORE OF THE DEVICE MANAGER
 
 :- ['../config.pl'].	% Load system library
 :- ['../lib/common.pl'].	% Load system library

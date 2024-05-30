@@ -113,6 +113,14 @@ id_logging(T, TS) :-
 
 
 
+% Deal with an unknown configuration (P, H)
+log_error(M) :-
+        logging(error, M),
+        logging(error, "Execution will be aborted!"), abort.
+
+log_warn(M) :-
+        logging(warning, M).
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

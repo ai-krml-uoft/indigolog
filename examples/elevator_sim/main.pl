@@ -1,9 +1,12 @@
-/*  Elevator Simulator Application MAIN file
-    @author Sebastian Sardina - ssardina@gmail.com
+/*  Elevator Simulator Application MAIN file @author Sebastian Sardina -
+    ssardina@gmail.com
 
-    This file is the main file for the elevator simulator application. It loads the necessary files and starts the application.
+    This file is the main file for the elevator simulator application. It
+    loads the necessary files and starts the application.
 
-    The application is a simple elevator simulator that is controlled by an IndiGolog program. A TCL/TK interface can be used to issue exogenous events/actions.
+    The application is a simple elevator simulator that is controlled by
+    an IndiGolog program. A TCL/TK interface can be used to issue
+    exogenous events/actions.
 
     To run applciation:
 
@@ -22,9 +25,7 @@
 :- ['../../config.pl'].
 
 :- dir(indigolog, F), consult(F).
-:- dir(env_manager, F), consult(F).
 :- dir(eval_bat, F), consult(F).    % after interpreter always!
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSULT APPLICATION
@@ -48,8 +49,8 @@ load_devices([simulator]).
 
 % start env_sim.pl tcl/tk interaction interface
 load_device(simulator, Host:Port, [pid(PID)]) :-
-    root_indigolog(Dir),
-    directory_file_path(Dir, 'env/env_sim.pl', File),
+    % root_indigolog(Dir),
+    dir(dev_simulator, File),
     ARGS = ['-e', 'swipl', '-t', 'start', File, '--host', Host, '--port', Port],
     logging(info(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
     process_create(path(xterm), ARGS, [process(PID)]).
