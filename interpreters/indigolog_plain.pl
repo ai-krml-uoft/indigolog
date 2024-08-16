@@ -98,7 +98,7 @@ final(iconc(_), _).
 trans(conc(E1, E2), H, conc(E, E2), H1) :- trans(E1, H, E, H1).
 trans(conc(E1, E2), H, conc(E1, E), H1) :- trans(E2, H, E, H1).
 trans(pconc(E1, E2), H, E, H1) :-
-    trans(E1, H, E3, H1) -> E=pconc(E3, E2) ; (trans(E2, H, E3, H1), E=pconc(E1, E3)).
+    trans(E1, H, E3, H1) -> E = pconc(E3, E2) ; (trans(E2, H, E3, H1), E = pconc(E1, E3)).
 trans(iconc(E), H, conc(E1, iconc(E)), H1) :- trans(E, H, E1, H1).
 
        /* (b) - GOLOG */
@@ -151,9 +151,9 @@ poss(start_interrupts, true).
 poss(stop_interrupts,  true).
 
 proc(interrupt(V, Trigger, Body),            /* version with variable */
-    while(interrupts=running, pi(V, if(Trigger, Body, ?(neg(true)))))).
+    while(interrupts = running, pi(V, if(Trigger, Body, ?(neg(true)))))).
 proc(interrupt(Trigger, Body),              /* version without variable */
-    while(interrupts=running, if(Trigger, Body, ?(neg(true))))).
+    while(interrupts = running, if(Trigger, Body, ?(neg(true))))).
 proc(prioritized_interrupts(L), [start_interrupts, E]) :- expand_interrupts(L, E).
 expand_interrupts([], stop_interrupts).
 expand_interrupts([X|L], pconc(X, E)) :- expand_interrupts(L, E).
@@ -179,7 +179,7 @@ holds(P, H) :- \+ proc(P, _), subf(P, P1, H), call(P1).
 %       T2 is T1 with X1 replaced by X2 - T2 = T1|_{X1/X2}
 %  NOW parts of utils.pl lib module -- uncomment if loaded stand-alone
 % subv(X1, X2, T1, T2) :- var(T1), T1 == X1, !, T2 = X2.
-% subv(_, _, T1, T2)   :- var(T1), !, T2 = T1.
+% subv(_, _, T1, T2) :- var(T1), !, T2 = T1.
 % subv(X1, X2, T1, T2) :- T1 == X1, !, T2 = X2.
 % subv(X1, X2, T1, T2) :- T1 =..[F|L1], maplist(subv(X1, X2), L1, L2), T2 =..[F|L2].
 
