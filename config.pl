@@ -3,7 +3,7 @@
 	This file contains various wide-system configuration variables and options
 	such as location of files/modules, libraries, constants, etc.
 
-	@author ssardina 2002-2024 - ssardina@cs.toronto.edu
+	@author ssardina 2002-2024 - ssardina@cs.toronto.edu, ssardina@gmail.com
 */
 
 % asserts root_indigolog/1 with the path to the INDIGOLOG root folder
@@ -16,11 +16,9 @@ main_dir(Path):- root_indigolog(Path).
 :- 	root_indigolog(Dir),
    	directory_file_path(Dir, 'lib', LibDir),
    	assert(library_directory(LibDir)),
-	% use_module(library(eclipse_swi)), init_eclipse_lib, % ECLIPSE Compat lib
-	% use_module(library(tools_swi)),
 	use_module(library(utils)),
 	use_module(library(time)),	% for call_with_time_limit/2
-	% style_check(-discontiguous),
+	% style_check(-discontiguous),	% use it where wanted
 	set_prolog_flag(optimise, true).
 
 
@@ -50,7 +48,8 @@ dir(exog_tcltk_, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "devices/exog.tcl", F).
 
-:- dir(indigolog, F), consult(F).
+%  this consults the standard indigolog interpreter
+% :- dir(indigolog, F), consult(F).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

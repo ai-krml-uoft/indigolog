@@ -1,45 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % 1 - GENERAL
-%
-%  -- subv(+X1,+X2,+T1,-T2)
-%        T2 is T1 with X1 replaced by X2
-%  -- sublist(?SubList, +List)
-%        Succeeds if List is the list which contains all elements from SubList
-%  -- get_integer(+Low, ?N, +High)
-%        N is an integer between Low and High
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-       /*  T2 is T1 with X1 replaced by X2  */
-subv(X1,X2,T1,T2) :- var(T1), T1 == X1, !, T2 = X2.
-subv(_,_,T1,T2)   :- var(T1), !, T2 = T1.
-subv(X1,X2,T1,T2) :- T1 == X1, !, T2 = X2.
-subv(X1,X2,T1,T2) :- T1 =..[F|L1], subvl(X1,X2,L1,L2), T2 =..[F|L2].
-
-subvl(_,_,[],[]).
-subvl(X1,X2,[T1|L1],[T2|L2]) :- subv(X1,X2,T1,T2), subvl(X1,X2,L1,L2).
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 2 - STRINGS AND ATOMS
-%
-% -- any_to_number(+T, -Number)
-%       Convert an atom, string, or list of chars T into a number
-% -- join_atom/3
-% -- join_atom(+List, +Glue, -Atom)
-%       Atom is the atom formed by concatenating the elements of List with an
-%       instance of Glue beween each of them.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-% -- join_atom(List, Glue, Atom)
-%      Atom is the atom formed by concatenating the elements of List with an
-%      instance of Glue beween each of them.
-join_atom(List, Glue, Atom) :-
-        maplist(any_to_string, List, List2),
-        join_string(List2, Glue, String),
-        string_to_atom(String, Atom).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

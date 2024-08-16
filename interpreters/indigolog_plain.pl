@@ -26,7 +26,7 @@ In addition to a ConGolog program, users provide these predicates:
             can use ask_exog_occurs (or fail, if none)
 */
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- style_check(-discontiguous).	% SWI dependent!
+:- style_check(-discontiguous).	% SWI specific!
 
 :-dynamic senses/2.
 :-dynamic exog_action/1.
@@ -79,10 +79,12 @@ indixeq(H, [A|H], [e(F,SR), A|H]) :- senses(A, F), execute(A, SR).
 %	may use as a simulated environment.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-ask_exog_occurs(A) :- write('Exogenous input (ending with "."): '), read(A).
+ask_exog_occurs(A) :-
+       write('Exogenous input (ending with "."): '), read(A).
 
 ask_execute(A, _) :-  \+ senses(A, _), !, write(A), nl.
-ask_execute(A, SR) :-  senses(A,_), format("~w - Sensing outcome: ", [A]), read(SR).
+ask_execute(A, SR) :-  senses(A,_),
+       format("~w - Sensing outcome: ", [A]), read(SR).
 
 
 
@@ -175,19 +177,19 @@ holds(some(V,P),H) :- !, subv(V,_,P,P1), holds(P1,H).
 holds(P,H) :- proc(P,P1), holds(P1,H).
 holds(P,H) :- \+ proc(P, _), subf(P, P1, H), call(P1).
 
-       /*  T2 is T1 with X1 replaced by X2  */
-subv(_,_,T1,T2) :- (var(T1) ; integer(T1)), !, T2 = T1.
-subv(X1,X2,T1,T2) :- T1 = X1, !, T2 = X2.
-subv(X1,X2,T1,T2) :- T1 =..[F|L1], subvl(X1,X2,L1,L2), T2 =..[F|L2].
-subvl(_,_,[],[]).
-subvl(X1,X2,[T1|L1],[T2|L2]) :- subv(X1,X2,T1,T2), subvl(X1,X2,L1,L2).
+/*  T2 is T1 with X1 replaced by X2  */
+%  NOW parts of utils.pl module -- uncomment if loaded stand-alone
+% subv(_,_,T1,T2) :- (var(T1) ; integer(T1)), !, T2 = T1.
+% subv(X1,X2,T1,T2) :- T1 = X1, !, T2 = X2.
+% subv(X1,X2,T1,T2) :- T1 =..[F|L1], subvl(X1,X2,L1,L2), T2 =..[F|L2].
+% subvl(_,_,[],[]).
+% subvl(X1,X2,[T1|L1],[T2|L2]) :- subv(X1,X2,T1,T2), subvl(X1,X2,L1,L2).
 
        /*  P2 is P1 with all fluents replaced by their values  */
-subf(P1,P2,_) :- (var(P1);integer(P1)), !, P2 = P1.
+subf(P1,P2,_) :- (var(P1) ; integer(P1)), !, P2 = P1.
 subf(P1,P2,H) :- prim_fluent(P1), has_val(P1,P2,H).
-subf(P1,P2,H) :- \+ prim_fluent(P1), P1=..[F|L1], subfl(L1,L2,H), P2=..[F|L2].
-subfl([],[],_).
-subfl([T1|L1],[T2|L2],H) :- subf(T1,T2,H), subfl(L1,L2,H).
+subf(P1,P2,H) :- \+ prim_fluent(P1), P1=..[F|L1],
+       maplist({H}/[A,B]>>subf(A,B,H), L1, L2), P2=..[F|L2].
 
 
 % has_val(F,V,H):  Fluent F has value V in history H.
