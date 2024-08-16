@@ -1,2 +1,0 @@
-
-:- consult('indigolog_plain').
