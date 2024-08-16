@@ -52,7 +52,7 @@ indigo(E, H) :- 	exog_occurs(Act), exog_action(Act), !, indigo(E, [Act|H]).
 indigo(E, H) :- trans(E, H, E1, H1), indixeq(H, H1, H2), !, indigo(E1, H2).
 
 % (3) - If E is final write the length of history H
-indigo(E, H) :- final(E, H), nl, length(H, N), write(N), write(' actions.'), nl.
+indigo(E, H) :- final(E, H), nl, length(H, N), write(N), write(" actions."), nl.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % indixeq(H1, H2, H3): Implementation of execution of an action.
@@ -75,7 +75,7 @@ indixeq(H, [A|H], [e(F, SR), A|H]) :- senses(A, F), execute(A, SR).
 %	may use as a simulated environment.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ask_exog_occurs(A) :-
-       write('Exogenous input (ending with "."): '), read(A).
+       write("Exogenous input (ending with "."): "), read(A).
 
 ask_execute(A, _) :-  \+ senses(A, _), !, write(A), nl.
 ask_execute(A, SR) :-  senses(A, _),
