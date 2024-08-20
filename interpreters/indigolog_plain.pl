@@ -46,7 +46,7 @@ indigolog(E) :- indigo(E, []).
 
 % (1)- In each single step ask for an exogenous action, check it and
 %	continue execution inserting that exogenous action
-indigo(E, H) :- 	exog_occurs(Act), exog_action(Act), !, indigo(E, [Act|H]).
+indigo(E, H) :- exog_occurs(Act), exog_action(Act), !, indigo(E, [Act|H]).
 
 % (2) - Find a signle step (trans), execute it, commit and continue
 indigo(E, H) :- trans(E, H, E1, H1), indixeq(H, H1, H2), !, indigo(E1, H2).
@@ -112,7 +112,7 @@ final(pi(V, E), H) :- subv(V, _, E, E2), final(E2, H).
 final(E, H) :- proc(E, E2), final(E2, H).
 
 trans([E|L], H, [E1|L], H2) :- trans(E, H, E1, H2).
-trans([E|L], H, E1, H2) :- \+ L=[], final(E, H), trans(L, H, E1, H2).
+trans([E|L], H, E1, H2) :- \+ L = [], final(E, H), trans(L, H, E1, H2).
 trans(?(P), H, [], H) :- holds(P, H).
 trans(ndet(E1, E2), H, E, H1) :- trans(E1, H, E, H1) ; trans(E2, H, E, H1).
 trans(if(P, E1, E2), H, E, H1) :- holds(P, H) -> trans(E1, H, E, H1) ; trans(E2, H, E, H1).
@@ -169,7 +169,10 @@ expand_interrupts([X|L], pconc(X, E)) :- expand_interrupts(L, E).
 */
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 holds(and(P1, P2), H) :- !, holds(P1, H), holds(P2, H).
+holds(and([P]), H) :- !, holds(P, H).
+holds(and([P|L]), H) :- !, holds(P, H), holds(and(L), H).
 holds(or(P1, P2), H) :- !, (holds(P1, H) ; holds(P2, H)).
+holds(or(L), H) :- is_list(L), !, member(P, L), holds(P, H).
 holds(neg(P), H) :- !, \+ holds(P, H).   /* Negation by failure */
 holds(some(V, P), H) :- !, subv(V, _, P, P1), holds(P1, H).
 holds(P, H) :- proc(P, P1), holds(P1, H).

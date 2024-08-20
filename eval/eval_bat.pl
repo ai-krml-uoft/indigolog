@@ -249,7 +249,10 @@ holds(know(F), H) :- !, holds(F = _, H).
 
 % holds(P, H): P holds in H
 holds(and(P1, P2), H) :- !, holds(P1, H), holds(P2, H).
+holds(and([P]), H) :- !, holds(P, H).
+holds(and([P|L]), H) :- !, holds(P, H), holds(and(L), H).
 holds(or(P1, P2), H) :- !, (holds(P1, H) ; holds(P2, H)).
+holds(or(L), H) :- is_list(L), !, member(P, L), holds(P, H).
 holds(neg(P), H) :- !, checkgr(P), \+ holds(P, H). /* Negation by failure */
 holds(some([], P), H) :- !, holds(P, H).
 holds(some([V|L], P), H) :- !, holds(some(V, some(L, P)), H).
