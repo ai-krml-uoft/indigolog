@@ -6,8 +6,8 @@ In all cases, an elevator is operating in a building with six (6) floors.  The e
 
 There are five versions incrementally more complex:
 
-1. **Example 1:** the most basic case with no sensing or exogenous events.
-3. **Example 2:** includes exogenous actions and sensing.
+- **Example 1:** the most basic case with no sensing or exogenous events.
+- **Example 2:** includes exogenous actions and sensing.
 
 Files `main_xx.pl` are provided to start the applications; remember they need to be consulted in the context of a configuration file (defining some global variables and predicates).
 

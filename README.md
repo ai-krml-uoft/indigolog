@@ -1,6 +1,6 @@
 # INDIGOLOG: A High-Level Programming Language for Embedded Reasoning Agents
 
-This repo contains the **INDIGOLOG** interpreter and other pieces of code to enable INDIGOLOG progarms to run in external environments (e.g., Lego Mindstorm robotic platforms). 
+This repo contains the **INDIGOLOG** interpreter and other pieces of code to enable INDIGOLOG progarms to run in external environments (e.g., Lego Mindstorm robotic platforms).
 
 _What is INDIGOLOG?_ **INDIGOLOG** is a high-level programming language for autonomous agents that sense their environment and do planning as they operate. Instead of classical planning, it supports _high-level program execution_. The programmer provides a _high-level nondeterministic program_ involving domain-specific actions and tests to perform the agent's tasks. The INDIGOLOG interpreter then reasons about the preconditions and effects of the actions in the program to find a legal terminating execution. To support this, the programmer provides a declarative specification of the domain (i.e., primitive actions, preconditions and effects, what is known about the initial state) in the Situation calculus. The programmer can control the amount of non-determinism in the program and how much of it is searched over. The language is rich and supports concurrent programming. Programs are executed online together with sensing the environment and monitoring for events, thus supporting
 the development of reactive agents.
@@ -75,15 +75,13 @@ The overall architecture and modules in the architecture is as follows:
 
 ![INDIGOLOG architecture](doc/architecture_img/indigolog_arch.png)
 
-
 ## Elevator Example
 
-A full elevator example is provided in folder [`examples/elevator_sim`](examples/elevator_sim) which implements a controller for an elevator system executing in a simulation environment. 
+A full elevator example is provided in folder [`examples/elevator_sim`](examples/elevator_sim) which implements a controller for an elevator system executing in a simulation environment.
 
 Instructions how to run it can be found in its readme file.
 
 Source files are (hopefully!) significantly documented to understand the above design.
-
 
 ## Contributors
 

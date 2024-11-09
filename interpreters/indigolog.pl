@@ -26,7 +26,7 @@
 
 	Example run:
 
-	$ swipl examples/elevator_sim/main.pl
+	$ swipl config.pl examples/elevator_sim/main.pl
 	SYSTEM(0): Debug level set to 5
 	SYSTEM(0): Debug level for module em set to 1
 	INFO(0): Set wait-at-action enable to: 1 seconds.

@@ -4,7 +4,6 @@ This are variants of the Elevator Controller example showcased in the CONGOLOG p
 
 * Giuseppe De Giacomo, Yves Lespérance, Hector J. Levesque: [ConGolog, a concurrent programming language based on the situation calculus](https://www.sciencedirect.com/science/article/pii/S000437020000031X?via%3Dihub). Artificial Intelligence 121(1-2): 109-169 (2000)
 
-
 Beyond the basic GOLOG constructs, the example depicts the usefulness of using concurrency, prioritized processes, interrupts, and exogenous actions to tackle real-world scenarios. Besides serving the requested floors, the elevator needs to appropriately handle changes in temperature (via a fan) and emegency situations by ringing the alarm.
 
 In addition, some controllers make use of INDIGOLOG search operator to optimise the behavior of the elevator.
@@ -18,6 +17,7 @@ The example executes in a simulated environment via simulator device manager `de
 - `reset`: smoke situation has been reset.
 - `on(N)`: floor `N` has requested service.
 ```
+
 The `end_indi` exogenous actions will finish the execution smoothly.
 
 ## Running the elevator system
@@ -25,7 +25,7 @@ The `end_indi` exogenous actions will finish the execution smoothly.
 First, we should consult the application as follows:
 
 ```shell
-$ swipl examples/elevator_sim/main.pl
+$ swipl config.pl examples/elevator_sim/main.pl
 ```
 
 This will load the domain specification, but also the whole INDIGOLOG architecture (interpreter, temporal projector, devices, libraries, etc.)
@@ -92,7 +92,6 @@ END: Everything finished - HALTING TOP-LEVEL CONTROLLER
 
 A controller can also be started via INDIGOLOG top-level predicate `indigolog/1`.
 
-
 ### INDIGOLOG Smart Controller
 
 Controllers `indigolog` is probably the most complete and interesting:
@@ -120,9 +119,8 @@ At its core, it is basically the controller showcased with CONGOLOG (extended wi
 
 Here is a run, calling `indigolog/1` directly:
 
-
 ```shell
-$ swipl examples/elevator_sim/main.pl
+$ swipl config.pl examples/elevator_sim/main.pl
 SYSTEM(0): Debug level set to 5
 SYSTEM(0): Debug level for module em set to 1
 INFO(0): Set wait-at-action enable to: 1 seconds.
@@ -174,5 +172,3 @@ INIT: PROJECTOR was started successfully
 ...
 ...
 ```
-
-
