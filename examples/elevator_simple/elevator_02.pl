@@ -14,6 +14,7 @@
 execute(A, SR) :- ask_execute(A, SR).
 exog_occurs(A) :- ask_exog_occurs(A).
 
+% number of floors, change for larger buildings
 max_floor(3).
 
 fl(N) :- max_floor(M), between(1, M, N).    % the 6 elevator floors

@@ -27,10 +27,10 @@ main :-
     findall(C, proc(control(C), _), L),
     repeat,
     format('Controllers available: ~w\n', [L]),
-    write('Select controller: '),
+    writeln('Select controller: '),
 	read(S), nl,
     member(S, L),
-	format('Executing controller: *~w*\n', [S]), !,
+	format('Executing controller: *~w*\n', [S]), !, 
     indigolog(control(S)).
 
 main(C) :- 	indigolog(control(C)).
