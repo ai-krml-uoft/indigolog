@@ -46,7 +46,7 @@ indigolog(E) :- indigo(E, []).
 
 % (1)- In each single step ask for an exogenous action, check it and
 %	continue execution inserting that exogenous action
-indigo(E, H) :- exog_occurs(Act), exog_action(Act), !, indigo(E, [Act|H]).
+indigo(E, H) :- once(exog_occurs(Act)), exog_action(Act), !, indigo(E, [Act|H]).
 
 % (2) - Find a signle step (trans), execute it, commit and continue
 indigo(E, H) :- trans(E, H, E1, H1), indixeq(H, H1, H2), !, indigo(E1, H2).
@@ -69,17 +69,27 @@ indixeq(H, [A|H], [e(F, SR), A|H]) :- senses(A, F), execute(A, SR).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% exog_occurs(Act) and execute(Act, Sr):
-% 	predicates that make contact with the outside world.
-%	Here are two basic versions using read and write that the domain
-%	may use as a simulated environment.
+% Console-based interfaces to ask exogenous actions and execute actions
+%
+% Both read terms, ending with full stop .
+% Executing may involve reading sensing outcome
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-ask_exog_occurs(A) :-
-       write("Exogenous input (ending with "."): "), read(A).
 
+% ask for a a possible exogenous action A (reads a term from the console)
+ask_exog_occurs(A) :-
+       repeat,
+	writeln("Exogenous input term (ending with '.'; true for none; help for list):"), 
+	read(A),
+	(A = help
+       ->     findall(E, exog_action(E), LE),
+	       format("Available exogenous actions: ~w\n", [LE]), fail
+       ;
+	       true), !.
+
+% execute action and possibly read sensing outcome if appropiate
 ask_execute(A, _) :-  \+ senses(A, _), !, write(A), nl.
 ask_execute(A, SR) :-  senses(A, _),
-       format("~w - Sensing outcome: ", [A]), read(SR).
+       format("~w - Sensing outcome term (ending with '.'):\n", [A]), read(SR).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
