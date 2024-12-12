@@ -68,9 +68,6 @@ how_to_execute(Action, simulator, sense(Action)) :-
 how_to_execute(Action, simulator, Action) :-
 	 \+ sensing_action(Action, _).
 
-
-fixed_events(["heat", "cold", "smoke", "reset"]).
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION
 %
