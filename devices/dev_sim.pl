@@ -16,10 +16,9 @@ time.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- include(dev_gen).      % INCLUDE THE CORE OF THE DEVICE MANAGER
 
-:- ['../config.pl'].	% Load system library
+:- ['../config.pl'].	        % Load system library
 :- ['../lib/common.pl'].	% Load system library
 :- use_module('../lib/utils.pl').
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CONSTANTS
@@ -32,8 +31,6 @@ name_dev(simulator).
 
 % Set verbose debug level
 :- set_option(log_level, 3).
-
-
 
 /* A - INITIALIZATION AND FINALIZATION OF INTERFACES
 

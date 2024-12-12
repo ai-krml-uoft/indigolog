@@ -47,13 +47,12 @@ load_devices([simulator]).
 % start env_sim.pl tcl/tk interaction interface
 
 load_device(simulator, Host:Port, [pid(PID)]) :-
-	% root_indigolog(Dir),
-
-	dir(dev_simulator, File), ARGS = ['-e', 'swipl', '-t', 'start', File, '--host', Host, '--port', Port], 
+	dir(dev_simulator, File),
+	ARGS = ['-e', 'swipl', '-t', 'start', File, '--host', Host, '--port', Port],
 	logging(
-		info(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]), 
+		info(5, app), "Command to initialize device simulator: xterm -e ~w", [ARGS]),
 	process_create(
-		path(xterm), ARGS, 
+		path(xterm), ARGS,
 		[process(PID)]).
 
 
@@ -69,6 +68,8 @@ how_to_execute(Action, simulator, sense(Action)) :-
 how_to_execute(Action, simulator, Action) :-
 	 \+ sensing_action(Action, _).
 
+
+fixed_events(["heat", "cold", "smoke", "reset"]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %   EXOGENOUS ACTION AND SENSING OUTCOME TRANSLATION
@@ -92,27 +93,27 @@ translate_sensing(_, SR, SR).
 % main/0: Gets INDIGOLOG to evaluate a chosen mainControl procedure
 
 main :-
-	findall(C, 
+	findall(C,
 		proc(
-			control(C), _), LC), 
-	length(LC, N), repeat, 
-	format('Controllers available: ~w\n', [LC]), 
+			control(C), _), LC),
+	length(LC, N), repeat,
+	format('Controllers available: ~w\n', [LC]),
 	forall(
 		(
-			between(1, N, I), 
-			nth1(I, LC, C)), 
-		format('~d. ~w\n', [I, C])), nl, nl, 
-	write('Select controller: '), 
-	read(NC), nl, 
-	number(NC), 
-	nth1(NC, LC, C), 
-	format('Executing controller: *~w*\n', [C]), !, 
+			between(1, N, I),
+			nth1(I, LC, C)),
+		format('~d. ~w\n', [I, C])), nl, nl,
+	write('Select controller: '),
+	read(NC), nl,
+	number(NC),
+	nth1(NC, LC, C),
+	format('Executing controller: *~w*\n', [C]), !,
 	main(
 		control(C)).
 
 main(C) :-
 	assert(
-		control(C)), 
+		control(C)),
 	indigolog(C).
 
 

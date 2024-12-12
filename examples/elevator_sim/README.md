@@ -8,7 +8,7 @@ Beyond the basic GOLOG constructs, the example depicts the usefulness of using c
 
 In addition, some controllers make use of INDIGOLOG search operator to optimise the behavior of the elevator.
 
-The example executes in a simulated environment via simulator device manager `dev/env_sim.pl`. The simulator includes a simple TCLK/TK where the user can issue exogenous actions:
+The example executes in a simulated environment via simulator device manager `dev/env_sim.pl`. The simulator includes a simple Python-based TCLK/TK where the user can issue exogenous actions:
 
 ```prolog
 - `heat`: temperature went up.

@@ -9,7 +9,6 @@ A report on the language and interpreter can be found in the following article:
 
 * Giuseppe De Giacomo, Yves Lespérance, Hector J. Levesque, Sebastian Sardiña: [INDIGOLOG: A High-Level Programming Language for Embedded Reasoning Agents](https://link.springer.com/chapter/10.1007/978-0-387-89299-3_2). Multi-Agent Programming, Languages, Tools and Applications 2009: 31-72.
 
-
 ## A bit of history...
 
 High-level programming for cognitive agents under a situation calculus theory of action stated with **Golog** in the late 90s, as reported in:
