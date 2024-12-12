@@ -25,7 +25,7 @@ def main(exog_events=[]):
         global past_events
         entry_text = exog_entry.get()
         exog_entry.delete(0, tk.END)
-        print(entry_text + "." if entry_text[-1] != "." else entry_text)
+        print(entry_text + "." if entry_text[-1] != "." else entry_text, flush=True)
 
         if entry_text not in [x["text"] for x in past_events]:
             if len(past_events) < MAX_NO_BUTTONS - no_fixed_events:
@@ -40,7 +40,7 @@ def main(exog_events=[]):
         global past_events
 
         # btn = tk.Button(root, text=exog_action, command=lambda : report_button(tk.StringVar(value=exog_action)))
-        btn = tk.Button(root, text=exog_action, command=lambda : print(exog_action + "." if exog_action[-1] != "." else exog_action))
+        btn = tk.Button(root, text=exog_action, command=lambda : print(exog_action + "." if exog_action[-1] != "." else exog_action, flush=True))
         btn.pack(pady=(5, 0))
         root.geometry(f"{WIDTH}x{HEIGHT + (len(past_events)+no_fixed_events) * 35}")
         # root.geometry(f"{WIDTH}x{root.winfo_screenmmheight()}")

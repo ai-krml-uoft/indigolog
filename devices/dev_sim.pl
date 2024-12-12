@@ -53,9 +53,12 @@ finalize_interfaces :- finalize(tcltk).
 
 initialize(tcltk) :-
         print_instructions,
-        dir(exog_tcltk_, File),
         % run the TCLK window as a child and send its *output* to pipe "tcltk"
-        process_create(path(wish), [File], [stdout(pipe(OutStream)), process(PID)]),
+        % dir(exog_tcltk_, File),
+        % process_create(path(wish), [File], [stdout(pipe(OutStream)), process(PID)]),
+        % run the TCLK window as a child and send its *output* to pipe "tcltk"
+        dir(exog_python_tcltk_, File),
+        process_create(path(python), [File, "--events", "end_indi"], [stdout(pipe(OutStream)), process(PID)]),
         set_stream(OutStream, alias(tcltk)),
         sleep(2),    % give time to TCL/TK program to appear
         assert(listen_to(tcltk, OutStream, [pid(PID)])),  % listen to tcltk

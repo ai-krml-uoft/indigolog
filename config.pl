@@ -48,6 +48,11 @@ dir(exog_tcltk_, F) :-
 	root_indigolog(Dir),
 	directory_file_path(Dir, "devices/exog.tcl", F).
 
+dir(exog_python_tcltk_, F) :-
+	root_indigolog(Dir),
+	directory_file_path(Dir, "devices/exog_tk.py", F).
+
+
 %  this consults the standard indigolog interpreter
 % :- dir(indigolog, F), consult(F).
 
