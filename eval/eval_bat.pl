@@ -224,7 +224,7 @@ causes_val(A, F, true, C) :- causes_true(A, F, C).
 causes_val(A, F, false, C) :- causes_false(A, F, C).
 
 % Abort if P is not grounded (to use before negations as failure)
-checkgr(P) :- ground(P)-> true ; once(warn(['CWA applied to formula: ', P])).
+checkgr(P) :- ground(P)-> true ; log_warn(['CWA applied to formula: ', P]).
 
 
 % Update the cache information by stripping out the subhistory H
