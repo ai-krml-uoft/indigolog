@@ -25,8 +25,8 @@
 final(iconc(_), _).
 final(conc(E1, E2), H) :- final(E1, H), final(E2, H).
 final(pconc(E1, E2), H) :- final(E1, H), final(E2, H).
-trans(iconc(E), H, conc(E1, iconc(E)), H1) :- trans(E, H, E1, H1).
 
+trans(iconc(E), H, conc(E1, iconc(E)), H1) :- trans(E, H, E1, H1).
 trans(conc(E1, E2), H, conc(E, E2), H1) :- trans(E1, H, E, H1).
 trans(conc(E1, E2), H, conc(E1, E), H1) :- trans(E2, H, E, H1).
 trans(pconc(E1, E2), H, E, H1) :-    % pconc2(E1, E2, H) is for when E1 blocked at H

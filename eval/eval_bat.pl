@@ -393,7 +393,7 @@ debug_eval(H) :-
     writeln('-------------------------------------------------------------'),
     writeln('****** A SNAPSHOT OF THE PROJECTOR WAS REQUESTED ************'),
     writeln('-------------------------------------------------------------'),
-    format("    Actions performed so far: ~w", [H]),
+    format("    Actions performed so far: ~w~n", [H]),
     forall(prim_fluent(F), report_fluent_value(F, H)),
     writeln('-------------------------------------------------------------').
 
