@@ -209,28 +209,31 @@ indigolog(E) :-		% Run program E
 indigolog(E, H) :-
 	% trace,
 		% process all pending exog actions, and process sys actions
-	findall(X, (pending(exog_action(X)), system_action(X)), HS), !,
-	(HS \= [] -> logging(indi(0), "Received sys actions: ~w", [HS]) ; true),
-	findall(X, (pending(exog_action(X)), \+ system_action(X)), HE),
-	(HE \= [] -> logging(indi(0), "Received exog actions: ~w", [HE]) ; true),
-	retractall(pending(exog_action(_))),
-	list_to_set(HS, HS2),
-	process_system_actions(HS2, E, H1, E2), !,
-	append(HE, H, H1),
+	(setof(X, retract(pending(exog_action(X))), XL) -> true ; XL = []),
+	(	setof(X, (member(X, XL), system_action(X)), HS)
+	->	logging(indi(0), "Received sys actions: ~w", [HS])
+	; 	HS = []), !,
+	(	setof(X, (member(X, XL), \+ system_action(X)), HE)
+	->	logging(indi(0), "Received exogenous actions: ~w", [HE])
+	; 	HE = []), !,
+	append(HE, H, H1),	% append exog actions to history
+	process_system_actions(HS, E, H1, E2), !,
 		% progress the history (possibly)
 	(must_progress(H1) -> progress(H1, H2) ; H2 = H1),
 		% make a step in the program (if no exo action ocurrs)
 	% trace,
+	% OK, now we need to execute (E2, H2)
 	catch((assert(doing_step),
 			compute_step(E2, H2, E3, H3, T),
 			retract(doing_step)),
 	 	exog_action, T = exog), !, % done, next cycle
+	%  consider all possible options to keep going...
 	(	T = trans
 	-> 	indigolog(H2, E3, H3)
 	;	T = final
 	-> 	logging(program,  "Program has executed to completion!! History done:\n\t ~w", [H2])
 	;	T = exog
-	-> 	logging(program, "Restart INDIGOLOG cycle (exog action ocurred!)."),
+	-> 	logging(program, "Restart INDIGOLOG cycle (exogenous action ocurred!)."),
 		indigolog(E3, H3)
 	;	T = none
 	-> 	logging(program,  "Program fails: \n\t~w\n ...at history:\n\t ~w", [E2, H2]),
@@ -242,19 +245,19 @@ compute_step(E1, H1, E2, H2, trans) :- trans(E1, H1, E2, H2).
 compute_step(_, _, _, _, none).
 
 
-% process all found system actions HS at configuration (E,H)
-%	EN is the new program to keep executing
+% process all found system actions HS at configuration (E, H) with EN as new program to keep executing
 process_system_actions(HS, E, H, EN) :-
 	member(debug_indi, HS),
 	logging(info(0), "Request for DEBUGGING"),
 	ignore(debug_eval(H)),
-	format("\n\tCurent program:\n\t\t~w\n\n\tCurrent History: \n\t\t~w", [E, H]),
-	delete(debug_indi, HS, HS2),
+	format("~n\tCurrent program:\n\t\t~w~n", [E]),
+	format("~n\tCurrent History: \n\t\t~w~n", [H]),
+	subtract(HS, [debug_indi], HS2),
 	process_system_actions(HS2, E, H, EN).
 process_system_actions(HS, E, H, EN) :-
 	member(wait_indi(N), HS),
 	set_option(wait_step, N),
-	delete(wait_indi(N), HS, HS2),
+	subtract(HS, [wait_indi(N)], HS2),
 	process_system_actions(HS2, E, H, EN).
 process_system_actions(HS, _, _, []) :-
 	member(end_indi, HS),
@@ -296,6 +299,7 @@ indigolog(H, E, [A|H]) :- % A is a new domain action to be executed
 	),
 	indigolog(E, H1).
 
+% we can use it like ?(wait_exog_action) to wait for an exogenous event
 wait_exog_action :-
 	logging(info(2), "Waiting for exogenous action to ocurr..."),
 	( 	\+ pending(exog_action(_))
@@ -337,7 +341,7 @@ update_now(H) :-
 	logging(info(5), "History updated to: ~w", [H]).
 
 
-% progress initial state by cutting down last actions in H1. 
+% progress initial state by cutting down last actions in H1.
 % H2 is new (shorter history)
 progress(H1, H2) :-
 	logging(info(0), "Rolling down the river (progressing the database)......."),
