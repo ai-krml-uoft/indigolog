@@ -154,20 +154,20 @@ exog_action(A) :- system_action(A).
 initialize(indigolog) :-
 %	set_option(debug_level, 3),
 	logging(init, "Starting ENVIRONMENT MANAGER..."),
-	initialize(env_manager),    	  	% Initialization of environment
+	initialize(env_manager),
 	logging(init, "ENVIRONMENT MANAGER was started successfully."),
 	logging(init, "Starting PROJECTOR EVALUATOR..."),
-	initialize(evaluator),             	% Initialization of projector
+	initialize(evaluator),
 	logging(init, "PROJECTOR was started successfully."),
-	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
+	reset_indigolog_dbs([]). % Reset DB wrt controller
 
 finalize(indigolog)  :-
 	logging(end, "INDIGOLOG is finishing..."),
 	logging(end, "Finalizing PROJECTOR..."),
-	finalize(evaluator),               	% Finalization of projector
+	finalize(evaluator),
 	logging(end, "PROJECTOR was finalized successfully."),
 	logging(end, "Finalizing ENVIRONMENT MANAGER..."),
-	finalize(env_manager),      		% Finalization of environment
+	finalize(env_manager),
 	logging(end, "ENVIRONMENT MANAGER was finalized successfully.").
 
 
@@ -243,7 +243,6 @@ indigolog(E, H) :-
 compute_step(E1, H1, _, _, final) :- final(E1, H1).
 compute_step(E1, H1, E2, H2, trans) :- trans(E1, H1, E2, H2).
 compute_step(_, _, _, _, none).
-
 
 % process all found system actions HS at configuration (E, H) with EN as new program to keep executing
 process_system_actions(HS, E, H, EN) :-

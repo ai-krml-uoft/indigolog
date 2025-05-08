@@ -320,7 +320,6 @@ poss(set(F), ground(F)).
 poss(unset(F), ground(F)).
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  ROLL DATABASE FORWARD
 %

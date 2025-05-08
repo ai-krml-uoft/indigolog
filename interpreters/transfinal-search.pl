@@ -36,6 +36,10 @@ final(search(E), H) :- final(E, H).
 trans(search(E), H, followpath(E1, L), H1) :-
         catch((trans(E, H, E1, H1), findpath(E1, H1, L)), abort_search, fail).
 
+final(search_ids(E), H) :- final(E, H).
+trans(search_ids(E), H, followpath(E1, L), H1) :-
+        catch((trans(E, H, E1, H1), findpath_ids(E1, H1, L, 1)), abort_search, fail).
+
 % findpath(E, H, L): find a solution L for E at H;
 %		   L is the list [E1, H1, E2, H2, ..., EN, HN] encoding
 %		   each step evolution (Ei, Hi) where final(EN, HN)
@@ -43,13 +47,34 @@ trans(search(E), H, followpath(E1, L), H1) :-
 % commit action in programs act as cut ! in Prolog: commit
 findpath(E, [commit|H], L) :- !,
 	(	findpath(E, H, L)
-	-> 	true 
+	-> 	true
 	; 	throw(abort_search)
 	).
 findpath(E, H, [E, H]) :- final(E, H).
 findpath(E, H, [E, H|L]) :-
+	writeln(H),
 	trans(E, H, E1, H1),
 	findpath(E1, H1, L).
+
+% find a path no longer than N trans
+findpath_ids(E, H, L, N) :- findpath(E, H, L, N).
+findpath_ids(E, H, L, N) :-
+	N2 is N + 1,
+	findpath(E, H, L, N2).
+
+
+findpath(E, [commit|H], L, N) :- !,
+	(	findpath(E, H, L, N)
+	-> 	true
+	; 	throw(abort_search)
+	).
+findpath(E, H, [E, H], _) :- final(E, H).
+findpath(E, H, [E, H|L], N) :-
+	writeln(H),
+	N > 0,
+	trans(E, H, E1, H1),
+	(H = H1 -> N2 = N ; N2 is N-1),
+	findpath(E1, H1, L, N2).
 
 
 % followpath(E, L):
@@ -62,7 +87,11 @@ final(followpath(E, _), H) :- final(E, H).  % off path; check again
 trans(followpath(E, [E, H, E1, H1|L]), H, followpath(E1, [E1, H1|L]), H1) :- !.
 trans(followpath(E, _), H, E1, H1) :- trans(search(E), H, E1, H1). % replan
 
-
+do_trans(E, H) :- do_trans(E, [], H).
+do_trans(E, H, H) :- final(E, H).
+do_trans(E, H, H2) :-
+	trans(E, H, E1, H1),
+	do(E1, H1, H2).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONDITIONAL SEARCH: Conditional plans with sensing
