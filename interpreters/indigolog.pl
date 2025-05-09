@@ -140,7 +140,8 @@ system_action(debug_indi).	% printout debug info
 system_action(halt_indi).	% force terminateion top level
 system_action(end_indi).	% force clean termination
 system_action(break_indi).	% break the agent execution to top-level Prolog
-system_action(wait_indi(_)).	% Change waiting at action step
+system_action(wait_indi(N)) :- ground(N), !.	% Change waiting at action step
+system_action(wait_indi(0)).
 system_action(wait_exog).
 
 % sys actions can come as exogenous actions
