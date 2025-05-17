@@ -36,25 +36,35 @@ final(search(E), H) :- final(E, H).
 trans(search(E), H, followpath(E1, L), H1) :-
         catch((trans(E, H, E1, H1), findpath(E1, H1, L)), abort_search, fail).
 
-final(search_ids(E), H) :- final(E, H).
-trans(search_ids(E), H, followpath(E1, L), H1) :-
-        catch((trans(E, H, E1, H1), findpath_ids(E1, H1, L, 1)), abort_search, fail).
-
 % findpath(E, H, L): find a solution L for E at H;
 %		   L is the list [E1, H1, E2, H2, ..., EN, HN] encoding
 %		   each step evolution (Ei, Hi) where final(EN, HN)
 %
 % commit action in programs act as cut ! in Prolog: commit
-findpath(E, [commit|H], L) :- !,
-	(	findpath(E, H, L)
-	-> 	true
-	; 	throw(abort_search)
-	).
+findpath(E, [commit|H], L) :- !, (findpath(E, H, L) -> true ; throw(abort_search)).
 findpath(E, H, [E, H]) :- final(E, H).
 findpath(E, H, [E, H|L]) :-
-	writeln(H),
 	trans(E, H, E1, H1),
 	findpath(E1, H1, L).
+
+
+% followpath(E, L):
+%	execute program E wrt expected sequence of configs L
+%	if current history H does not match the next expected one
+% 	in L (i.e., H\=HEx), then redo the search for E from H
+final(followpath(E, [E, H]), H) :- !.	% all as expected! :-)
+final(followpath(E, _), H) :- final(E, H).  % off path; check again
+
+trans(followpath(E, [E, H, E1, H1|L]), H, followpath(E1, [E1, H1|L]), H1) :- !.
+trans(followpath(E, _), H, E1, H1) :- trans(search(E), H, E1, H1). % replan
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% IDS SEARCH CONSTRUCT
+%%
+%% Linear plans, ignores sensing: akin to classical planning
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % find a path no longer than N trans
 findpath_ids(E, H, L, N) :- findpath(E, H, L, N).
@@ -77,21 +87,6 @@ findpath(E, H, [E, H|L], N) :-
 	findpath(E1, H1, L, N2).
 
 
-% followpath(E, L):
-%	execute program E wrt expected sequence of configs L
-%	if current history H does not match the next expected one
-% 	in L (i.e., H\=HEx), then redo the search for E from H
-final(followpath(E, [E, H]), H) :- !.	% all as expected! :-)
-final(followpath(E, _), H) :- final(E, H).  % off path; check again
-
-trans(followpath(E, [E, H, E1, H1|L]), H, followpath(E1, [E1, H1|L]), H1) :- !.
-trans(followpath(E, _), H, E1, H1) :- trans(search(E), H, E1, H1). % replan
-
-do_trans(E, H) :- do_trans(E, [], H).
-do_trans(E, H, H) :- final(E, H).
-do_trans(E, H, H2) :-
-	trans(E, H, E1, H1),
-	do(E1, H1, H2).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% CONDITIONAL SEARCH: Conditional plans with sensing
