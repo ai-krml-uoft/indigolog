@@ -1,6 +1,8 @@
 :- module(utils, [
      % 1 - TOOLS
      subv/4,
+     print_prog/1,
+     print_prog/2,
      % 2 - DATA CONVERSION
      any_to_string/2,
      join_atom/3,
@@ -40,3 +42,8 @@ send_term(Stream, Term) :-
      write_term(Stream, Term, [quoted(true), fullstop(true), nl(false), spacing(next_argument)]),
      flush_output(Stream).
 
+
+%!        print_prog(E) is det
+%    pretty print a rogram with identation
+print_prog(E) :- print_term(E, [auto_indent_arguments(2)]).
+print_prog(E, N) :- print_term(E, [auto_indent_arguments(N)]).
