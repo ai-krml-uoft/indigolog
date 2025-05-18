@@ -64,7 +64,7 @@ final_star(E, H) :- trans_star(E, H, E2, H), E2 \= E, final_star(E2, H).
 trans_star(E, H, E, H, 0) :- !.
 trans_star(E, H, EN, HN, N) :-
 	trans(E, H, E1, H1),
-	(var(H1) -> true ; once(before(H1, HN))),
+	(var(HN) -> true ; once(before(H1, HN))),
 	N2 is N-1,
 	trans_star(E1, H1, EN, HN, N2).
 
@@ -83,3 +83,8 @@ trans_block(E, H, E2, H2) :- trans_star(E, H, E2, H2), \+ trans(E2, H2, _, _).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % EOF
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+% [withdrawal_by_applicant(1),store_signed_contract(start,  1),communicate_recruitment(start,  1),signed_contract_sent(1),sign_contract(end,  1),sign_contract(start,  1),contract_sent(1),produce_contract(end,  1),produce_contract(start,  1),validate_job_offer(end,  1,true),validate_job_offer(start,  1),obtain_approval(end,  1),obtain_approval(start,  1),execute_interview(end,  1,true),execute_interview(start,  1),plan_interview(end,  1),plan_interview(start,  1),check_application_for_interview(end,  1,true),check_application_for_interview(start,  1),assign_contact_partner(end,  1),verify_prerequisites(end,  1),verify_prerequisites(start,  1),assign_contact_partner(start,  1),organize_documents(end,  1),organize_documents(start,  1),check_validity(end,  1,true),check_validity(start,  1),acquire(1,company),application_sent(1),prepare_application(end,  1),prepare_application(start,  1),acquire(1,applicant),job_needed(1)]
