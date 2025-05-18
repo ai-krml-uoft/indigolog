@@ -238,7 +238,7 @@ update_cache(H) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % action A has been executed
-holds(done(A), H) :- member(A, H).
+holds(done(A), H) :- !, member(A, H).
 
 % kwhether(F, H): fluent F is known true or false in H
 % Assumes that after sensing F, F may change but it will remain known
