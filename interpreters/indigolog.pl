@@ -273,7 +273,7 @@ process_system_actions(_, E, _, E).
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
-%% indigolog(+H1, +E, +H2): called from indigo/2 only after a lful Trans on the program
+%% indigolog(+H1, +E, +H2): called from indigo/2 only after a full Trans on the program
 %% 	H1 is the history *before* the transition
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition

@@ -23,7 +23,7 @@
  -- exog_action(action)    : for each exogenous action (ground)
 
            e.g., prim_action(clean(C)) :- domain(C, country).
-           e.g., exog_action(painte(C, B)) :- domain(C, country), domain(B, color).
+           e.g., exog_action(painted(C, B)) :- domain(C, country), domain(B, color).
 
  -- senses(action, fluent)  : for each sensing action that senses fluent directly
 
@@ -165,7 +165,7 @@ clean_cache :- retractall(has_valc(_, _, _)).
 % Set F to value V at H, return H1 (add e(F, V) to history H)
 assume(F, V, H, [e(F, V)|H]).
 
-% system_action/1 defines actions that are used by the projector for managment
+% system_action/1 defines actions that are used by the projector for management
 system_action(e(_, _)).
 
 % Action A is a sensing action
