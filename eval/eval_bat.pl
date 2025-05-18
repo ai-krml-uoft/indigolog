@@ -236,6 +236,10 @@ update_cache(H) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  HOLDS - Here starts the evaluation procedure for projection
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% action A has been executed
+holds(done(A), H) :- member(A, H).
+
 % kwhether(F, H): fluent F is known true or false in H
 % Assumes that after sensing F, F may change but it will remain known
 % We may probably want to add some "forgeting" mechanism.. either by a
@@ -326,7 +330,7 @@ poss(unset(F), ground(F)).
 %  Rolling forward means advancing the predicate currently(-, -) and
 %  discarding the corresponding tail of the history.
 %  There are 3 parameters specified by progress_params(L, N, M).
-%     L: the history has to be longer than this, or dont bother
+%     L: the history has to be longer than this, or don't bother
 %     M: if the history is longer than this, forced roll
 %     N: the length of the tail of the history to be preserved
 %	If clause is missing, then no roll forward
