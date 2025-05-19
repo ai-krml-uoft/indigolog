@@ -37,7 +37,7 @@
 
 do(E, H) :- do(E, [], H).
 
-% do(_, [A|_], _) :- exog_action(A), writeln(A), fail.
+% do(_, [A|H], _) :- exog_action(A), writeln([A|H]), fail.
 % do(_, [A|H], _) :-
 % 	A = withdrawal_by_applicant(_),
 % 	writeln([A|H]),
