@@ -23,7 +23,7 @@
  -- exog_action(action)    : for each exogenous action (ground)
 
            e.g., prim_action(clean(C)) :- domain(C, country).
-           e.g., exog_action(painte(C, B)) :- domain(C, country), domain(B, color).
+           e.g., exog_action(painted(C, B)) :- domain(C, country), domain(B, color).
 
  -- senses(action, fluent)  : for each sensing action that senses fluent directly
 
@@ -165,7 +165,7 @@ clean_cache :- retractall(has_valc(_, _, _)).
 % Set F to value V at H, return H1 (add e(F, V) to history H)
 assume(F, V, H, [e(F, V)|H]).
 
-% system_action/1 defines actions that are used by the projector for managment
+% system_action/1 defines actions that are used by the projector for management
 system_action(e(_, _)).
 
 % Action A is a sensing action
@@ -224,7 +224,7 @@ causes_val(A, F, true, C) :- causes_true(A, F, C).
 causes_val(A, F, false, C) :- causes_false(A, F, C).
 
 % Abort if P is not grounded (to use before negations as failure)
-checkgr(P) :- ground(P)-> true ; log_warn(['CWA applied to formula: ', P]).
+checkgr(P) :- ground(P) -> true ; log_warn(['CWA applied to formula: ', P]).
 
 
 % Update the cache information by stripping out the subhistory H
@@ -236,6 +236,10 @@ update_cache(H) :-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  HOLDS - Here starts the evaluation procedure for projection
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% action A has been executed
+holds(done(A), H) :- !, member(A, H).
+
 % kwhether(F, H): fluent F is known true or false in H
 % Assumes that after sensing F, F may change but it will remain known
 % We may probably want to add some "forgeting" mechanism.. either by a
@@ -320,14 +324,13 @@ poss(set(F), ground(F)).
 poss(unset(F), ground(F)).
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %  ROLL DATABASE FORWARD
 %
 %  Rolling forward means advancing the predicate currently(-, -) and
 %  discarding the corresponding tail of the history.
 %  There are 3 parameters specified by progress_params(L, N, M).
-%     L: the history has to be longer than this, or dont bother
+%     L: the history has to be longer than this, or don't bother
 %     M: if the history is longer than this, forced roll
 %     N: the length of the tail of the history to be preserved
 %	If clause is missing, then no roll forward

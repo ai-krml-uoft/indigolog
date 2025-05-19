@@ -140,7 +140,8 @@ system_action(debug_indi).	% printout debug info
 system_action(halt_indi).	% force terminateion top level
 system_action(end_indi).	% force clean termination
 system_action(break_indi).	% break the agent execution to top-level Prolog
-system_action(wait_indi(_)).	% Change waiting at action step
+system_action(wait_indi(N)) :- ground(N), !.	% Change waiting at action step
+system_action(wait_indi(0)).
 system_action(wait_exog).
 
 % sys actions can come as exogenous actions
@@ -154,20 +155,20 @@ exog_action(A) :- system_action(A).
 initialize(indigolog) :-
 %	set_option(debug_level, 3),
 	logging(init, "Starting ENVIRONMENT MANAGER..."),
-	initialize(env_manager),    	  	% Initialization of environment
+	initialize(env_manager),
 	logging(init, "ENVIRONMENT MANAGER was started successfully."),
 	logging(init, "Starting PROJECTOR EVALUATOR..."),
-	initialize(evaluator),             	% Initialization of projector
+	initialize(evaluator),
 	logging(init, "PROJECTOR was started successfully."),
-	reset_indigolog_dbs([]).      	% Reset the DB wrt the controller
+	reset_indigolog_dbs([]). % Reset DB wrt controller
 
 finalize(indigolog)  :-
 	logging(end, "INDIGOLOG is finishing..."),
 	logging(end, "Finalizing PROJECTOR..."),
-	finalize(evaluator),               	% Finalization of projector
+	finalize(evaluator),
 	logging(end, "PROJECTOR was finalized successfully."),
 	logging(end, "Finalizing ENVIRONMENT MANAGER..."),
-	finalize(env_manager),      		% Finalization of environment
+	finalize(env_manager),
 	logging(end, "ENVIRONMENT MANAGER was finalized successfully.").
 
 
@@ -244,7 +245,6 @@ compute_step(E1, H1, _, _, final) :- final(E1, H1).
 compute_step(E1, H1, E2, H2, trans) :- trans(E1, H1, E2, H2).
 compute_step(_, _, _, _, none).
 
-
 % process all found system actions HS at configuration (E, H) with EN as new program to keep executing
 process_system_actions(HS, E, H, EN) :-
 	member(debug_indi, HS),
@@ -273,7 +273,7 @@ process_system_actions(_, E, _, E).
 
 %%
 %% (C) SECOND phase of MAIN CYCLE for transition on the program
-%% indigolog(+H1, +E, +H2): called from indigo/2 only after a lful Trans on the program
+%% indigolog(+H1, +E, +H2): called from indigo/2 only after a full Trans on the program
 %% 	H1 is the history *before* the transition
 %% 	E is the program that remains to execute
 %% 	H2 is the history *after* the transition

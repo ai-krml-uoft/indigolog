@@ -13,7 +13,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- dynamic
 	debug_level/1,
-        debug_level/2.
+        debug_level/2,
+        warnings/0.
 
 set_option("log_level: up to what level to report").
 set_option(log_level, N) :-
@@ -26,6 +27,12 @@ set_option(log_level, N) :-
         retractall(debug_level(M, _)),
 	assert(debug_level(M, Level)),
         logging(system(0), 'Debug level for module ~w set to ~d', [M, Level]).
+set_option(warnings, true) :-
+        assert(warnings).
+set_option(warnings, false) :-
+	retractall(warnings).
+
+
 
 % report logging using ~ formatting print
 logging(T, M) :- logging(T, M, []).
@@ -59,7 +66,7 @@ log_error(M) :-
         logging(error, "Execution will be aborted!"), abort.
 
 log_warn(M) :-
-        logging(warning, M).
+        (warnings -> logging(warning, M) ; true).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
